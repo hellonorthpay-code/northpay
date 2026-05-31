@@ -976,9 +976,6 @@ function MobileEmployeeCard({
               className="overflow-hidden border-t border-border/40"
             >
               <div className="space-y-3 px-4 py-3">
-                <div className="flex justify-end">
-                  <NetPayInfo line={line} excluded={excluded} />
-                </div>
                 {isHourly && (
                   <MobileField label="Hours worked">
                     <MobileNumberInput
@@ -1023,6 +1020,9 @@ function MobileEmployeeCard({
                     <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
                   </button>
                 </MobileField>
+                <div className="flex justify-end">
+                  <NetPayInfo line={line} excluded={excluded} />
+                </div>
               </div>
             </motion.div>
           )}
