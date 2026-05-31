@@ -13,7 +13,7 @@ const ease = [0.22, 1, 0.36, 1] as const;
 export function Hero() {
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   return (
-    <section className="relative pt-40 pb-24">
+    <section className="relative pt-20 pb-24 md:pt-40">
       {/* Floating gradient background */}
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute left-1/2 top-32 h-[640px] w-[1080px] -translate-x-1/2 rounded-full bg-gradient-to-br from-rose-200/40 via-sky-200/30 to-emerald-200/40 blur-3xl dark:from-rose-500/10 dark:via-sky-500/10 dark:to-emerald-500/10" />
