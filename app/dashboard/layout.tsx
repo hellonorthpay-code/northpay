@@ -28,17 +28,7 @@ export default function DashboardLayout({
         <div className="absolute -right-32 top-40 h-[480px] w-[480px] rounded-full bg-sky-200/25 blur-3xl dark:bg-sky-500/10" />
       </div>
 
-      {/* Mobile top header — logo + brand, only visible on small screens */}
-      <div className="fixed left-0 right-0 top-0 z-40 flex items-center gap-2 border-b border-border/50 bg-background/80 px-4 py-3 backdrop-blur-xl md:hidden">
-        <span className="grid h-7 w-7 place-items-center rounded-xl bg-foreground text-background">
-          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
-            <path d="M3 13V3l10 10V3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </span>
-        <span className="text-[15px] font-semibold tracking-tight">NorthPay</span>
-      </div>
-
-      <div className="mx-auto flex max-w-[1280px] gap-6 px-4 pb-24 pt-16 md:px-5 md:pb-5 md:pt-24 lg:px-8">
+      <div className="mx-auto flex max-w-[1280px] gap-6 px-4 pb-24 pt-6 md:px-5 md:pb-5 md:pt-24 lg:px-8">
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
           <Topbar />
