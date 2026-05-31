@@ -939,11 +939,13 @@ function MobileEmployeeCard({
             <p className="truncate text-[15px] font-semibold tracking-tight">
               {employee.firstName} {employee.lastName}
             </p>
-            <p className="truncate text-[11.5px] text-muted-foreground">
-              {isHourly
-                ? `Hourly · ${formatCAD(employee.hourlyRate ?? 0)}/hr`
-                : `Salary · ${formatCAD(employee.annualSalary ?? 0)}/yr`}
-            </p>
+            {expanded && (
+              <p className="truncate text-[11.5px] text-muted-foreground">
+                {isHourly
+                  ? `Hourly · ${formatCAD(employee.hourlyRate ?? 0)}/hr`
+                  : `Salary · ${formatCAD(employee.annualSalary ?? 0)}/yr`}
+              </p>
+            )}
           </div>
           {!excluded && (
             <div className="flex shrink-0 flex-col items-end">
