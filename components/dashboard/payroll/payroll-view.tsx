@@ -1086,17 +1086,15 @@ function MobileEmployeeCard({
         <motion.div
           animate={{ rotateY: flipped ? 180 : 0 }}
           transition={{ duration: 0.55, ease }}
-          className="grid"
-          style={{
-            transformStyle: "preserve-3d",
-            gridTemplateAreas: '"stack"',
-          }}
+          className="relative"
+          style={{ transformStyle: "preserve-3d" }}
         >
-          {/* Front face */}
+          {/* Front face — in normal flow, so the container sizes to it.
+              When the card is collapsed, this is short. When expanded, it
+              grows. The back face overlays this exact box. */}
           <div
             aria-hidden={flipped}
             style={{
-              gridArea: "stack",
               backfaceVisibility: "hidden",
               WebkitBackfaceVisibility: "hidden",
             }}
@@ -1104,11 +1102,16 @@ function MobileEmployeeCard({
             {front}
           </div>
 
-          {/* Back face — pre-rotated so it shows when container reaches 180° */}
+          {/* Back face — absolutely positioned so it doesn't contribute
+              to the container's height. Pre-rotated 180° so it appears
+              upright once the container reaches rotateY(180). The flip
+              button only renders once the card is expanded, so the
+              container is always tall enough to contain the breakdown. */}
           <div
             aria-hidden={!flipped}
             style={{
-              gridArea: "stack",
+              position: "absolute",
+              inset: 0,
               backfaceVisibility: "hidden",
               WebkitBackfaceVisibility: "hidden",
               transform: "rotateY(180deg)",
