@@ -26,7 +26,7 @@ export function MobileNav() {
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
       <LayoutGroup id="mobile-nav">
-        <div className="pointer-events-auto flex items-center gap-0.5 rounded-[26px] border border-border/60 bg-background/70 p-1.5 shadow-pop backdrop-blur-2xl">
+        <div className="pointer-events-auto flex items-center gap-1.5 rounded-[32px] border border-border/60 bg-background/70 p-2 shadow-pop backdrop-blur-2xl">
           {tabs.map((tab) => {
             const active = isActive(tab);
             return (
@@ -36,7 +36,7 @@ export function MobileNav() {
                 aria-label={tab.label}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex h-[58px] w-[68px] flex-col items-center justify-center gap-1 rounded-[20px] transition-colors duration-200",
+                  "relative flex h-[60px] w-[74px] flex-col items-center justify-center gap-1 rounded-[22px] transition-colors duration-200",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground/70 hover:text-foreground"
@@ -51,7 +51,7 @@ export function MobileNav() {
                       damping: 36,
                       mass: 0.7,
                     }}
-                    className="absolute inset-0 -z-10 rounded-[20px] bg-muted dark:bg-white/[0.12]"
+                    className="absolute inset-0 -z-10 rounded-[22px] bg-muted dark:bg-white/[0.12]"
                   />
                 )}
                 <motion.div
