@@ -476,7 +476,7 @@ function SummaryCard({
   }, [editOpen]);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-7 shadow-soft backdrop-blur-xl">
+    <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-5 shadow-soft backdrop-blur-xl md:p-7">
       <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
       <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
 
@@ -498,10 +498,10 @@ function SummaryCard({
               <Pencil className="h-3 w-3" />
             </button>
           </p>
-          <p className="mt-3 text-[44px] font-semibold leading-none tracking-tightest tabular-nums">
+          <p className="mt-3 text-[34px] font-semibold leading-none tracking-tightest tabular-nums md:text-[44px]">
             {formatCAD(netPay)}
           </p>
-          <p className="mt-2 text-[13px] text-muted-foreground">
+          <p className="mt-2 text-[12px] text-muted-foreground md:text-[13px]">
             Net to {employeeCount} of {totalCount} employee
             {totalCount === 1 ? "" : "s"} · pay date {formatDate(period.payDate)}
           </p>
@@ -519,7 +519,7 @@ function SummaryCard({
         </div>
       </div>
 
-      <div className="relative mt-7 grid grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center">
+      <div className="relative mt-5 grid grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center md:mt-7">
         <Stat label="Gross" value={formatCAD(gross)} />
         <Stat label="Deductions" value={formatCAD(deductions)} />
         <Stat label="Employer cost" value={formatCAD(employerCost)} />
@@ -628,11 +628,11 @@ function DateField({
 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="px-5 py-4">
-      <p className="text-[10.5px] uppercase tracking-[0.14em] text-muted-foreground">
+    <div className="px-2 py-3 md:px-5 md:py-4">
+      <p className="text-[9px] uppercase tracking-[0.1em] text-muted-foreground md:text-[10.5px] md:tracking-[0.14em]">
         {label}
       </p>
-      <p className="mt-1 text-[14px] font-semibold tabular-nums tracking-tight">
+      <p className="mt-1 text-[12.5px] font-semibold tabular-nums tracking-tight md:text-[14px]">
         {value}
       </p>
     </div>
@@ -686,10 +686,10 @@ function PayrollGrid({
         </button>
       </div>
 
-      {/* Column headers — tabular grid */}
+      {/* Column headers — tabular grid (desktop only) */}
       <div
         className={cn(
-          "grid items-center gap-3 border-b border-border/40 bg-background/30 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80",
+          "hidden items-center gap-3 border-b border-border/40 bg-background/30 px-5 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80 md:grid",
           GRID_TEMPLATE
         )}
       >
@@ -741,39 +741,44 @@ function GridRow({
   const isHourly = employee.employmentType === "hourly";
   const defaultRegular = defaultRegularHours(employee);
 
+  const avatar = (
+    <div
+      className={cn(
+        "grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-[10px] font-semibold text-white shadow-soft",
+        PROVINCE_TONES[employee.province] ?? "from-zinc-300 to-zinc-200"
+      )}
+    >
+      {initials}
+    </div>
+  );
+
+  const checkbox = (
+    <button
+      onClick={onToggleExclude}
+      aria-label={excluded ? "Include employee" : "Skip employee"}
+      className={cn(
+        "grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border-[1.5px] transition-all duration-200",
+        !excluded
+          ? "border-success bg-success text-success-foreground"
+          : "border-muted-foreground/40 bg-transparent text-transparent hover:border-muted-foreground/70"
+      )}
+    >
+      <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+    </button>
+  );
+
   return (
     <div>
-      {/* Main row */}
+      {/* ── Desktop: tabular grid row ── */}
       <div
         className={cn(
-          "grid items-center gap-3 px-5 py-3 text-[13px] transition-colors duration-200 hover:bg-muted/30",
+          "hidden items-center gap-3 px-5 py-3 text-[13px] transition-colors duration-200 hover:bg-muted/30 md:grid",
           GRID_TEMPLATE,
           excluded && "opacity-45"
         )}
       >
-        {/* Inclusion checkbox */}
-        <button
-          onClick={onToggleExclude}
-          aria-label={excluded ? "Include employee" : "Skip employee"}
-          className={cn(
-            "grid h-[18px] w-[18px] place-items-center rounded-full border-[1.5px] transition-all duration-200",
-            !excluded
-              ? "border-success bg-success text-success-foreground"
-              : "border-muted-foreground/40 bg-transparent text-transparent hover:border-muted-foreground/70"
-          )}
-        >
-          <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
-        </button>
-
-        {/* Avatar */}
-        <div
-          className={cn(
-            "grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-[10px] font-semibold text-white shadow-soft",
-            PROVINCE_TONES[employee.province] ?? "from-zinc-300 to-zinc-200"
-          )}
-        >
-          {initials}
-        </div>
+        {checkbox}
+        {avatar}
 
         {/* Employee name + type */}
         <div className="min-w-0">
@@ -820,6 +825,72 @@ function GridRow({
         <NetPayInfo line={line} excluded={excluded} />
       </div>
 
+      {/* ── Mobile: stacked card ── */}
+      <div
+        className={cn(
+          "px-4 py-3.5 transition-colors duration-200 md:hidden",
+          excluded && "opacity-45"
+        )}
+      >
+        {/* Top: identity + net pay */}
+        <div className="flex items-center gap-3">
+          {checkbox}
+          {avatar}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[14px] font-medium tracking-tight">
+              {employee.firstName} {employee.lastName}
+            </p>
+            <p className="truncate text-[11px] text-muted-foreground">
+              {isHourly
+                ? `Hourly · ${formatCAD(employee.hourlyRate ?? 0)}/hr`
+                : `Salary · ${formatCAD(employee.annualSalary ?? 0)}/yr`}
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            <div className="text-right">
+              <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
+                Net pay
+              </p>
+              <p className="text-[15px] font-semibold tabular-nums tracking-tight">
+                {line && !excluded ? formatCAD(line.netPay) : "—"}
+              </p>
+            </div>
+            <NetPayInfo line={line} excluded={excluded} />
+          </div>
+        </div>
+
+        {/* Bottom: editable fields */}
+        {!excluded && (
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            <MobileField label="Hours">
+              <Cell
+                editable={isHourly}
+                value={input?.hoursWorked}
+                placeholder={isHourly ? String(defaultRegular) : "—"}
+                onChange={(v) => onUpdateInput({ hoursWorked: v })}
+              />
+            </MobileField>
+            <MobileField label="Bonus">
+              <Cell
+                editable
+                value={input?.bonusAmount}
+                placeholder="0"
+                onChange={(v) => onUpdateInput({ bonusAmount: v })}
+              />
+            </MobileField>
+            <MobileField label="Stat pay">
+              <div className="flex justify-end">
+                <StatPayCell
+                  disabled={false}
+                  value={input?.statPay}
+                  onClick={() => setStatModalOpen(true)}
+                />
+              </div>
+            </MobileField>
+          </div>
+        )}
+      </div>
+
       {/* Stat-pay picker modal — opens when StatPayCell is tapped */}
       <StatPayModal
         open={statModalOpen}
@@ -828,6 +899,24 @@ function GridRow({
         current={input?.statPay}
         onConfirm={(next) => onUpdateInput({ statPay: next })}
       />
+    </div>
+  );
+}
+
+/** Compact labeled field used in the mobile stacked payroll card. */
+function MobileField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="mb-1 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+        {label}
+      </p>
+      {children}
     </div>
   );
 }
