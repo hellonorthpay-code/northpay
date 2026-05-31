@@ -3,16 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
+import { User } from "lucide-react";
+import { useProfile } from "@/lib/store/profile";
 import { cn } from "@/lib/utils";
 
-// Three routes share the same morphing pill via Framer's `layoutId`.
+// Four routes share the same morphing pill via Framer's `layoutId`.
 // Whichever item is "active" renders <ActivePill/> inside itself; the rest
 // don't. As the route changes, the pill animates from one link's bounds to
 // another instead of fading out and fading in.
-type ActiveKey = "home" | "about" | "dashboard";
+type ActiveKey = "home" | "about" | "dashboard" | "profile";
 
 function resolveActive(pathname: string | null): ActiveKey {
   if (!pathname) return "home";
+  if (pathname.startsWith("/dashboard/profile")) return "profile";
   if (pathname.startsWith("/dashboard")) return "dashboard";
   if (pathname.startsWith("/about")) return "about";
   return "home";
@@ -21,6 +24,10 @@ function resolveActive(pathname: string | null): ActiveKey {
 export function LandingNav() {
   const pathname = usePathname();
   const active = resolveActive(pathname);
+  const profile = useProfile((s) => s.profile);
+  const initials =
+    (profile.firstName[0] ?? "").toUpperCase() +
+    (profile.lastName[0] ?? "").toUpperCase();
 
   return (
     <motion.header
@@ -53,6 +60,22 @@ export function LandingNav() {
         >
           Start tracking
         </NavItem>
+        <NavItem
+          href="/dashboard/profile"
+          isActive={active === "profile"}
+          className="ml-0.5 h-8 w-8 justify-center p-0 text-[12px] font-semibold text-foreground dark:text-white"
+          aria-label="My profile"
+        >
+          {initials ? (
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-slate-700 to-slate-400 text-white shadow-soft dark:from-rose-300 dark:to-amber-200 dark:text-black">
+              {initials}
+            </span>
+          ) : (
+            <span className="grid h-7 w-7 place-items-center rounded-full bg-muted text-muted-foreground">
+              <User className="h-3.5 w-3.5" />
+            </span>
+          )}
+        </NavItem>
       </nav>
     </motion.header>
   );
@@ -64,6 +87,7 @@ function NavItem({
   className,
   activeTextClassName,
   children,
+  "aria-label": ariaLabel,
 }: {
   href: string;
   isActive: boolean;
@@ -72,10 +96,12 @@ function NavItem({
       items like "About" whose default state is muted. */
   activeTextClassName?: string;
   children: React.ReactNode;
+  "aria-label"?: string;
 }) {
   return (
     <Link
       href={href}
+      aria-label={ariaLabel}
       className={cn(
         "relative inline-flex items-center rounded-full",
         className,

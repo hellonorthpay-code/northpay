@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, Building2, ChevronRight, ExternalLink, Info, Moon, Sparkles } from "lucide-react";
+import { Bell, Building2, ChevronRight, ExternalLink, Info, Moon, Sparkles, User } from "lucide-react";
 import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useSettings } from "@/lib/store/settings";
+import { useProfile } from "@/lib/store/profile";
 import {
   PROVINCE_NAMES,
   SUPPORTED_PROVINCES,
@@ -126,6 +127,7 @@ export function SettingsView() {
 
       {/* ── Mobile: collapsible accordion ── */}
       <div className="flex flex-col gap-3 lg:hidden">
+        <ProfileLinkCard />
         <AccordionSection icon={Building2} title="Company Details" subtitle="Legal name, address, CRA account">
           <div className="space-y-3">{companyFields}</div>
         </AccordionSection>
@@ -288,5 +290,35 @@ function SwitchRow({
       </div>
       <Switch checked={checked} onCheckedChange={onChange} />
     </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Mobile: profile card that links to /dashboard/profile. Mirrors the
+// AccordionSection chrome so it sits visually flush with the rest.
+// ─────────────────────────────────────────────────────────────────────────
+function ProfileLinkCard() {
+  const profile = useProfile((s) => s.profile);
+  const initials =
+    (profile.firstName[0] ?? "").toUpperCase() +
+    (profile.lastName[0] ?? "").toUpperCase();
+  const displayName =
+    `${profile.firstName} ${profile.lastName}`.trim() || "Set up your profile";
+  const subtitle = profile.email || "Name, contact, and timezone";
+
+  return (
+    <Link
+      href="/dashboard/profile"
+      className="flex items-center gap-3 overflow-hidden rounded-2xl border border-border/70 bg-card/80 p-4 shadow-soft backdrop-blur-xl transition-colors hover:bg-muted/30"
+    >
+      <div className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-slate-700 to-slate-400 text-[13px] font-semibold text-white shadow-soft dark:from-rose-300 dark:to-amber-200 dark:text-black">
+        {initials || <User className="h-5 w-5" />}
+      </div>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-[14px] font-semibold tracking-tight">{displayName}</p>
+        <p className="truncate text-[12px] text-muted-foreground">{subtitle}</p>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+    </Link>
   );
 }

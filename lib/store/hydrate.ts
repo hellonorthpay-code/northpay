@@ -5,6 +5,7 @@ import { useEmployees } from "./employees";
 import { usePayrollRuns } from "./payroll";
 import { useSettings } from "./settings";
 import { useRemittance } from "./remittance";
+import { useProfile } from "./profile";
 
 /**
  * Single client-side hook to hydrate every store from the repository.
@@ -15,16 +16,19 @@ export function useHydrateStores() {
   const hydratePayroll = usePayrollRuns((s) => s.hydrate);
   const hydrateSettings = useSettings((s) => s.hydrate);
   const hydrateRemittance = useRemittance((s) => s.hydrate);
+  const hydrateProfile = useProfile((s) => s.hydrate);
 
   useEffect(() => {
     void hydrateEmployees();
     void hydratePayroll();
     void hydrateSettings();
     hydrateRemittance();
+    hydrateProfile();
   }, [
     hydrateEmployees,
     hydratePayroll,
     hydrateSettings,
     hydrateRemittance,
+    hydrateProfile,
   ]);
 }

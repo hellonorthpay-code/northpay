@@ -19,6 +19,10 @@ const titles: Record<string, { title: string; sub: string }> = {
     title: "Settings",
     sub: "Company, CRA, and appearance preferences.",
   },
+  "/dashboard/profile": {
+    title: "My profile",
+    sub: "Your name, contact, and account preferences.",
+  },
 };
 
 export function Topbar() {
