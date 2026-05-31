@@ -25,10 +25,6 @@ import {
 import { AddEmployeeModal } from "./add-employee-modal";
 import { EmployeeDetailSheet } from "./employee-detail-sheet";
 
-// Light mode keeps a single, premium charcoal→silver gradient across all
-// provinces. Dark mode keeps the playful per-province palette via the
-// `dark:` variants — the warm palette pops on dark, but reads as candy
-// on light backgrounds.
 const PROVINCE_TONES: Record<string, string> = {
   ON: "from-slate-700 to-slate-400 dark:from-rose-300 dark:to-amber-200",
   AB: "from-slate-700 to-slate-400 dark:from-amber-300 dark:to-orange-200",
@@ -49,19 +45,9 @@ export function EmployeesView() {
   const company = useSettings((s) => s.company);
   const [query, setQuery] = useState("");
   const [addOpen, setAddOpen] = useState(false);
-  // Point the modal scales out from — captured from the Add employee
-  // button's centre so the open animation appears to originate from the
-  // tap target (iOS-style). vw/vh captured at click time to avoid stale
-  // window dimensions when the modal renders.
-  const [addOrigin, setAddOrigin] = useState<{
-    x: number;
-    y: number;
-    vw: number;
-    vh: number;
-  } | null>(null);
+  const [addOrigin, setAddOrigin] = useState<{ x: number; y: number } | null>(null);
   const [openEmployeeId, setOpenEmployeeId] = useState<string | null>(null);
 
-  /** Latest finalized paystub line per employee. */
   const latestByEmployee = useMemo(() => {
     const map = new Map<string, PayrollLineResult>();
     for (const run of runs) {
@@ -87,10 +73,10 @@ export function EmployeesView() {
     : null;
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-4">
       {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex max-w-sm flex-1 items-center">
+      <div className="flex items-center gap-2">
+        <div className="relative flex flex-1 items-center">
           <Input
             placeholder=""
             value={query}
@@ -98,40 +84,32 @@ export function EmployeesView() {
             className="pr-10"
             aria-label="Search employees"
           />
-          {/* Icon AFTER input in DOM + z-10 so it paints above the input's backdrop blur. */}
           <Search className="pointer-events-none absolute right-3.5 top-1/2 z-10 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
-        <div className="ml-auto">
-          <Button
-            onClick={(e) => {
-              // Capture the button's centre + viewport size together so the
-              // modal's transform-origin math uses values from the same frame.
-              const r = e.currentTarget.getBoundingClientRect();
-              setAddOrigin({
-                x: r.left + r.width / 2,
-                y: r.top + r.height / 2,
-                vw: window.innerWidth,
-                vh: window.innerHeight,
-              });
-              setAddOpen(true);
-            }}
-          >
-            <Plus className="h-4 w-4" /> Add employee
-          </Button>
-        </div>
+        <Button
+          onClick={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            setAddOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+            setAddOpen(true);
+          }}
+          className="shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          <span className="hidden sm:inline">Add employee</span>
+          <span className="sm:hidden">Add</span>
+        </Button>
       </div>
 
-      {/* Spreadsheet — clean rows, no actions outside */}
-      <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
-        {/* Header row */}
-        <div className="grid grid-cols-[1.5fr_1.3fr_1.2fr_28px] items-center gap-3 border-b border-border/60 bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+      {/* List */}
+      <div className="overflow-hidden rounded-2xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl md:rounded-3xl">
+        {/* Header — desktop only */}
+        <div className="hidden grid-cols-[1.5fr_1.3fr_1.2fr_28px] items-center gap-3 border-b border-border/60 bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground md:grid">
           <span>Employee</span>
           <span>Latest paystub</span>
           <span>Next pay</span>
           <span />
         </div>
 
-        {/* Body */}
         <div className="divide-y divide-border/50">
           <AnimatePresence initial={false}>
             {filtered.map((employee, i) => {
@@ -159,8 +137,8 @@ export function EmployeesView() {
           {filtered.length === 0 && (
             <p className="px-5 py-10 text-center text-[13px] text-muted-foreground">
               {employees.length === 0
-                ? "No employees yet. Click “Add employee” to start."
-                : `No employees match "${query}".`}
+                ? "No employees yet. Tap “Add” to start."
+                : `No employees match “${query}”.`}
             </p>
           )}
         </div>
@@ -184,8 +162,7 @@ export function EmployeesView() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// One spreadsheet row — tap to open detail, or use the inline download to
-// grab the latest paystub PDF without leaving the list.
+// Row — mobile: compact single-line card. Desktop: full 3-col table row.
 // ─────────────────────────────────────────────────────────────────────────
 function Row({
   employee,
@@ -206,8 +183,6 @@ function Row({
     [latest?.periodEnd, employee.payFrequency]
   );
 
-  // Relative time depends on "today" → compute client-side after mount to
-  // avoid SSR / client mismatch.
   const [relative, setRelative] = useState<RelativeFromToday | null>(null);
   useEffect(() => {
     if (nextPayDate) setRelative(relativeFromToday(nextPayDate));
@@ -228,16 +203,23 @@ function Row({
     }
   }
 
+  const lateColor =
+    relative?.tone === "late"
+      ? "text-destructive"
+      : relative?.tone === "today"
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-muted-foreground";
+
   return (
     <div
       role="button"
       tabIndex={0}
       onClick={onOpen}
       onKeyDown={handleKeyDown}
-      className="group grid w-full cursor-pointer grid-cols-[1.5fr_1.3fr_1.2fr_28px] items-center gap-3 px-5 py-3.5 text-left transition-colors duration-200 hover:bg-muted/40 focus:outline-none focus-visible:bg-muted/40"
+      className="group w-full cursor-pointer px-4 py-3.5 text-left transition-colors duration-200 hover:bg-muted/40 focus:outline-none focus-visible:bg-muted/40 md:grid md:grid-cols-[1.5fr_1.3fr_1.2fr_28px] md:items-center md:gap-3 md:px-5"
     >
-      {/* Employee — avatar + name + province (operational subtitle) */}
-      <div className="flex min-w-0 items-center gap-3">
+      {/* Avatar + name row (shared mobile/desktop) */}
+      <div className="flex items-center gap-3">
         <div
           className={cn(
             "grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br text-[12px] font-semibold text-white shadow-soft",
@@ -246,15 +228,41 @@ function Row({
         >
           {initials}
         </div>
-        <div className="min-w-0">
+
+        <div className="min-w-0 flex-1">
           <p className="truncate text-[14px] font-medium tracking-tight">
             {employee.firstName} {employee.lastName}
           </p>
+
+          {/* Mobile-only compact subtitle: amount · relative time */}
+          <div className="mt-0.5 flex items-center gap-2 md:hidden">
+            {latest ? (
+              <span className="text-[12px] font-medium tabular-nums">
+                {formatCAD(latest.netPay)}
+              </span>
+            ) : (
+              <span className="text-[12px] text-muted-foreground">No paystubs</span>
+            )}
+            {nextPayDate && (
+              <>
+                <span className="text-muted-foreground/40">·</span>
+                <span
+                  suppressHydrationWarning
+                  className={cn("text-[12px]", lateColor)}
+                >
+                  {relative?.text ?? formatDate(nextPayDate)}
+                </span>
+              </>
+            )}
+          </div>
         </div>
+
+        {/* Mobile chevron */}
+        <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/40 md:hidden" />
       </div>
 
-      {/* Latest paystub — amount + paid date + inline download */}
-      <div className="min-w-0">
+      {/* Desktop-only columns */}
+      <div className="hidden min-w-0 md:block">
         {latest ? (
           <>
             <p className="text-[13.5px] font-medium tabular-nums tracking-tight">
@@ -280,16 +288,14 @@ function Row({
         )}
       </div>
 
-      {/* Next pay — anchor for the operator's "what's next?" scan */}
-      <div className="min-w-0">
+      <div className="hidden min-w-0 md:block">
         {nextPayDate ? (
           <>
             <p
               className={cn(
                 "text-[13.5px] font-medium tracking-tight tabular-nums",
                 relative?.tone === "late" && "text-destructive",
-                relative?.tone === "today" &&
-                  "text-amber-600 dark:text-amber-400"
+                relative?.tone === "today" && "text-amber-600 dark:text-amber-400"
               )}
             >
               Next {formatDate(nextPayDate)}
@@ -305,18 +311,15 @@ function Row({
                   : "text-muted-foreground"
               )}
             >
-              {relative?.text ?? " "}
+              {relative?.text ?? " "}
             </p>
           </>
         ) : (
-          <p className="text-[12.5px] text-muted-foreground">
-            Awaiting first run
-          </p>
+          <p className="text-[12.5px] text-muted-foreground">Awaiting first run</p>
         )}
       </div>
 
-      {/* iOS-style chevron */}
-      <ChevronRight className="h-4 w-4 text-muted-foreground/50 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-foreground" />
+      <ChevronRight className="hidden h-4 w-4 text-muted-foreground/50 transition-all duration-200 group-hover:translate-x-0.5 group-hover:text-foreground md:block" />
     </div>
   );
 }

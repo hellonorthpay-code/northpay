@@ -28,10 +28,10 @@ export function Topbar() {
   return (
     <header className="flex items-center gap-4">
       <div className="min-w-0">
-        <h1 className="truncate text-[28px] font-semibold leading-none tracking-tightest">
+        <h1 className="truncate text-[22px] font-semibold leading-none tracking-tightest md:text-[28px]">
           {meta.title}
         </h1>
-        <p className="mt-1.5 truncate text-[13.5px] text-muted-foreground">
+        <p className="mt-1.5 hidden truncate text-[13.5px] text-muted-foreground md:block">
           {meta.sub}
         </p>
       </div>
