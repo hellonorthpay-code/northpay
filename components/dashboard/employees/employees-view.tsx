@@ -24,6 +24,7 @@ import {
 } from "@/lib/utils";
 import { AddEmployeeModal } from "./add-employee-modal";
 import { EmployeeDetailSheet } from "./employee-detail-sheet";
+import { EmployeesEmpty } from "./empty-state";
 
 const PROVINCE_TONES: Record<string, string> = {
   ON: "from-slate-700 to-slate-400 dark:from-rose-300 dark:to-amber-200",
@@ -71,6 +72,26 @@ export function EmployeesView() {
   const openEmployee = openEmployeeId
     ? employees.find((e) => e.id === openEmployeeId) ?? null
     : null;
+
+  // First-run hero — no toolbar, no list. The empty-state CTA opens the
+  // same Add modal with a transform-origin that matches the tapped pixel.
+  if (employees.length === 0) {
+    return (
+      <>
+        <EmployeesEmpty
+          onAdd={(origin) => {
+            setAddOrigin(origin);
+            setAddOpen(true);
+          }}
+        />
+        <AddEmployeeModal
+          open={addOpen}
+          onOpenChange={setAddOpen}
+          origin={addOrigin}
+        />
+      </>
+    );
+  }
 
   return (
     <div className="space-y-4">
