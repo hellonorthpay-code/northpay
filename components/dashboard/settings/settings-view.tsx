@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, Building2, ChevronRight, Moon, Sparkles } from "lucide-react";
+import { Bell, Building2, ChevronRight, ExternalLink, Info, Moon, Sparkles } from "lucide-react";
+import Link from "next/link";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -136,6 +137,36 @@ export function SettingsView() {
         </AccordionSection>
         <AccordionSection icon={Bell} title="Notifications" subtitle="Reminders and alerts">
           {notificationFields}
+        </AccordionSection>
+        <AccordionSection icon={Info} title="About NorthPay" subtitle="Founders, legal, and privacy policy">
+          <div className="space-y-3">
+            <div className="rounded-2xl border border-border/60 bg-muted/30 p-4">
+              <p className="text-[13.5px] font-semibold tracking-tight">NorthPay</p>
+              <p className="mt-1 text-[12px] leading-relaxed text-muted-foreground">
+                Canadian payroll built for small businesses. 2026 CRA compliant — federal, CPP, EI, and 9 provinces.
+              </p>
+            </div>
+            <Link
+              href="/about"
+              className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/40 px-4 py-3 transition-colors hover:bg-muted/40"
+            >
+              <div>
+                <p className="text-[13.5px] font-medium tracking-tight">Our story & founders</p>
+                <p className="text-[11.5px] text-muted-foreground">Meet the team behind NorthPay</p>
+              </div>
+              <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </Link>
+            <Link
+              href="/about#legal"
+              className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/40 px-4 py-3 transition-colors hover:bg-muted/40"
+            >
+              <div>
+                <p className="text-[13.5px] font-medium tracking-tight">Legal & Privacy</p>
+                <p className="text-[11.5px] text-muted-foreground">PIPEDA compliance and data policy</p>
+              </div>
+              <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+            </Link>
+          </div>
         </AccordionSection>
       </div>
     </>
