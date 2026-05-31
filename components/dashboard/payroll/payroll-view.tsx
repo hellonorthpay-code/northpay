@@ -979,22 +979,24 @@ function MobileEmployeeCard({
               className="overflow-hidden border-t border-border/40"
             >
               <div className="space-y-3 px-4 py-3">
-                {isHourly && (
-                  <MobileField label="Hours worked">
+                <div className={cn("grid gap-3", isHourly ? "grid-cols-2" : "grid-cols-1")}>
+                  {isHourly && (
+                    <MobileField label="Hours worked">
+                      <MobileNumberInput
+                        placeholder={String(defaultRegular)}
+                        value={input?.hoursWorked}
+                        onChange={(v) => onUpdateInput({ hoursWorked: v })}
+                      />
+                    </MobileField>
+                  )}
+                  <MobileField label="Bonus ($)">
                     <MobileNumberInput
-                      placeholder={String(defaultRegular)}
-                      value={input?.hoursWorked}
-                      onChange={(v) => onUpdateInput({ hoursWorked: v })}
+                      placeholder="0"
+                      value={input?.bonusAmount}
+                      onChange={(v) => onUpdateInput({ bonusAmount: v })}
                     />
                   </MobileField>
-                )}
-                <MobileField label="Bonus ($)">
-                  <MobileNumberInput
-                    placeholder="0"
-                    value={input?.bonusAmount}
-                    onChange={(v) => onUpdateInput({ bonusAmount: v })}
-                  />
-                </MobileField>
+                </div>
                 <MobileField label="Stat holiday pay">
                   <button
                     type="button"
