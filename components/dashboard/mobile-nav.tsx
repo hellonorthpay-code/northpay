@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { Home, Users, Wallet, Settings } from "lucide-react";
+import { Home, Users, Banknote, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/", label: "Home", icon: Home, exact: true },
-  { href: "/dashboard/employees", label: "Tracking", icon: Users, exact: false },
-  { href: "/dashboard/payroll", label: "Payroll", icon: Wallet, exact: false },
+  { href: "/dashboard/employees", label: "Employees", icon: Users, exact: false },
+  { href: "/dashboard/payroll", label: "Payroll", icon: Banknote, exact: false },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },
 ];
 

@@ -1073,17 +1073,19 @@ function MobileNumberInput({
 }) {
   return (
     <input
-      type="number"
+      type="text"
       inputMode="decimal"
+      enterKeyHint="done"
+      autoComplete="off"
       placeholder={placeholder}
       value={value ?? ""}
+      onClick={(e) => e.stopPropagation()}
       onChange={(e) => {
-        const v = e.target.value;
-        onChange(v === "" ? undefined : Number(v));
+        const raw = e.target.value.replace(/[^0-9.]/g, "");
+        onChange(raw === "" ? undefined : Number(raw));
       }}
       className={cn(
-        "w-full rounded-xl border border-border/60 bg-background/60 px-4 py-2.5 text-[15px] font-medium tabular-nums text-foreground transition-colors duration-150 placeholder:text-muted-foreground/60 focus:border-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/10",
-        "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+        "w-full rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-[16px] font-medium tabular-nums text-foreground transition-colors duration-150 placeholder:text-muted-foreground/60 focus:border-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/10"
       )}
     />
   );
@@ -1238,15 +1240,16 @@ function StatPayModal({
             className="fixed inset-0 z-40 bg-black/30 backdrop-blur-md"
             onClick={onClose}
           />
-          <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
             <motion.div
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.96 }}
-              transition={{ duration: 0.3, ease }}
-              className="pointer-events-auto flex max-h-[88vh] w-[min(94vw,440px)] flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-pop"
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", stiffness: 360, damping: 36, mass: 0.9 }}
+              className="pointer-events-auto flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-border bg-background shadow-pop pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:w-[min(94vw,440px)] sm:rounded-[28px] sm:pb-0"
             >
-              <div className="px-6 pb-2 pt-7 text-center">
+              <div className="mx-auto mt-2.5 h-1 w-9 rounded-full bg-muted-foreground/25 sm:hidden" />
+              <div className="px-6 pb-2 pt-5 text-center sm:pt-7">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                   Stat holiday pay
                 </p>
@@ -1752,20 +1755,12 @@ function PastRunRow({
   company: ReturnType<typeof useSettings.getState>["company"];
   allRuns: PayrollRun[];
 }) {
-  function downloadAll(e: React.MouseEvent) {
-    e.stopPropagation();
-    // Stagger so the browser doesn't choke on N simultaneous PDF generations
-    run.lines.forEach((line, i) => {
-      setTimeout(() => generatePaystubPDF(line, company, allRuns), i * 250);
-    });
-  }
-
   return (
     <div>
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-200 hover:bg-muted/30 md:grid md:grid-cols-[1.6fr_1fr_1fr_auto_28px] md:px-5"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-200 hover:bg-muted/30 md:grid md:grid-cols-[1.6fr_1fr_1fr_28px] md:px-5"
       >
         <div className="min-w-0 flex-1">
           <p className="truncate text-[13.5px] font-medium tracking-tight">
@@ -1778,25 +1773,14 @@ function PastRunRow({
         <p className="hidden text-[12.5px] text-muted-foreground md:block">
           {run.lines.length} employee{run.lines.length === 1 ? "" : "s"}
         </p>
-        <p className="shrink-0 text-right text-[14px] font-semibold tabular-nums tracking-tight">
+        <p
+          className={cn(
+            "shrink-0 text-right text-[14px] font-semibold tabular-nums tracking-tight md:block",
+            !expanded && "hidden"
+          )}
+        >
           {formatCAD(run.totals.net)}
         </p>
-        <span
-          onClick={downloadAll}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") {
-              e.preventDefault();
-              downloadAll(e as unknown as React.MouseEvent);
-            }
-          }}
-          role="button"
-          tabIndex={0}
-          aria-label="Download all paystubs in this run"
-          title="Download all paystubs"
-          className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground/70 transition-colors duration-200 hover:bg-muted hover:text-foreground"
-        >
-          <Download className="h-3.5 w-3.5" />
-        </span>
         <ChevronRight
           className={cn(
             "h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200",
