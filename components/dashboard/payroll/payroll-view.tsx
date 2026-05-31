@@ -15,6 +15,7 @@ import {
   Pencil,
   PlayCircle,
   RotateCcw,
+  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useEmployees } from "@/lib/store/employees";
@@ -680,9 +681,19 @@ function PayrollGrid({
         </p>
         <button
           onClick={allExcluded ? onSelectAll : onSelectNone}
-          className="rounded-full px-2.5 py-1 text-[10.5px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+          className="rounded-full px-2.5 py-1 text-[10.5px] font-medium text-foreground/80 transition-colors hover:bg-muted hover:text-foreground md:block hidden"
         >
           {allExcluded ? "Include all" : "Skip all"}
+        </button>
+        {/* Mobile: icon-only toggle */}
+        <button
+          onClick={allExcluded ? onSelectAll : onSelectNone}
+          aria-label={allExcluded ? "Include all" : "Skip all"}
+          className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground md:hidden"
+        >
+          {allExcluded
+            ? <Check className="h-3.5 w-3.5" strokeWidth={3} />
+            : <X className="h-3.5 w-3.5" strokeWidth={2.5} />}
         </button>
       </div>
 
@@ -961,23 +972,9 @@ function MobileEmployeeCard({
           </button>
         </div>
 
-        {/* Status strip */}
-        <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-muted/20 px-4 py-1.5">
-          <span className={cn("text-[11px] font-medium", excluded ? "text-muted-foreground" : "text-success")}>
-            {excluded ? "Skipped" : "Included"}
-          </span>
-          {!excluded && (
-            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-              {hasEdits ? (
-                <span className="inline-flex items-center gap-1 rounded-full bg-foreground/5 px-2 py-0.5 font-medium text-foreground/70">
-                  Adjusted
-                </span>
-              ) : (
-                <span>Defaults</span>
-              )}
-              <NetPayInfo line={line} excluded={excluded} />
-            </div>
-          )}
+        {/* Status strip — labels removed on mobile, info icon kept */}
+        <div className="flex items-center justify-end gap-2 border-t border-border/40 bg-muted/20 px-4 py-1.5">
+          {!excluded && <NetPayInfo line={line} excluded={excluded} />}
         </div>
 
         {/* Expanded edits */}
