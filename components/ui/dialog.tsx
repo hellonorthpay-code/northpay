@@ -1,0 +1,118 @@
+"use client";
+
+import * as React from "react";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+export const Dialog = DialogPrimitive.Root;
+export const DialogTrigger = DialogPrimitive.Trigger;
+export const DialogClose = DialogPrimitive.Close;
+
+// iOS "smooth" easing curve (close to UIView.animate default). Reused for
+// both the overlay's fade and the content's inflate so the two animations
+// feel like one motion instead of two competing ones.
+const IOS_EASE = "cubic-bezier(0.32, 0.72, 0, 1)";
+
+export const DialogOverlay = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Overlay>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay>
+>(({ className, style, ...props }, ref) => (
+  // iOS-style backdrop: a deeper blur builds up as the world "recedes"
+  // behind the sheet. Inline animation styling because tailwindcss-animate's
+  // duration utility doesn't currently honour arbitrary values reliably.
+  <DialogPrimitive.Overlay
+    ref={ref}
+    className={cn(
+      "fixed inset-0 z-50 bg-black/40 backdrop-blur-xl",
+      "data-[state=open]:animate-in data-[state=closed]:animate-out",
+      "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
+      className
+    )}
+    style={{
+      animationDuration: "420ms",
+      animationTimingFunction: IOS_EASE,
+      animationFillMode: "both",
+      ...style,
+    }}
+    {...props}
+  />
+));
+DialogOverlay.displayName = "DialogOverlay";
+
+export const DialogContent = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+    hideClose?: boolean;
+  }
+>(({ className, children, hideClose, style, ...props }, ref) => (
+  <DialogPrimitive.Portal>
+    <DialogOverlay />
+    {/* iOS modal vocabulary:
+        - start at scale 0.90 (zoom-in-90) — the "inflate" reads more
+          than the default 0.95.
+        - no slide-from-bottom; iOS-style sheets swell from the centre.
+        - 420ms with the iOS smooth curve so the swell feels deliberate
+          rather than abrupt. Same curve on close → symmetric dismiss. */}
+    <DialogPrimitive.Content
+      ref={ref}
+      className={cn(
+        "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-6 rounded-3xl border border-border bg-background/95 backdrop-blur-2xl p-7 shadow-pop",
+        "will-change-transform",
+        "data-[state=open]:animate-in data-[state=closed]:animate-out",
+        "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
+        "data-[state=open]:zoom-in-90 data-[state=closed]:zoom-out-95",
+        className
+      )}
+      style={{
+        animationDuration: "420ms",
+        animationTimingFunction: IOS_EASE,
+        animationFillMode: "both",
+        ...style,
+      }}
+      {...props}
+    >
+      {children}
+      {!hideClose && (
+        <DialogPrimitive.Close className="absolute right-5 top-5 inline-flex h-8 w-8 items-center justify-center rounded-full text-muted-foreground hover:bg-muted/70 hover:text-foreground transition-colors">
+          <X className="h-4 w-4" />
+        </DialogPrimitive.Close>
+      )}
+    </DialogPrimitive.Content>
+  </DialogPrimitive.Portal>
+));
+DialogContent.displayName = "DialogContent";
+
+export const DialogHeader = ({
+  className,
+  ...props
+}: React.HTMLAttributes<HTMLDivElement>) => (
+  <div className={cn("flex flex-col gap-1.5 text-left", className)} {...props} />
+);
+
+export const DialogTitle = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Title>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Title>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Title
+    ref={ref}
+    className={cn(
+      "text-xl font-semibold tracking-tighter text-foreground",
+      className
+    )}
+    {...props}
+  />
+));
+DialogTitle.displayName = "DialogTitle";
+
+export const DialogDescription = React.forwardRef<
+  React.ElementRef<typeof DialogPrimitive.Description>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Description>
+>(({ className, ...props }, ref) => (
+  <DialogPrimitive.Description
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+));
+DialogDescription.displayName = "DialogDescription";

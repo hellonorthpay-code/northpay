@@ -1,0 +1,59 @@
+"use client";
+
+import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from "next/navigation";
+import { Sidebar } from "@/components/dashboard/sidebar";
+import { Topbar } from "@/components/dashboard/topbar";
+import { useHydrateStores } from "@/lib/store/hydrate";
+
+const ease = [0.22, 1, 0.36, 1] as const;
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  useHydrateStores();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.97, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.55, ease }}
+      className="relative min-h-screen"
+    >
+      <div className="pointer-events-none fixed inset-0 -z-10">
+        <div className="absolute -left-32 top-10 h-[420px] w-[420px] rounded-full bg-rose-200/25 blur-3xl dark:bg-rose-500/10" />
+        <div className="absolute -right-32 top-40 h-[480px] w-[480px] rounded-full bg-sky-200/25 blur-3xl dark:bg-sky-500/10" />
+      </div>
+
+      <div className="mx-auto flex max-w-[1280px] gap-6 px-5 pb-5 pt-24 lg:px-8">
+        <Sidebar />
+        <div className="flex min-w-0 flex-1 flex-col gap-5">
+          <Topbar />
+          {/* Page transition — kept short (180ms in / 120ms out) so it
+              runs in parallel with the sidebar pill morph instead of
+              outlasting it. The previous 350ms × 2 made tab switches
+              feel like two staggered fades, which read as flicker. */}
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                opacity: { duration: 0.18, ease },
+                y: { duration: 0.22, ease },
+                exit: { duration: 0.12 },
+              }}
+              className="min-h-0 flex-1"
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+    </motion.div>
+  );
+}
