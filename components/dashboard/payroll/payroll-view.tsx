@@ -965,11 +965,6 @@ function MobileEmployeeCard({
           </button>
         </div>
 
-        {/* Status strip — labels removed on mobile, info icon kept */}
-        <div className="flex items-center justify-end gap-2 border-t border-border/40 bg-muted/20 px-4 py-1.5">
-          {!excluded && <NetPayInfo line={line} excluded={excluded} />}
-        </div>
-
         {/* Expanded edits */}
         <AnimatePresence initial={false}>
           {expanded && !excluded && (
@@ -981,6 +976,9 @@ function MobileEmployeeCard({
               className="overflow-hidden border-t border-border/40"
             >
               <div className="space-y-3 px-4 py-3">
+                <div className="flex justify-end">
+                  <NetPayInfo line={line} excluded={excluded} />
+                </div>
                 {isHourly && (
                   <MobileField label="Hours worked">
                     <MobileNumberInput
