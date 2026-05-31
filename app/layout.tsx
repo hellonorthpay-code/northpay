@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
 import { LandingNav } from "@/components/landing/nav";
+import { MobileNav } from "@/components/dashboard/mobile-nav";
 
 export const metadata: Metadata = {
   title: "NorthPay — Canadian Payroll. Finally Beautiful.",
@@ -23,6 +24,7 @@ export default function RootLayout({
       <body className="min-h-screen bg-background text-foreground">
         <LandingNav />
         {children}
+        <MobileNav />
       </body>
     </html>
   );

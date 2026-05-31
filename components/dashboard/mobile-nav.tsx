@@ -3,34 +3,40 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { Landmark, Play, Settings, Users } from "lucide-react";
+import { Home, Info, Play, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
-  { href: "/dashboard/employees", label: "Employees", icon: Users },
-  { href: "/dashboard/payroll", label: "Payroll", icon: Play },
-  { href: "/dashboard/cra", label: "CRA", icon: Landmark },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings },
+  { href: "/", label: "Home", icon: Home, exact: true },
+  { href: "/dashboard/employees", label: "Tracking", icon: Play, exact: false },
+  { href: "/about", label: "About", icon: Info, exact: false },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },
 ];
 
 export function MobileNav() {
   const pathname = usePathname();
 
+  function isActive(tab: (typeof tabs)[number]) {
+    if (tab.exact) return pathname === tab.href;
+    // "Tracking" covers the whole dashboard
+    if (tab.href === "/dashboard/employees")
+      return pathname.startsWith("/dashboard");
+    return pathname === tab.href || pathname.startsWith(tab.href + "/");
+  }
+
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-      {/* Frosted glass bar */}
       <div className="border-t border-border/60 bg-background/80 backdrop-blur-2xl">
         <LayoutGroup id="mobile-nav">
           <div className="flex items-stretch">
             {tabs.map((tab) => {
-              const active =
-                pathname === tab.href || pathname.startsWith(tab.href + "/");
+              const active = isActive(tab);
               return (
                 <Link
                   key={tab.href}
                   href={tab.href}
                   className={cn(
-                    "relative flex flex-1 flex-col items-center gap-1 py-2.5 pb-safe",
+                    "relative flex flex-1 flex-col items-center gap-1 py-2.5",
                     "transition-colors duration-200",
                     active ? "text-foreground" : "text-muted-foreground",
                   )}
@@ -61,8 +67,8 @@ export function MobileNav() {
             })}
           </div>
         </LayoutGroup>
-        {/* Safe area spacer for iPhone home indicator */}
-        <div className="h-safe-bottom" />
+        {/* iPhone home indicator safe area */}
+        <div className="pb-safe" />
       </div>
     </nav>
   );

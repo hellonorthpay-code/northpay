@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
-import { MobileNav } from "@/components/dashboard/mobile-nav";
 import { useHydrateStores } from "@/lib/store/hydrate";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -66,7 +65,6 @@ export default function DashboardLayout({
         </div>
       </div>
 
-      <MobileNav />
     </motion.div>
   );
 }
