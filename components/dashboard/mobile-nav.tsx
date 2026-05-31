@@ -24,9 +24,9 @@ export function MobileNav() {
   }
 
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:hidden">
       <LayoutGroup id="mobile-nav">
-        <div className="pointer-events-auto flex items-center gap-1.5 rounded-[32px] border border-border/60 bg-background/70 p-2 shadow-pop backdrop-blur-2xl">
+        <div className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-1 rounded-[26px] border border-border/60 bg-background/70 px-2 py-1.5 shadow-pop backdrop-blur-2xl">
           {tabs.map((tab) => {
             const active = isActive(tab);
             return (
@@ -36,7 +36,7 @@ export function MobileNav() {
                 aria-label={tab.label}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex h-[60px] w-[74px] flex-col items-center justify-center gap-1 rounded-[22px] transition-colors duration-200",
+                  "relative flex h-[46px] flex-1 flex-col items-center justify-center gap-0.5 rounded-[18px] transition-colors duration-200",
                   active
                     ? "text-foreground"
                     : "text-muted-foreground/70 hover:text-foreground"
@@ -51,15 +51,15 @@ export function MobileNav() {
                       damping: 36,
                       mass: 0.7,
                     }}
-                    className="absolute inset-0 -z-10 rounded-[22px] bg-muted dark:bg-white/[0.12]"
+                    className="absolute inset-0 -z-10 rounded-[18px] bg-muted dark:bg-white/[0.12]"
                   />
                 )}
                 <motion.div
-                  animate={{ scale: active ? 1 : 0.92, y: active ? -1 : 0 }}
+                  animate={{ scale: active ? 1 : 0.92 }}
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 >
                   <tab.icon
-                    className="h-[22px] w-[22px]"
+                    className="h-[19px] w-[19px]"
                     strokeWidth={active ? 2 : 1.75}
                     fill={active ? "currentColor" : "none"}
                     fillOpacity={active ? 0.18 : 0}
@@ -67,7 +67,7 @@ export function MobileNav() {
                 </motion.div>
                 <span
                   className={cn(
-                    "text-[10.5px] leading-none tracking-tight transition-all duration-200",
+                    "text-[10px] leading-none tracking-tight transition-all duration-200",
                     active ? "font-semibold" : "font-medium"
                   )}
                 >
