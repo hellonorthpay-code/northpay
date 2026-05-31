@@ -449,7 +449,13 @@ function SummaryCard({
   function openEditor() {
     if (!pencilRef.current) return;
     const rect = pencilRef.current.getBoundingClientRect();
-    setPos({ top: rect.bottom + 8, left: rect.left });
+    const popoverWidth = 280;
+    const margin = 12;
+    const left = Math.min(
+      rect.left,
+      window.innerWidth - popoverWidth - margin
+    );
+    setPos({ top: rect.bottom + 8, left: Math.max(margin, left) });
     setEditOpen((v) => !v);
   }
 
