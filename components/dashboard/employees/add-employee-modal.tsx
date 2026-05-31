@@ -202,7 +202,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-xl"
+        className="max-w-xl max-h-[92vh] overflow-y-auto"
         style={originStyle}
       >
         <DialogHeader>
@@ -538,7 +538,7 @@ function Section({
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
         {title}
       </p>
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{children}</div>
+      <div className="grid grid-cols-2 gap-3">{children}</div>
     </div>
   );
 }
