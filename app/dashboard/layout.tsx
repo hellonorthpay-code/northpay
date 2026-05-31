@@ -29,7 +29,10 @@ export default function DashboardLayout({
       </div>
 
       <div className="mx-auto flex max-w-[1280px] gap-6 px-4 pb-24 pt-6 md:px-5 md:pb-5 md:pt-24 lg:px-8">
-        <Sidebar />
+        {/* Profile is a personal-settings page, not part of the payroll
+            workflow, so we hide the dashboard sidebar there to give it a
+            calmer single-column layout. */}
+        {!pathname.startsWith("/dashboard/profile") && <Sidebar />}
         <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
           <Topbar />
           {/* Page transition — kept short (180ms in / 120ms out) so it
