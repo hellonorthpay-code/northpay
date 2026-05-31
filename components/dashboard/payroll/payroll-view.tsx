@@ -895,65 +895,77 @@ function MobileEmployeeCard({
           excluded && "opacity-50"
         )}
       >
-        {/* Tap target: header row — toggles expand */}
-        <button
-          type="button"
-          onClick={() => !excluded && setExpanded((v) => !v)}
-          disabled={excluded}
-          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 active:bg-muted/40 disabled:cursor-default"
-        >
-          <div
-            className={cn(
-              "grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-[12px] font-semibold text-white shadow-soft",
-              PROVINCE_TONES[employee.province] ?? "from-zinc-300 to-zinc-200"
-            )}
-          >
-            {initials}
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[15px] font-semibold tracking-tight">
-              {employee.firstName} {employee.lastName}
-            </p>
-            <p className="truncate text-[11.5px] text-muted-foreground">
-              {isHourly
-                ? `Hourly · ${formatCAD(employee.hourlyRate ?? 0)}/hr`
-                : `Salary · ${formatCAD(employee.annualSalary ?? 0)}/yr`}
-            </p>
-          </div>
-          {!excluded && (
-            <div className="flex shrink-0 flex-col items-end">
-              <p className="text-[15px] font-semibold tabular-nums tracking-tight">
-                {line ? formatCAD(line.netPay) : "—"}
-              </p>
-              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/70">
-                Net
-              </p>
-            </div>
-          )}
-          {!excluded && (
-            <ChevronDown
-              className={cn(
-                "h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200",
-                expanded && "rotate-180 text-foreground"
-              )}
-            />
-          )}
-        </button>
-
-        {/* Skip / include pill — separate row so it doesn't conflict with expand */}
-        <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-muted/20 px-4 py-2">
+        {/* Header row: Apple-style check + avatar + name + net + chevron */}
+        <div className="flex w-full items-center gap-3 px-4 py-3">
+          {/* Apple-style include/skip toggle — left side */}
           <button
+            type="button"
             onClick={onToggleExclude}
             aria-label={excluded ? "Include employee" : "Skip employee"}
             className={cn(
-              "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all duration-200",
+              "grid h-6 w-6 shrink-0 place-items-center rounded-full border-[2px] transition-all duration-200 active:scale-90",
               !excluded
-                ? "border-success/30 bg-success/10 text-success"
-                : "border-border/60 bg-muted text-muted-foreground"
+                ? "border-success bg-success shadow-sm"
+                : "border-muted-foreground/30 bg-transparent"
             )}
           >
-            {excluded ? "Skipped" : "Included"}
+            {!excluded && <Check className="h-3 w-3 text-white" strokeWidth={3.5} />}
           </button>
+
+          {/* Tap area: avatar + name + net + chevron */}
+          <button
+            type="button"
+            onClick={() => !excluded && setExpanded((v) => !v)}
+            disabled={excluded}
+            className="flex min-w-0 flex-1 items-center gap-3 text-left transition-colors duration-150 disabled:cursor-default"
+          >
+            <div
+              className={cn(
+                "grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-[12px] font-semibold text-white shadow-soft",
+                PROVINCE_TONES[employee.province] ?? "from-zinc-300 to-zinc-200"
+              )}
+            >
+              {initials}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-[15px] font-semibold tracking-tight">
+                {employee.firstName} {employee.lastName}
+              </p>
+              {/* Pay rate — only visible when expanded */}
+              {expanded && (
+                <p className="truncate text-[11.5px] text-muted-foreground">
+                  {isHourly
+                    ? `Hourly · ${formatCAD(employee.hourlyRate ?? 0)}/hr`
+                    : `Salary · ${formatCAD(employee.annualSalary ?? 0)}/yr`}
+                </p>
+              )}
+            </div>
+            {!excluded && (
+              <div className="flex shrink-0 flex-col items-end">
+                <p className="text-[15px] font-semibold tabular-nums tracking-tight">
+                  {line ? formatCAD(line.netPay) : "—"}
+                </p>
+                <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/70">
+                  Net
+                </p>
+              </div>
+            )}
+            {!excluded && (
+              <ChevronDown
+                className={cn(
+                  "h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200",
+                  expanded && "rotate-180 text-foreground"
+                )}
+              />
+            )}
+          </button>
+        </div>
+
+        {/* Status strip */}
+        <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-muted/20 px-4 py-1.5">
+          <span className={cn("text-[11px] font-medium", excluded ? "text-muted-foreground" : "text-success")}>
+            {excluded ? "Skipped" : "Included"}
+          </span>
           {!excluded && (
             <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
               {hasEdits ? (
