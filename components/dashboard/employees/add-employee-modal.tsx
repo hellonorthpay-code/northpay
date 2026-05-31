@@ -55,11 +55,9 @@ interface Props {
   /**
    * Viewport-space point the dialog's scale animation should appear to
    * originate from (e.g. the centre of the button that opened it).
-   * `vw` and `vh` are the viewport dimensions captured at click time so
-   * the offset math is always correct regardless of when the modal renders.
    * Defaults to the screen centre when omitted.
    */
-  origin?: { x: number; y: number; vw: number; vh: number } | null;
+  origin?: { x: number; y: number } | null;
 }
 
 // iOS-style easing — matches the dialog open/close curve so step
@@ -193,13 +191,13 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
   // expressed relative to the dialog's own centre. The dialog is centred
   // via `left: 50%; top: 50%; -translate-x-1/2 -translate-y-1/2`, so the
   // offset from viewport centre equals the offset from dialog centre.
-  // We use vw/vh captured at click time (not live window dimensions) so
-  // the math never disagrees with the coordinates captured in the handler.
-  const originStyle = origin
-    ? {
-        transformOrigin: `calc(50% + ${origin.x - origin.vw / 2}px) calc(50% + ${origin.y - origin.vh / 2}px)`,
-      }
-    : undefined;
+  // Result: scale-in appears to swell from the button that opened it.
+  const originStyle =
+    origin && typeof window !== "undefined"
+      ? {
+          transformOrigin: `calc(50% + ${origin.x - window.innerWidth / 2}px) calc(50% + ${origin.y - window.innerHeight / 2}px)`,
+        }
+      : undefined;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
