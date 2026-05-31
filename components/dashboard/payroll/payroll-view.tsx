@@ -903,7 +903,10 @@ function MobileEmployeeCard({
     <div className="p-1.5 md:hidden">
       <div
         className={cn(
-          "overflow-hidden rounded-2xl border border-border/60 bg-background/40 transition-colors duration-200",
+          "overflow-hidden rounded-2xl border bg-background/40 transition-all duration-200",
+          expanded && !excluded
+            ? "border-foreground/80 ring-1 ring-foreground/80 shadow-pop"
+            : "border-border/60",
           excluded && "opacity-50"
         )}
       >
