@@ -900,22 +900,31 @@ function MobileEmployeeCard({
   onOpenStatModal: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const [flipped, setFlipped] = useState(false);
   const hasEdits =
     (input?.hoursWorked ?? 0) > 0 ||
     (input?.bonusAmount ?? 0) > 0 ||
     !!input?.statPay;
 
+  const cardChrome = cn(
+    "overflow-hidden rounded-2xl border bg-background/40",
+    expanded && !excluded
+      ? "border-foreground/80 ring-1 ring-foreground/80 shadow-pop"
+      : "border-border/60"
+  );
+
   return (
-    <div className="p-1.5 md:hidden">
-      <div
-        className={cn(
-          "overflow-hidden rounded-2xl border bg-background/40 transition-all duration-200",
-          expanded && !excluded
-            ? "border-foreground/80 ring-1 ring-foreground/80 shadow-pop"
-            : "border-border/60",
-          excluded && "opacity-50"
-        )}
+    <div
+      className={cn("p-1.5 md:hidden", excluded && "opacity-50")}
+      style={{ perspective: 1400 }}
+    >
+      <motion.div
+        className="relative [transform-style:preserve-3d]"
+        animate={{ rotateY: flipped ? 180 : 0 }}
+        transition={{ type: "spring", stiffness: 280, damping: 30, mass: 0.8 }}
       >
+        {/* FRONT FACE */}
+        <div className={cn(cardChrome, "[backface-visibility:hidden]")}>
         {/* Header row: Apple-style check + avatar + name + net + chevron */}
         <div className="flex w-full items-center gap-3 px-4 py-3">
           {/* Apple-style include/skip toggle — left side */}
@@ -1031,14 +1040,90 @@ function MobileEmployeeCard({
                     <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
                   </button>
                 </MobileField>
-                <div className="flex justify-end">
-                  <NetPayInfo line={line} excluded={excluded} />
-                </div>
+                {line && (
+                  <div className="flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => setFlipped(true)}
+                      aria-label="Show net pay breakdown"
+                      className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
+                    >
+                      <Info className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
               </div>
             </motion.div>
           )}
         </AnimatePresence>
-      </div>
+        </div>
+
+        {/* BACK FACE */}
+        <div
+          className={cn(
+            cardChrome,
+            "absolute inset-0 flex flex-col [transform:rotateY(180deg)] [backface-visibility:hidden]"
+          )}
+        >
+          <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
+            <p className="text-[13px] font-semibold tracking-tight">
+              Net pay breakdown
+            </p>
+            <button
+              type="button"
+              onClick={() => setFlipped(false)}
+              aria-label="Back to card"
+              className="grid h-6 w-6 place-items-center rounded-full text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          {line && (
+            <ul className="space-y-1.5 px-4 py-3 text-[13px]">
+              <BreakdownRow label="Gross" value={formatCAD(line.grossPay)} />
+              <BreakdownRow label="Federal" value={formatCAD(-line.federalTax)} />
+              <BreakdownRow
+                label="Provincial"
+                value={formatCAD(-line.provincialTax)}
+              />
+              <BreakdownRow
+                label="CPP"
+                value={formatCAD(-(line.cppEmployee + line.cpp2Employee))}
+              />
+              <BreakdownRow label="EI" value={formatCAD(-line.eiEmployee)} />
+              {line.statPay > 0 && (
+                <BreakdownRow
+                  label={
+                    line.statPayMethod === "premium"
+                      ? "Stat 1.5×"
+                      : line.statPayMethod === "average"
+                      ? "Stat avg"
+                      : "Stat custom"
+                  }
+                  value={`+${formatCAD(line.statPay)}`}
+                />
+              )}
+              {line.vacationAccrual > 0 && (
+                <BreakdownRow
+                  label="Vacation"
+                  value={`+${formatCAD(line.vacationAccrual)}`}
+                />
+              )}
+              {line.vacationBanked > 0 && (
+                <BreakdownRow
+                  label="Vacation banked"
+                  value={formatCAD(line.vacationBanked)}
+                  muted
+                />
+              )}
+              <li className="mt-1 flex items-center justify-between border-t border-border/60 pt-2 font-semibold">
+                <span>Net pay</span>
+                <span className="tabular-nums">{formatCAD(line.netPay)}</span>
+              </li>
+            </ul>
+          )}
+        </div>
+      </motion.div>
     </div>
   );
 }
