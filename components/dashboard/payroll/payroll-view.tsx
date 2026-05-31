@@ -1764,9 +1764,6 @@ function PastRunRow({
             {formatDate(run.periodStart)} → {formatDate(run.periodEnd)}
           </p>
           <p className="text-[11.5px] text-muted-foreground">
-            <span className="md:hidden">
-              {run.lines.length} employee{run.lines.length === 1 ? "" : "s"} ·{" "}
-            </span>
             Paid {formatDate(run.payDate)}
           </p>
         </div>
