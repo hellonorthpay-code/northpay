@@ -924,21 +924,13 @@ function MobileEmployeeCard({
             {!excluded && <Check className="h-3 w-3 text-white" strokeWidth={3.5} />}
           </button>
 
-          {/* Tap area: avatar + name + net + chevron */}
+          {/* Tap area: name + net + chevron */}
           <button
             type="button"
             onClick={() => !excluded && setExpanded((v) => !v)}
             disabled={excluded}
             className="flex min-w-0 flex-1 items-center gap-3 text-left transition-colors duration-150 disabled:cursor-default"
           >
-            <div
-              className={cn(
-                "grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-[12px] font-semibold text-white shadow-soft",
-                PROVINCE_TONES[employee.province] ?? "from-zinc-300 to-zinc-200"
-              )}
-            >
-              {initials}
-            </div>
             <div className="min-w-0 flex-1">
               <p className="truncate text-[15px] font-semibold tracking-tight">
                 {employee.firstName} {employee.lastName}
