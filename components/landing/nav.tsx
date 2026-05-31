@@ -27,7 +27,7 @@ export function LandingNav() {
       initial={{ y: -20, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
       transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      className="pointer-events-none fixed inset-x-0 top-4 z-40 flex justify-center"
+      className="pointer-events-none fixed inset-x-0 top-4 z-40 hidden justify-center md:flex"
     >
       <nav className="glass-strong pointer-events-auto flex items-center gap-1 rounded-full px-2 py-2 shadow-soft">
         <NavItem
