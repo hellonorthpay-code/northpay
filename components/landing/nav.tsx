@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import { User } from "lucide-react";
 import { useProfile } from "@/lib/store/profile";
+import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
 // Four routes share the same morphing pill via Framer's `layoutId`.
@@ -25,6 +27,14 @@ export function LandingNav() {
   const pathname = usePathname();
   const active = resolveActive(pathname);
   const profile = useProfile((s) => s.profile);
+  const { user, hydrate: hydrateAuth } = useAuth();
+
+  // Auth lives outside the dashboard layout, so hydrate it here too.
+  useEffect(() => {
+    hydrateAuth();
+  }, [hydrateAuth]);
+
+  const isAuthed = !!user;
   const initials =
     (profile.firstName[0] ?? "").toUpperCase() +
     (profile.lastName[0] ?? "").toUpperCase();
@@ -45,21 +55,25 @@ export function LandingNav() {
           <Logo />
           NorthPay
         </NavItem>
-        <NavItem
-          href="/about"
-          isActive={active === "about"}
-          className="hidden px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
-          activeTextClassName="text-foreground dark:text-white"
-        >
-          About
-        </NavItem>
-        <NavItem
-          href="/dashboard"
-          isActive={active === "dashboard"}
-          className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
-        >
-          Start tracking
-        </NavItem>
+        {isAuthed && (
+          <>
+            <NavItem
+              href="/about"
+              isActive={active === "about"}
+              className="hidden px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
+              activeTextClassName="text-foreground dark:text-white"
+            >
+              About
+            </NavItem>
+            <NavItem
+              href="/dashboard"
+              isActive={active === "dashboard"}
+              className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+            >
+              Start tracking
+            </NavItem>
+          </>
+        )}
         <NavItem
           href="/dashboard/profile"
           isActive={active === "profile"}

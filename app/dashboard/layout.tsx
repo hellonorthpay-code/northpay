@@ -1,10 +1,12 @@
 "use client";
 
+import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { useHydrateStores } from "@/lib/store/hydrate";
+import { useAuth } from "@/lib/store/auth";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -14,7 +16,18 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   useHydrateStores();
+  const { user, hydrated: authHydrated } = useAuth();
+
+  // Route guard: only /dashboard/profile is accessible without auth (it
+  // shows the login form). Any other dashboard route bounces to profile.
+  useEffect(() => {
+    if (!authHydrated) return;
+    if (user) return;
+    if (pathname.startsWith("/dashboard/profile")) return;
+    router.replace("/dashboard/profile");
+  }, [authHydrated, user, pathname, router]);
 
   return (
     <motion.div

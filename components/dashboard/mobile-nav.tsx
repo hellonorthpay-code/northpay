@@ -1,23 +1,43 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { Home, Users, Banknote, Landmark, Settings } from "lucide-react";
+import { Home, Play, PlayCircle, Settings, User } from "lucide-react";
+import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
-const tabs = [
+type Tab = {
+  href: string;
+  label: string;
+  icon: typeof Home;
+  exact?: boolean;
+  requiresAuth?: boolean;
+};
+
+const tabs: Tab[] = [
   { href: "/", label: "Home", icon: Home, exact: true },
-  { href: "/dashboard/employees", label: "Employees", icon: Users, exact: false },
-  { href: "/dashboard/payroll", label: "Payroll", icon: Banknote, exact: false },
-  { href: "/dashboard/cra", label: "CRA", icon: Landmark, exact: false },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings, exact: false },
+  { href: "/dashboard/employees", label: "Tracking", icon: Play, requiresAuth: true },
+  { href: "/dashboard/payroll", label: "Payroll", icon: PlayCircle, requiresAuth: true },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true },
+  { href: "/dashboard/profile", label: "Profile", icon: User },
 ];
 
 export function MobileNav() {
   const pathname = usePathname();
+  const { user, hydrate: hydrateAuth } = useAuth();
 
-  function isActive(tab: (typeof tabs)[number]) {
+  // Hydrate auth on mount so marketing pages (which don't mount the
+  // dashboard layout) still see the current session.
+  useEffect(() => {
+    hydrateAuth();
+  }, [hydrateAuth]);
+
+  const isAuthed = !!user;
+  const visibleTabs = tabs.filter((t) => isAuthed || !t.requiresAuth);
+
+  function isActive(tab: Tab) {
     if (tab.exact) return pathname === tab.href;
     if (tab.href === "/dashboard/employees")
       return pathname.startsWith("/dashboard/employees");
@@ -25,55 +45,29 @@ export function MobileNav() {
   }
 
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-[max(0.625rem,env(safe-area-inset-bottom))] md:hidden">
+    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
       <LayoutGroup id="mobile-nav">
-        <div className="pointer-events-auto flex w-full max-w-md items-center justify-between gap-1 rounded-[26px] border border-border/60 bg-background/70 px-2 py-1.5 shadow-pop backdrop-blur-2xl">
-          {tabs.map((tab) => {
+        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-border/60 bg-background/70 p-1.5 shadow-pop backdrop-blur-2xl">
+          {visibleTabs.map((tab) => {
             const active = isActive(tab);
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
                 aria-label={tab.label}
-                aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative flex h-[46px] flex-1 flex-col items-center justify-center gap-0.5 rounded-[18px] transition-colors duration-200",
-                  active
-                    ? "text-foreground"
-                    : "text-muted-foreground/70 hover:text-foreground"
+                  "relative grid h-12 w-12 place-items-center rounded-full transition-colors duration-200",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
                 {active && (
                   <motion.span
                     layoutId="mobile-active-pill"
-                    transition={{
-                      type: "spring",
-                      stiffness: 420,
-                      damping: 36,
-                      mass: 0.7,
-                    }}
-                    className="absolute inset-0 -z-10 rounded-[18px] bg-muted dark:bg-white/[0.12]"
+                    transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.8 }}
+                    className="absolute inset-0 -z-10 rounded-full bg-muted dark:bg-white/[0.12]"
                   />
                 )}
-                <motion.div
-                  animate={{ scale: active ? 1 : 0.92 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                >
-                  <tab.icon
-                    className="h-[19px] w-[19px]"
-                    strokeWidth={active ? 2 : 1.75}
-                    fill={active ? "currentColor" : "none"}
-                    fillOpacity={active ? 0.18 : 0}
-                  />
-                </motion.div>
-                <span
-                  className={cn(
-                    "text-[10px] leading-none tracking-tight transition-all duration-200",
-                    active ? "font-semibold" : "font-medium"
-                  )}
-                >
-                  {tab.label}
-                </span>
+                <tab.icon className={cn("h-5 w-5 transition-transform duration-200", active ? "scale-110" : "")} />
               </Link>
             );
           })}

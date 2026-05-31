@@ -1,13 +1,29 @@
 "use client";
 
-import { Briefcase, Globe2, Mail, Phone, User } from "lucide-react";
+import { useEffect } from "react";
+import { Briefcase, Globe2, LogOut, Mail, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useProfile } from "@/lib/store/profile";
+import { useAuth } from "@/lib/store/auth";
 import { cn, formatDate } from "@/lib/utils";
+import { LoginView } from "./login-view";
 
 export function ProfileView() {
   const { profile, setProfile } = useProfile();
+  const { user, hydrated, hydrate, logout } = useAuth();
+
+  // Ensure auth is hydrated even if the user lands directly on this route
+  // without first mounting the dashboard layout that already calls hydrate.
+  useEffect(() => {
+    hydrate();
+  }, [hydrate]);
+
+  // Until auth has resolved, render nothing so the UI doesn't flash
+  // login → profile (or vice-versa) on first paint.
+  if (!hydrated) return null;
+  if (!user) return <LoginView />;
   const initials =
     (profile.firstName[0] ?? "").toUpperCase() +
     (profile.lastName[0] ?? "").toUpperCase();
@@ -88,12 +104,27 @@ export function ProfileView() {
         <ProfileGroup
           icon={Briefcase}
           title="Account"
-          subtitle="More options will land here once auth is enabled."
+          subtitle="Signed-in session and provider details."
         >
-          <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 p-4 text-[12.5px] text-muted-foreground">
-            Single-user mode. Sign-in, password, and team invites will appear
-            here when multi-user accounts launch.
+          <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/40 px-4 py-3 text-[12.5px]">
+            <div className="min-w-0">
+              <p className="text-muted-foreground">Signed in with</p>
+              <p className="mt-0.5 truncate font-medium tracking-tight text-foreground">
+                {user.provider === "google" ? "Google" : "Email"} · {user.email}
+              </p>
+            </div>
+            <span className="rounded-full bg-success/15 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-success">
+              Active
+            </span>
           </div>
+          <Button
+            variant="ghost"
+            onClick={logout}
+            className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="h-4 w-4" />
+            Log out
+          </Button>
         </ProfileGroup>
       </div>
     </div>
