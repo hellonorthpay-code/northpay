@@ -520,7 +520,7 @@ function SummaryCard({
         </div>
       </div>
 
-      <div className="relative mt-5 grid grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center md:mt-7">
+      <div className="relative mt-5 hidden grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center md:mt-7 md:grid">
         <Stat label="Gross" value={formatCAD(gross)} />
         <Stat label="Deductions" value={formatCAD(deductions)} />
         <Stat label="Employer" value={formatCAD(employerCost)} />
@@ -677,7 +677,8 @@ function PayrollGrid({
       {/* Title bar */}
       <div className="flex items-center justify-between rounded-t-3xl border-b border-border/60 bg-muted/30 px-5 py-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          Employees in this run
+          <span className="md:hidden">Employees</span>
+          <span className="hidden md:inline">Employees in this run</span>
         </p>
         <button
           onClick={allExcluded ? onSelectAll : onSelectNone}
