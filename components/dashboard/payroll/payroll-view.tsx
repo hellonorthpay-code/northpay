@@ -522,7 +522,7 @@ function SummaryCard({
       <div className="relative mt-5 grid grid-cols-3 divide-x divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center md:mt-7">
         <Stat label="Gross" value={formatCAD(gross)} />
         <Stat label="Deductions" value={formatCAD(deductions)} />
-        <Stat label="Employer cost" value={formatCAD(employerCost)} />
+        <Stat label="Employer" value={formatCAD(employerCost)} />
       </div>
 
       {/* Inline edit popover — portaled so the card's overflow-hidden can stay */}
@@ -825,71 +825,19 @@ function GridRow({
         <NetPayInfo line={line} excluded={excluded} />
       </div>
 
-      {/* ── Mobile: stacked card ── */}
-      <div
-        className={cn(
-          "px-4 py-3.5 transition-colors duration-200 md:hidden",
-          excluded && "opacity-45"
-        )}
-      >
-        {/* Top: identity + net pay */}
-        <div className="flex items-center gap-3">
-          {checkbox}
-          {avatar}
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-[14px] font-medium tracking-tight">
-              {employee.firstName} {employee.lastName}
-            </p>
-            <p className="truncate text-[11px] text-muted-foreground">
-              {isHourly
-                ? `Hourly · ${formatCAD(employee.hourlyRate ?? 0)}/hr`
-                : `Salary · ${formatCAD(employee.annualSalary ?? 0)}/yr`}
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            <div className="text-right">
-              <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/70">
-                Net pay
-              </p>
-              <p className="text-[15px] font-semibold tabular-nums tracking-tight">
-                {line && !excluded ? formatCAD(line.netPay) : "—"}
-              </p>
-            </div>
-            <NetPayInfo line={line} excluded={excluded} />
-          </div>
-        </div>
-
-        {/* Bottom: editable fields */}
-        {!excluded && (
-          <div className="mt-3 grid grid-cols-3 gap-2">
-            <MobileField label="Hours">
-              <Cell
-                editable={isHourly}
-                value={input?.hoursWorked}
-                placeholder={isHourly ? String(defaultRegular) : "—"}
-                onChange={(v) => onUpdateInput({ hoursWorked: v })}
-              />
-            </MobileField>
-            <MobileField label="Bonus">
-              <Cell
-                editable
-                value={input?.bonusAmount}
-                placeholder="0"
-                onChange={(v) => onUpdateInput({ bonusAmount: v })}
-              />
-            </MobileField>
-            <MobileField label="Stat pay">
-              <div className="flex justify-end">
-                <StatPayCell
-                  disabled={false}
-                  value={input?.statPay}
-                  onClick={() => setStatModalOpen(true)}
-                />
-              </div>
-            </MobileField>
-          </div>
-        )}
-      </div>
+      {/* ── Mobile: compact, collapsible card ── */}
+      <MobileEmployeeCard
+        employee={employee}
+        line={line}
+        excluded={excluded}
+        input={input}
+        isHourly={isHourly}
+        defaultRegular={defaultRegular}
+        initials={initials}
+        onToggleExclude={onToggleExclude}
+        onUpdateInput={onUpdateInput}
+        onOpenStatModal={() => setStatModalOpen(true)}
+      />
 
       {/* Stat-pay picker modal — opens when StatPayCell is tapped */}
       <StatPayModal
@@ -899,6 +847,187 @@ function GridRow({
         current={input?.statPay}
         onConfirm={(next) => onUpdateInput({ statPay: next })}
       />
+    </div>
+  );
+}
+
+/**
+ * Mobile employee card — compact by default, expandable for edits.
+ *
+ * Collapsed: avatar + name + net pay + chevron. Tapping the row body expands
+ * the editable inputs. The include/skip toggle stays accessible at all times
+ * via a long-press-style pill that doesn't trigger the expand.
+ */
+function MobileEmployeeCard({
+  employee,
+  line,
+  excluded,
+  input,
+  isHourly,
+  defaultRegular,
+  initials,
+  onToggleExclude,
+  onUpdateInput,
+  onOpenStatModal,
+}: {
+  employee: Employee;
+  line: PayrollLineResult | null;
+  excluded: boolean;
+  input?: PayrollLineInput;
+  isHourly: boolean;
+  defaultRegular: number;
+  initials: string;
+  onToggleExclude: () => void;
+  onUpdateInput: (patch: Partial<PayrollLineInput>) => void;
+  onOpenStatModal: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const hasEdits =
+    (input?.hoursWorked ?? 0) > 0 ||
+    (input?.bonusAmount ?? 0) > 0 ||
+    !!input?.statPay;
+
+  return (
+    <div className="p-1.5 md:hidden">
+      <div
+        className={cn(
+          "overflow-hidden rounded-2xl border border-border/60 bg-background/40 transition-colors duration-200",
+          excluded && "opacity-50"
+        )}
+      >
+        {/* Tap target: header row — toggles expand */}
+        <button
+          type="button"
+          onClick={() => !excluded && setExpanded((v) => !v)}
+          disabled={excluded}
+          className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-150 active:bg-muted/40 disabled:cursor-default"
+        >
+          <div
+            className={cn(
+              "grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-gradient-to-br text-[12px] font-semibold text-white shadow-soft",
+              PROVINCE_TONES[employee.province] ?? "from-zinc-300 to-zinc-200"
+            )}
+          >
+            {initials}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[15px] font-semibold tracking-tight">
+              {employee.firstName} {employee.lastName}
+            </p>
+            <p className="truncate text-[11.5px] text-muted-foreground">
+              {isHourly
+                ? `Hourly · ${formatCAD(employee.hourlyRate ?? 0)}/hr`
+                : `Salary · ${formatCAD(employee.annualSalary ?? 0)}/yr`}
+            </p>
+          </div>
+          {!excluded && (
+            <div className="flex shrink-0 flex-col items-end">
+              <p className="text-[15px] font-semibold tabular-nums tracking-tight">
+                {line ? formatCAD(line.netPay) : "—"}
+              </p>
+              <p className="text-[10px] uppercase tracking-[0.1em] text-muted-foreground/70">
+                Net
+              </p>
+            </div>
+          )}
+          {!excluded && (
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200",
+                expanded && "rotate-180 text-foreground"
+              )}
+            />
+          )}
+        </button>
+
+        {/* Skip / include pill — separate row so it doesn't conflict with expand */}
+        <div className="flex items-center justify-between gap-2 border-t border-border/40 bg-muted/20 px-4 py-2">
+          <button
+            onClick={onToggleExclude}
+            aria-label={excluded ? "Include employee" : "Skip employee"}
+            className={cn(
+              "rounded-full border px-2.5 py-1 text-[11px] font-medium transition-all duration-200",
+              !excluded
+                ? "border-success/30 bg-success/10 text-success"
+                : "border-border/60 bg-muted text-muted-foreground"
+            )}
+          >
+            {excluded ? "Skipped" : "Included"}
+          </button>
+          {!excluded && (
+            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+              {hasEdits ? (
+                <span className="inline-flex items-center gap-1 rounded-full bg-foreground/5 px-2 py-0.5 font-medium text-foreground/70">
+                  Adjusted
+                </span>
+              ) : (
+                <span>Defaults</span>
+              )}
+              <NetPayInfo line={line} excluded={excluded} />
+            </div>
+          )}
+        </div>
+
+        {/* Expanded edits */}
+        <AnimatePresence initial={false}>
+          {expanded && !excluded && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease }}
+              className="overflow-hidden border-t border-border/40"
+            >
+              <div className="space-y-3 px-4 py-3">
+                {isHourly && (
+                  <MobileField label="Hours worked">
+                    <MobileNumberInput
+                      placeholder={String(defaultRegular)}
+                      value={input?.hoursWorked}
+                      onChange={(v) => onUpdateInput({ hoursWorked: v })}
+                    />
+                  </MobileField>
+                )}
+                <MobileField label="Bonus ($)">
+                  <MobileNumberInput
+                    placeholder="0"
+                    value={input?.bonusAmount}
+                    onChange={(v) => onUpdateInput({ bonusAmount: v })}
+                  />
+                </MobileField>
+                <MobileField label="Stat holiday pay">
+                  <button
+                    type="button"
+                    onClick={onOpenStatModal}
+                    className={cn(
+                      "flex w-full items-center justify-between rounded-xl border px-4 py-2.5 text-[13.5px] font-medium transition-all duration-200",
+                      !input?.statPay &&
+                        "border-border/60 bg-background/60 text-muted-foreground",
+                      input?.statPay?.method === "premium" &&
+                        "border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                      input?.statPay?.method === "average" &&
+                        "border-blue-500/30 bg-blue-500/10 text-blue-700 dark:text-blue-300",
+                      input?.statPay?.method === "custom" &&
+                        "border-violet-500/30 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                    )}
+                  >
+                    <span>
+                      {!input?.statPay
+                        ? "No stat pay"
+                        : input.statPay.method === "premium"
+                        ? "1.5× premium"
+                        : input.statPay.method === "average"
+                        ? "Average daily"
+                        : "Custom amount"}
+                    </span>
+                    <ChevronRight className="h-4 w-4 shrink-0 opacity-40" />
+                  </button>
+                </MobileField>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -913,11 +1042,39 @@ function MobileField({
 }) {
   return (
     <div className="min-w-0">
-      <p className="mb-1 text-[9.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
+      <p className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground/70">
         {label}
       </p>
       {children}
     </div>
+  );
+}
+
+/** Full-width touch-friendly number input used inside the mobile card. */
+function MobileNumberInput({
+  placeholder,
+  value,
+  onChange,
+}: {
+  placeholder: string;
+  value: number | undefined;
+  onChange: (next: number | undefined) => void;
+}) {
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      placeholder={placeholder}
+      value={value ?? ""}
+      onChange={(e) => {
+        const v = e.target.value;
+        onChange(v === "" ? undefined : Number(v));
+      }}
+      className={cn(
+        "w-full rounded-xl border border-border/60 bg-background/60 px-4 py-2.5 text-[15px] font-medium tabular-nums text-foreground transition-colors duration-150 placeholder:text-muted-foreground/60 focus:border-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/10",
+        "[appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+      )}
+    />
   );
 }
 
@@ -1597,20 +1754,23 @@ function PastRunRow({
       <button
         type="button"
         onClick={onToggle}
-        className="grid w-full grid-cols-[1.6fr_1fr_1fr_auto_28px] items-center gap-3 px-5 py-3 text-left transition-colors duration-200 hover:bg-muted/30"
+        className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors duration-200 hover:bg-muted/30 md:grid md:grid-cols-[1.6fr_1fr_1fr_auto_28px] md:px-5"
       >
-        <div className="min-w-0">
-          <p className="text-[13.5px] font-medium tracking-tight">
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-[13.5px] font-medium tracking-tight">
             {formatDate(run.periodStart)} → {formatDate(run.periodEnd)}
           </p>
           <p className="text-[11.5px] text-muted-foreground">
+            <span className="md:hidden">
+              {run.lines.length} employee{run.lines.length === 1 ? "" : "s"} ·{" "}
+            </span>
             Paid {formatDate(run.payDate)}
           </p>
         </div>
-        <p className="text-[12.5px] text-muted-foreground">
+        <p className="hidden text-[12.5px] text-muted-foreground md:block">
           {run.lines.length} employee{run.lines.length === 1 ? "" : "s"}
         </p>
-        <p className="text-right text-[14px] font-semibold tabular-nums tracking-tight">
+        <p className="shrink-0 text-right text-[14px] font-semibold tabular-nums tracking-tight">
           {formatCAD(run.totals.net)}
         </p>
         <span
@@ -1625,13 +1785,13 @@ function PastRunRow({
           tabIndex={0}
           aria-label="Download all paystubs in this run"
           title="Download all paystubs"
-          className="grid h-7 w-7 cursor-pointer place-items-center rounded-full text-muted-foreground/70 transition-colors duration-200 hover:bg-muted hover:text-foreground"
+          className="grid h-8 w-8 shrink-0 cursor-pointer place-items-center rounded-full text-muted-foreground/70 transition-colors duration-200 hover:bg-muted hover:text-foreground"
         >
           <Download className="h-3.5 w-3.5" />
         </span>
         <ChevronRight
           className={cn(
-            "h-4 w-4 text-muted-foreground/50 transition-transform duration-200",
+            "h-4 w-4 shrink-0 text-muted-foreground/50 transition-transform duration-200",
             expanded && "rotate-90 text-foreground"
           )}
         />
