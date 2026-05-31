@@ -10,7 +10,6 @@ export interface Profile {
   lastName: string;
   email: string;
   phone: string;
-  jobTitle: string;
   timezone: string;
   /** ISO date string — when the account was created. */
   joinedAt: string;
@@ -30,7 +29,6 @@ const DEFAULT_PROFILE: Profile = {
   lastName: "",
   email: "",
   phone: "",
-  jobTitle: "Owner",
   timezone:
     typeof Intl !== "undefined"
       ? Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Toronto"

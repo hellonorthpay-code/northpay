@@ -33,8 +33,7 @@ export function ProfileView() {
               {displayName}
             </p>
             <p className="mt-1.5 truncate text-[12.5px] text-muted-foreground">
-              {profile.jobTitle || "Owner"} · joined{" "}
-              {formatDate(profile.joinedAt)}
+              Joined {formatDate(profile.joinedAt)}
             </p>
           </div>
         </div>
@@ -53,13 +52,6 @@ export function ProfileView() {
             <Input
               value={profile.lastName}
               onChange={(e) => setProfile({ lastName: e.target.value })}
-            />
-          </Field>
-          <Field label="Job title">
-            <Input
-              value={profile.jobTitle}
-              onChange={(e) => setProfile({ jobTitle: e.target.value })}
-              placeholder="Owner"
             />
           </Field>
         </ProfileGroup>
