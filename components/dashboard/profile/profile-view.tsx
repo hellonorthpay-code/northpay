@@ -161,9 +161,16 @@ export function ProfileView() {
 // Login page with blended looping video background
 // ─────────────────────────────────────────────────────────────────────────
 /**
- * Ping-pong video: plays forward to end, then reverses back to start,
- * then forward again — seamlessly, so the loop point is invisible.
- * Uses requestAnimationFrame to scrub backward frame-by-frame.
+ * Ping-pong video: forward to end → reverse to start → forward again.
+ *
+ * Why setInterval(33ms) and not requestAnimationFrame: rAF fires at the
+ * display refresh rate (60–120 Hz), but our source is 30 fps. Stepping
+ * `currentTime` faster than the browser can decode + render causes the
+ * seek queue to back up and stutter. Matching the 33 ms (30 fps) cadence
+ * keeps it one-frame-per-step and smooth.
+ *
+ * `requestVideoFrameCallback` (when available) waits for the rendered
+ * frame before scheduling the next step — even tighter sync.
  */
 function PingPongVideo({
   src,
@@ -175,42 +182,96 @@ function PingPongVideo({
   style?: React.CSSProperties;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const rafRef = useRef<number | null>(null);
-  const reversingRef = useRef(false);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
 
-    const STEP = 1 / 30; // 30 fps reverse scrub
+    const FPS = 30;
+    const FRAME_TIME = 1 / FPS;
+    const END_EPSILON = 0.08;     // start reversing slightly before the actual end
+    const START_EPSILON = 0.03;   // and treat near-zero as "back to start"
 
-    function reverseStep() {
-      if (!video) return;
-      const next = video.currentTime - STEP;
-      if (next <= 0) {
-        // Reached the start — play forward again
-        reversingRef.current = false;
+    let timer: number | null = null;
+    let reversing = false;
+    let cancelled = false;
+
+    type VideoWithVFC = HTMLVideoElement & {
+      requestVideoFrameCallback?: (cb: () => void) => number;
+    };
+    const v = video as VideoWithVFC;
+
+    function waitForFrame(): Promise<void> {
+      return new Promise((resolve) => {
+        if (v.requestVideoFrameCallback) {
+          v.requestVideoFrameCallback(() => resolve());
+        } else {
+          // Fallback: tiny timeout to let the browser render
+          window.setTimeout(resolve, 8);
+        }
+      });
+    }
+
+    async function reverseStep() {
+      if (cancelled || !video) return;
+      const next = video.currentTime - FRAME_TIME;
+      if (next <= START_EPSILON) {
+        // Back at the start — play forward
+        reversing = false;
         video.currentTime = 0;
-        void video.play();
-      } else {
-        video.currentTime = next;
-        rafRef.current = requestAnimationFrame(reverseStep);
+        try {
+          await video.play();
+        } catch {
+          /* autoplay blocked — ignore */
+        }
+        return;
+      }
+      video.currentTime = next;
+      await waitForFrame();
+    }
+
+    function startReverse() {
+      reversing = true;
+      video.pause();
+      // 30 fps interval — exactly one source frame per tick
+      timer = window.setInterval(() => {
+        if (!reversing) {
+          if (timer !== null) window.clearInterval(timer);
+          timer = null;
+          return;
+        }
+        void reverseStep();
+      }, Math.round(1000 / FPS));
+    }
+
+    function onTimeUpdate() {
+      // Some browsers don't fire `ended` reliably for short clips,
+      // so we trigger the reversal a bit before the real end.
+      if (
+        !reversing &&
+        video.duration > 0 &&
+        video.currentTime >= video.duration - END_EPSILON
+      ) {
+        startReverse();
       }
     }
 
     function onEnded() {
-      if (!video || reversingRef.current) return;
-      reversingRef.current = true;
-      video.pause();
-      rafRef.current = requestAnimationFrame(reverseStep);
+      if (!reversing) startReverse();
     }
 
+    video.addEventListener("timeupdate", onTimeUpdate);
     video.addEventListener("ended", onEnded);
-    void video.play();
+
+    // Kick it off
+    void video.play().catch(() => {});
 
     return () => {
+      cancelled = true;
+      reversing = false;
+      if (timer !== null) window.clearInterval(timer);
+      video.removeEventListener("timeupdate", onTimeUpdate);
       video.removeEventListener("ended", onEnded);
-      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
