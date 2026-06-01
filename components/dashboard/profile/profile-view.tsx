@@ -5,25 +5,43 @@ import { Briefcase, Globe2, LogOut, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
 import { cn, formatDate } from "@/lib/utils";
 import { LoginView } from "./login-view";
 
+const TIMEZONES = [
+  { value: "America/Toronto",    label: "Eastern Time — Toronto" },
+  { value: "America/New_York",   label: "Eastern Time — New York" },
+  { value: "America/Chicago",    label: "Central Time — Chicago" },
+  { value: "America/Winnipeg",   label: "Central Time — Winnipeg" },
+  { value: "America/Denver",     label: "Mountain Time — Denver" },
+  { value: "America/Edmonton",   label: "Mountain Time — Edmonton" },
+  { value: "America/Los_Angeles",label: "Pacific Time — Los Angeles" },
+  { value: "America/Vancouver",  label: "Pacific Time — Vancouver" },
+  { value: "America/Halifax",    label: "Atlantic Time — Halifax" },
+  { value: "America/St_Johns",   label: "Newfoundland Time — St. John's" },
+  { value: "UTC",                label: "UTC" },
+];
+
 export function ProfileView() {
   const { profile, setProfile } = useProfile();
   const { user, hydrated, hydrate, logout } = useAuth();
 
-  // Ensure auth is hydrated even if the user lands directly on this route
-  // without first mounting the dashboard layout that already calls hydrate.
   useEffect(() => {
     hydrate();
   }, [hydrate]);
 
-  // Until auth has resolved, render nothing so the UI doesn't flash
-  // login → profile (or vice-versa) on first paint.
   if (!hydrated) return null;
   if (!user) return <LoginView />;
+
   const initials =
     (profile.firstName[0] ?? "").toUpperCase() +
     (profile.lastName[0] ?? "").toUpperCase();
@@ -32,7 +50,7 @@ export function ProfileView() {
 
   return (
     <div className="space-y-5">
-      {/* ── Identity card ── */}
+      {/* ── Identity hero card ── */}
       <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-5 shadow-soft backdrop-blur-xl md:p-7">
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
         <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
@@ -57,7 +75,7 @@ export function ProfileView() {
 
       {/* ── Two-column on desktop, single on mobile ── */}
       <div className="grid gap-5 lg:grid-cols-2">
-        <ProfileGroup icon={User} title="About you" subtitle="The name shown across the app.">
+        <ProfileGroup icon={User} title="About you">
           <Field label="First name">
             <Input
               value={profile.firstName}
@@ -72,7 +90,7 @@ export function ProfileView() {
           </Field>
         </ProfileGroup>
 
-        <ProfileGroup icon={Mail} title="Contact" subtitle="How NorthPay reaches you.">
+        <ProfileGroup icon={Mail} title="Contact">
           <Field label="Email">
             <Input
               type="email"
@@ -91,21 +109,29 @@ export function ProfileView() {
           </Field>
         </ProfileGroup>
 
-        <ProfileGroup icon={Globe2} title="Region" subtitle="Used for reminders and date formats.">
+        <ProfileGroup icon={Globe2} title="Region">
           <Field label="Timezone">
-            <Input
-              value={profile.timezone}
-              onChange={(e) => setProfile({ timezone: e.target.value })}
-              placeholder="America/Toronto"
-            />
+            <Select
+              value={TIMEZONES.some((t) => t.value === profile.timezone)
+                ? profile.timezone
+                : "America/Toronto"}
+              onValueChange={(v) => setProfile({ timezone: v })}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TIMEZONES.map((tz) => (
+                  <SelectItem key={tz.value} value={tz.value}>
+                    {tz.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </Field>
         </ProfileGroup>
 
-        <ProfileGroup
-          icon={Briefcase}
-          title="Account"
-          subtitle="Signed-in session and provider details."
-        >
+        <ProfileGroup icon={Briefcase} title="Account">
           <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/40 px-4 py-3 text-[12.5px]">
             <div className="min-w-0">
               <p className="text-muted-foreground">Signed in with</p>
@@ -132,18 +158,16 @@ export function ProfileView() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Card primitive — mirrors the desktop card vocabulary used in Settings.
+// Card primitive
 // ─────────────────────────────────────────────────────────────────────────
 function ProfileGroup({
   icon: Icon,
   title,
-  subtitle,
   children,
   className,
 }: {
   icon: React.ComponentType<{ className?: string }>;
   title: string;
-  subtitle: string;
   children: React.ReactNode;
   className?: string;
 }) {
@@ -154,15 +178,12 @@ function ProfileGroup({
         className
       )}
     >
-      <header className="border-b border-border/60 p-5">
-        <div className="flex items-center gap-2">
-          <div className="grid h-8 w-8 place-items-center rounded-xl bg-muted">
+      <header className="border-b border-border/60 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <div className="grid h-9 w-9 place-items-center rounded-xl bg-muted">
             <Icon className="h-4 w-4" />
           </div>
-          <div>
-            <p className="text-[14px] font-semibold tracking-tight">{title}</p>
-            <p className="text-[12px] text-muted-foreground">{subtitle}</p>
-          </div>
+          <p className="text-[17px] font-semibold tracking-tight">{title}</p>
         </div>
       </header>
       <div className="space-y-3 p-5">{children}</div>
