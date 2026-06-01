@@ -271,7 +271,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
           ) : (
             <Button onClick={submit} disabled={!canSubmit}>
               <Check className="h-4 w-4" />
-              {isEdit ? "Save changes" : "Add to payroll"}
+              {isEdit ? "Save" : "Add"}
             </Button>
           )}
         </div>
@@ -303,9 +303,6 @@ function StepDots({ step }: { step: 1 | 2 }) {
           }`}
         />
       ))}
-      <span className="ml-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-        {step === 1 ? "Step 1 of 2" : "Pay & hours"}
-      </span>
     </div>
   );
 }
@@ -425,7 +422,7 @@ function StepTwo({ form, setForm }: StepProps) {
         </Field>
 
         {form.employmentType === "salary" ? (
-          <Field label="Annual salary" wide>
+          <Field label="Annual salary">
             <Input
               type="number"
               inputMode="decimal"
@@ -437,7 +434,7 @@ function StepTwo({ form, setForm }: StepProps) {
             />
           </Field>
         ) : (
-          <Field label="Hourly rate" wide>
+          <Field label="Hourly rate">
             <Input
               type="number"
               inputMode="decimal"
