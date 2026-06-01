@@ -40,7 +40,7 @@ export function ProfileView() {
   }, [hydrate]);
 
   if (!hydrated) return null;
-  if (!user) return <LoginView />;
+  if (!user) return <LoginWithVideo />;
 
   const initials =
     (profile.firstName[0] ?? "").toUpperCase() +
@@ -152,6 +152,44 @@ export function ProfileView() {
             Log out
           </Button>
         </ProfileGroup>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Login page with blended looping video background
+// ─────────────────────────────────────────────────────────────────────────
+function LoginWithVideo() {
+  return (
+    <div className="relative min-h-[calc(100vh-80px)] w-full overflow-hidden">
+      {/* Looping background video */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        style={{ opacity: 0.18, mixBlendMode: "luminosity" }}
+      >
+        <source
+          src="https://videos.pexels.com/video-files/37014189/15682104_2560_1440_30fps.mp4"
+          type="video/mp4"
+        />
+      </video>
+
+      {/* Gradient overlay — fades edges so the video blends naturally */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-background/80 via-background/40 to-background/80" />
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-background" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-background" />
+
+      {/* Colour tint orbs to match NorthPay palette */}
+      <div className="pointer-events-none absolute -left-40 top-20 h-[500px] w-[500px] rounded-full bg-rose-400/10 blur-[100px]" />
+      <div className="pointer-events-none absolute -right-40 bottom-20 h-[500px] w-[500px] rounded-full bg-sky-400/10 blur-[100px]" />
+
+      {/* Login card — centred over the video */}
+      <div className="relative flex min-h-[calc(100vh-80px)] items-center justify-center px-4 py-12">
+        <LoginView />
       </div>
     </div>
   );
