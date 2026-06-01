@@ -467,7 +467,7 @@ function StepTwo({ form, setForm }: StepProps) {
         </Field>
       </Section>
 
-      <Section title="Hours & Overtime">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
         <Field label="Standard weekly hours">
           <Input
             type="number"
@@ -490,9 +490,6 @@ function StepTwo({ form, setForm }: StepProps) {
             placeholder={String(OVERTIME_WEEKLY_HOURS[form.province])}
           />
         </Field>
-      </Section>
-
-      <Section title="Vacation">
         <Field label="Vacation %">
           <Input
             type="number"
@@ -520,7 +517,7 @@ function StepTwo({ form, setForm }: StepProps) {
             </SelectContent>
           </Select>
         </Field>
-      </Section>
+      </div>
     </>
   );
 }
