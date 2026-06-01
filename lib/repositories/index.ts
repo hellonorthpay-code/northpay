@@ -1,21 +1,22 @@
 import type { Repositories } from "./types";
-import { createLocalStorageRepositories } from "./local-storage";
-// import { createSupabaseRepositories } from "./supabase";
+import { createSupabaseRepositories } from "./supabase";
 
 /**
  * Single switch point for the storage backend.
- *
- * To go to production:
- *   return createSupabaseRepositories();
- *
- * The rest of the application does not know which backend is wired in.
+ * Now wired to Supabase — data is per-user via RLS.
  */
 let _instance: Repositories | null = null;
 
 export function getRepositories(): Repositories {
   if (_instance) return _instance;
-  _instance = createLocalStorageRepositories();
+  _instance = createSupabaseRepositories();
   return _instance;
+}
+
+// Reset the singleton when the auth user changes so the next call
+// gets a fresh repository scoped to the new user's session.
+export function resetRepositories() {
+  _instance = null;
 }
 
 /** Test-only override. Do not call from product code. */

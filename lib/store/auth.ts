@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { supabase } from "@/lib/supabase/client";
+import { resetRepositories } from "@/lib/repositories";
 import type { Session } from "@supabase/supabase-js";
 
 export type AuthProvider = "email" | "google";
@@ -71,6 +72,9 @@ export const useAuth = create<AuthStore>((set, get) => ({
     if (!listenerInstalled) {
       listenerInstalled = true;
       supabase.auth.onAuthStateChange((_event, session) => {
+        // Reset the repository cache so the next read is scoped to the
+        // new user's session (or cleared on sign-out).
+        resetRepositories();
         set({ user: sessionToUser(session) });
       });
     }
@@ -124,6 +128,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
 
   logout: async () => {
     await supabase.auth.signOut();
+    resetRepositories();
     set({ user: null });
   },
 
