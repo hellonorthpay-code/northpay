@@ -3,7 +3,6 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
-import { Button } from "@/components/ui/button";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -23,7 +22,6 @@ interface Props {
  */
 export function EmployeesEmpty({ onAdd }: Props) {
   const tileRef = useRef<HTMLButtonElement>(null);
-  const ctaRef = useRef<HTMLButtonElement>(null);
 
   function fire(ref: React.RefObject<HTMLElement>) {
     const el = ref.current;
@@ -63,18 +61,8 @@ export function EmployeesEmpty({ onAdd }: Props) {
           Add your first employee
         </h2>
         <p className="mx-auto mt-2 text-[13.5px] leading-relaxed text-muted-foreground">
-          Takes about a minute.
+          Tap the tile above. Takes about a minute.
         </p>
-
-        <Button
-          ref={ctaRef}
-          size="lg"
-          onClick={() => fire(ctaRef)}
-          className="mt-6 px-5"
-        >
-          <Plus className="h-4 w-4" />
-          Add employee
-        </Button>
       </div>
     </motion.section>
   );
