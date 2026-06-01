@@ -184,8 +184,8 @@ function PingPongVideo({
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const video = videoRef.current;
-    if (!video) return;
+    if (!videoRef.current) return;
+    const video: HTMLVideoElement = videoRef.current;
 
     const FPS = 30;
     const FRAME_TIME = 1 / FPS;
@@ -213,7 +213,7 @@ function PingPongVideo({
     }
 
     async function reverseStep() {
-      if (cancelled || !video) return;
+      if (cancelled) return;
       const next = video.currentTime - FRAME_TIME;
       if (next <= START_EPSILON) {
         // Back at the start — play forward
