@@ -8,4 +8,11 @@ const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
  * Import this anywhere in client components — it's a singleton so
  * the same auth session is shared across the whole app.
  */
-export const supabase = createClient(url, key);
+export const supabase = createClient(url, key, {
+  auth: {
+    flowType: "pkce",
+    detectSessionInUrl: true,
+    persistSession: true,
+    autoRefreshToken: true,
+  },
+});
