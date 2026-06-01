@@ -52,7 +52,9 @@ export default function DashboardLayout({
             those for a calmer single-column layout. */}
         {!isPublicAuthRoute && <Sidebar />}
         <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
-          <Topbar />
+          {/* Hide topbar on login/reset pages — the video fullscreen canvas
+              replaces the whole UI so the title label is irrelevant. */}
+          {!(isPublicAuthRoute && !user) && <Topbar />}
           {/* Page transition — kept short (180ms in / 120ms out) so it
               runs in parallel with the sidebar pill morph instead of
               outlasting it. The previous 350ms × 2 made tab switches

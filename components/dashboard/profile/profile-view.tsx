@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Briefcase, Globe2, LogOut, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -160,26 +160,87 @@ export function ProfileView() {
 // ─────────────────────────────────────────────────────────────────────────
 // Login page with blended looping video background
 // ─────────────────────────────────────────────────────────────────────────
+/**
+ * Ping-pong video: plays forward to end, then reverses back to start,
+ * then forward again — seamlessly, so the loop point is invisible.
+ * Uses requestAnimationFrame to scrub backward frame-by-frame.
+ */
+function PingPongVideo({
+  src,
+  className,
+  style,
+}: {
+  src: string;
+  className?: string;
+  style?: React.CSSProperties;
+}) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const reversingRef = useRef(false);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    const STEP = 1 / 30; // 30 fps reverse scrub
+
+    function reverseStep() {
+      if (!video) return;
+      const next = video.currentTime - STEP;
+      if (next <= 0) {
+        // Reached the start — play forward again
+        reversingRef.current = false;
+        video.currentTime = 0;
+        void video.play();
+      } else {
+        video.currentTime = next;
+        rafRef.current = requestAnimationFrame(reverseStep);
+      }
+    }
+
+    function onEnded() {
+      if (!video || reversingRef.current) return;
+      reversingRef.current = true;
+      video.pause();
+      rafRef.current = requestAnimationFrame(reverseStep);
+    }
+
+    video.addEventListener("ended", onEnded);
+    void video.play();
+
+    return () => {
+      video.removeEventListener("ended", onEnded);
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  return (
+    // eslint-disable-next-line jsx-a11y/media-has-caption
+    <video
+      ref={videoRef}
+      muted
+      playsInline
+      preload="auto"
+      className={className}
+      style={style}
+    >
+      <source src={src} type="video/mp4" />
+    </video>
+  );
+}
+
 function LoginWithVideo() {
   return (
     <>
       {/* ── Full-viewport video layer (fixed, behind everything) ── */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
+        <PingPongVideo
+          src="https://videos.pexels.com/video-files/37014189/15682104_2560_1440_30fps.mp4"
           className="absolute inset-0 h-full w-full object-cover"
           style={{ opacity: 0.22, mixBlendMode: "luminosity" }}
-        >
-          <source
-            src="https://videos.pexels.com/video-files/37014189/15682104_2560_1440_30fps.mp4"
-            type="video/mp4"
-          />
-        </video>
+        />
 
-        {/* Gradient overlays — blend edges into the page bg */}
+        {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-br from-background/70 via-transparent to-background/70" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background" />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background" />
