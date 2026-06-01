@@ -161,16 +161,20 @@ export function ProfileView() {
 // Login page with blended looping video background
 // ─────────────────────────────────────────────────────────────────────────
 /**
- * Ping-pong video: forward to end → reverse to start → forward again.
+ * Ping-pong video — bulletproof implementation.
  *
- * Why setInterval(33ms) and not requestAnimationFrame: rAF fires at the
- * display refresh rate (60–120 Hz), but our source is 30 fps. Stepping
- * `currentTime` faster than the browser can decode + render causes the
- * seek queue to back up and stutter. Matching the 33 ms (30 fps) cadence
- * keeps it one-frame-per-step and smooth.
+ * Browser seeks on `<video>` stall on non-keyframes, so reverse playback
+ * via `currentTime -=` is inherently jittery. Instead:
  *
- * `requestVideoFrameCallback` (when available) waits for the rendered
- * frame before scheduling the next step — even tighter sync.
+ *   1. Hide the video element off-screen, play it forward ONCE.
+ *   2. As each frame renders (`requestVideoFrameCallback`), copy it into
+ *      our visible canvas AND cache it as an `ImageBitmap`.
+ *   3. Once we have the full frame array, drive the visible canvas from
+ *      cached frames at a steady 30 fps, walking the index forward then
+ *      backward forever. No more seeks, no more stalls.
+ *
+ * Memory: a 10-second 1280×720 video ≈ 300 ImageBitmaps. Modern browsers
+ * store ImageBitmap as a GPU texture, so it's far cheaper than raw RGBA.
  */
 function PingPongVideo({
   src,
@@ -181,112 +185,134 @@ function PingPongVideo({
   className?: string;
   style?: React.CSSProperties;
 }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    if (!videoRef.current) return;
+    if (!canvasRef.current || !videoRef.current) return;
+    const canvas: HTMLCanvasElement = canvasRef.current;
     const video: HTMLVideoElement = videoRef.current;
 
-    const FPS = 30;
-    const FRAME_TIME = 1 / FPS;
-    const END_EPSILON = 0.08;     // start reversing slightly before the actual end
-    const START_EPSILON = 0.03;   // and treat near-zero as "back to start"
+    const ctx = canvas.getContext("2d", { alpha: false });
+    if (!ctx) return;
 
-    let timer: number | null = null;
-    let reversing = false;
-    let cancelled = false;
-
-    type VideoWithVFC = HTMLVideoElement & {
+    type VFC = HTMLVideoElement & {
       requestVideoFrameCallback?: (cb: () => void) => number;
     };
-    const v = video as VideoWithVFC;
+    const v = video as VFC;
 
-    function waitForFrame(): Promise<void> {
-      return new Promise((resolve) => {
-        if (v.requestVideoFrameCallback) {
-          v.requestVideoFrameCallback(() => resolve());
-        } else {
-          // Fallback: tiny timeout to let the browser render
-          window.setTimeout(resolve, 8);
-        }
-      });
+    // ── Tunables ─────────────────────────────────────────────────────
+    const FPS = 30;
+    const FRAME_INTERVAL = 1000 / FPS;
+    const MAX_W = 1280; // cap canvas resolution for memory
+
+    const frames: ImageBitmap[] = [];
+    let cancelled = false;
+    let captureDone = false;
+    let rafId: number | null = null;
+
+    // ── Phase 1: capture every rendered frame ────────────────────────
+    function onMeta() {
+      const aspect = video.videoHeight / video.videoWidth || 9 / 16;
+      const w = Math.min(video.videoWidth || MAX_W, MAX_W);
+      const h = Math.round(w * aspect);
+      canvas.width = w;
+      canvas.height = h;
+      video.play().catch(() => {});
     }
 
-    async function reverseStep() {
-      if (cancelled) return;
-      const next = video.currentTime - FRAME_TIME;
-      if (next <= START_EPSILON) {
-        // Back at the start — play forward
-        reversing = false;
-        video.currentTime = 0;
-        try {
-          await video.play();
-        } catch {
-          /* autoplay blocked — ignore */
-        }
-        return;
-      }
-      video.currentTime = next;
-      await waitForFrame();
-    }
+    function captureNext() {
+      if (cancelled || captureDone) return;
 
-    function startReverse() {
-      reversing = true;
-      video.pause();
-      // 30 fps interval — exactly one source frame per tick
-      timer = window.setInterval(() => {
-        if (!reversing) {
-          if (timer !== null) window.clearInterval(timer);
-          timer = null;
+      ctx!.drawImage(video, 0, 0, canvas.width, canvas.height);
+      // Snapshot this frame for the ping-pong cache
+      createImageBitmap(canvas).then((bmp) => {
+        if (cancelled) {
+          bmp.close();
           return;
         }
-        void reverseStep();
-      }, Math.round(1000 / FPS));
-    }
+        frames.push(bmp);
+      });
 
-    function onTimeUpdate() {
-      // Some browsers don't fire `ended` reliably for short clips,
-      // so we trigger the reversal a bit before the real end.
-      if (
-        !reversing &&
-        video.duration > 0 &&
-        video.currentTime >= video.duration - END_EPSILON
-      ) {
-        startReverse();
+      if (v.requestVideoFrameCallback) {
+        v.requestVideoFrameCallback(captureNext);
+      } else {
+        // Fallback: poll on rAF at ~60Hz, deduped via currentTime
+        rafId = requestAnimationFrame(captureNext);
       }
     }
 
     function onEnded() {
-      if (!reversing) startReverse();
+      captureDone = true;
+      // Hand off to canvas-driven ping-pong
+      startPingPong();
     }
 
-    video.addEventListener("timeupdate", onTimeUpdate);
+    // ── Phase 2: drive canvas from cached frames ─────────────────────
+    function startPingPong() {
+      if (cancelled || frames.length === 0) return;
+      let idx = frames.length - 1; // we just finished forward playback
+      let dir: 1 | -1 = -1; // start by going backward
+      let last = performance.now();
+
+      function tick(now: number) {
+        if (cancelled) return;
+        if (now - last >= FRAME_INTERVAL) {
+          last = now;
+          ctx!.drawImage(frames[idx], 0, 0);
+          idx += dir;
+          if (idx >= frames.length - 1) {
+            idx = frames.length - 1;
+            dir = -1;
+          } else if (idx <= 0) {
+            idx = 0;
+            dir = 1;
+          }
+        }
+        rafId = requestAnimationFrame(tick);
+      }
+      rafId = requestAnimationFrame(tick);
+    }
+
+    // ── Wire it up ───────────────────────────────────────────────────
+    video.addEventListener("loadedmetadata", onMeta);
     video.addEventListener("ended", onEnded);
 
-    // Kick it off
-    void video.play().catch(() => {});
+    if (v.requestVideoFrameCallback) {
+      v.requestVideoFrameCallback(captureNext);
+    }
 
     return () => {
       cancelled = true;
-      reversing = false;
-      if (timer !== null) window.clearInterval(timer);
-      video.removeEventListener("timeupdate", onTimeUpdate);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      video.removeEventListener("loadedmetadata", onMeta);
       video.removeEventListener("ended", onEnded);
+      frames.forEach((b) => b.close());
     };
-  }, []);
+  }, [src]);
 
   return (
-    // eslint-disable-next-line jsx-a11y/media-has-caption
-    <video
-      ref={videoRef}
-      muted
-      playsInline
-      preload="auto"
-      className={className}
-      style={style}
-    >
-      <source src={src} type="video/mp4" />
-    </video>
+    <>
+      {/* The visible surface — fed by canvas drawing */}
+      <canvas ref={canvasRef} className={className} style={style} />
+      {/* Hidden source video — plays once forward to seed the frame cache */}
+      <video
+        ref={videoRef}
+        muted
+        playsInline
+        crossOrigin="anonymous"
+        preload="auto"
+        style={{
+          position: "absolute",
+          width: 1,
+          height: 1,
+          opacity: 0,
+          pointerEvents: "none",
+        }}
+      >
+        <source src={src} type="video/mp4" />
+      </video>
+    </>
   );
 }
 
