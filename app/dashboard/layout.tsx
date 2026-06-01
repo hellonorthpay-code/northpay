@@ -20,14 +20,19 @@ export default function DashboardLayout({
   useHydrateStores();
   const { user, hydrated: authHydrated } = useAuth();
 
-  // Route guard: only /dashboard/profile is accessible without auth (it
-  // shows the login form). Any other dashboard route bounces to profile.
+  // Route guard: only the unauthenticated-friendly routes (profile +
+  // reset-password) are accessible without a session. Everything else
+  // bounces to /dashboard/profile (which renders the login card).
+  const isPublicAuthRoute =
+    pathname.startsWith("/dashboard/profile") ||
+    pathname.startsWith("/dashboard/reset-password");
+
   useEffect(() => {
     if (!authHydrated) return;
     if (user) return;
-    if (pathname.startsWith("/dashboard/profile")) return;
+    if (isPublicAuthRoute) return;
     router.replace("/dashboard/profile");
-  }, [authHydrated, user, pathname, router]);
+  }, [authHydrated, user, isPublicAuthRoute, router]);
 
   return (
     <motion.div
@@ -42,10 +47,10 @@ export default function DashboardLayout({
       </div>
 
       <div className="mx-auto flex max-w-[1280px] gap-6 px-4 pb-24 pt-6 md:px-5 md:pb-5 md:pt-24 lg:px-8">
-        {/* Profile is a personal-settings page, not part of the payroll
-            workflow, so we hide the dashboard sidebar there to give it a
-            calmer single-column layout. */}
-        {!pathname.startsWith("/dashboard/profile") && <Sidebar />}
+        {/* Profile + reset-password are personal-settings flows, not part
+            of the payroll workflow, so we hide the dashboard sidebar on
+            those for a calmer single-column layout. */}
+        {!isPublicAuthRoute && <Sidebar />}
         <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
           <Topbar />
           {/* Page transition — kept short (180ms in / 120ms out) so it

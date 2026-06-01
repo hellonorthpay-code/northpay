@@ -44,6 +44,12 @@ interface AuthStore {
   }) => { ok: true } | { ok: false; error: string };
   loginWithGoogle: () => void;
   logout: () => void;
+  /** Mock — pretends to email a reset link. Returns ok if the email is on file. */
+  requestPasswordReset: (email: string) =>
+    { ok: true } | { ok: false; error: string };
+  /** Mock — directly updates the stored password (no token required). */
+  resetPassword: (email: string, newPassword: string) =>
+    { ok: true } | { ok: false; error: string };
 }
 
 const USERS_KEY = "northpay.auth.users";
@@ -199,5 +205,33 @@ export const useAuth = create<AuthStore>((set, get) => ({
       window.localStorage.removeItem(SESSION_KEY);
     }
     set({ user: null });
+  },
+
+  requestPasswordReset: (emailInput) => {
+    const email = emailInput.trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
+      return { ok: false, error: "That doesn't look like a valid email." };
+    const users = loadUsers();
+    const found = users.find((u) => u.email.toLowerCase() === email);
+    if (!found) return { ok: false, error: "No account found for that email." };
+    // Mock: in real life we'd send an email. Here we just succeed.
+    return { ok: true };
+  },
+
+  resetPassword: (emailInput, newPassword) => {
+    const email = emailInput.trim().toLowerCase();
+    if (newPassword.length < 6)
+      return { ok: false, error: "Password must be at least 6 characters." };
+    const users = loadUsers();
+    const idx = users.findIndex((u) => u.email.toLowerCase() === email);
+    if (idx === -1) return { ok: false, error: "No account found for that email." };
+    if (users[idx].provider === "google")
+      return {
+        ok: false,
+        error: "This account uses Google sign-in — there's no password to reset.",
+      };
+    users[idx] = { ...users[idx], password: newPassword };
+    saveUsers(users);
+    return { ok: true };
   },
 }));

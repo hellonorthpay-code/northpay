@@ -1,15 +1,16 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, Lock, Mail, User } from "lucide-react";
+import { AlertCircle, CheckCircle2, Lock, Mail, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ADMIN_CREDENTIALS, useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
-type Mode = "login" | "signup";
+type Mode = "login" | "signup" | "forgot";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -17,6 +18,7 @@ export function LoginView() {
   const login = useAuth((s) => s.login);
   const signup = useAuth((s) => s.signup);
   const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
+  const requestPasswordReset = useAuth((s) => s.requestPasswordReset);
 
   const [mode, setMode] = useState<Mode>("login");
   const [firstName, setFirstName] = useState("");
@@ -24,19 +26,41 @@ export function LoginView() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setError(null);
+    setResetSent(false);
+  }
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setBusy(true);
-    const result =
-      mode === "login"
-        ? login(email, password)
-        : signup({ firstName, lastName, email, password });
-    setBusy(false);
+
+    if (mode === "login") {
+      const result = login(email, password);
+      if (!result.ok) setError(result.error);
+      return;
+    }
+
+    if (mode === "signup") {
+      const result = signup({ firstName, lastName, email, password });
+      if (!result.ok) setError(result.error);
+      return;
+    }
+
+    // forgot
+    const result = requestPasswordReset(email);
     if (!result.ok) setError(result.error);
+    else setResetSent(true);
   }
+
+  const titles: Record<Mode, { title: string; sub: string }> = {
+    login: { title: "Log in to NorthPay", sub: "Welcome back." },
+    signup: { title: "Create your account", sub: "Run Canadian payroll in minutes." },
+    forgot: { title: "Reset your password", sub: "We'll email a reset link." },
+  };
 
   return (
     <div className="mx-auto flex w-full max-w-md flex-col gap-5">
@@ -58,44 +82,50 @@ export function LoginView() {
                 />
               </svg>
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                Welcome
+                {mode === "forgot" ? "Recover" : "Welcome"}
               </p>
-              <p className="text-[20px] font-semibold leading-none tracking-tightest md:text-[24px]">
-                {mode === "login" ? "Log in to NorthPay" : "Create your account"}
+              <p className="truncate text-[20px] font-semibold leading-none tracking-tightest md:text-[22px]">
+                {titles[mode].title}
               </p>
+              <p className="mt-1 text-[12px] text-muted-foreground">{titles[mode].sub}</p>
             </div>
           </div>
 
-          {/* Mode toggle */}
-          <div className="mt-5 grid grid-cols-2 gap-1 rounded-full border border-border/60 bg-muted/40 p-1 text-[12.5px] font-medium">
-            <ModeTab active={mode === "login"} onClick={() => { setMode("login"); setError(null); }}>
-              Log in
-            </ModeTab>
-            <ModeTab active={mode === "signup"} onClick={() => { setMode("signup"); setError(null); }}>
-              Sign up
-            </ModeTab>
-          </div>
+          {/* Mode toggle — only on login/signup */}
+          {mode !== "forgot" && (
+            <div className="mt-5 grid grid-cols-2 gap-1 rounded-full border border-border/60 bg-muted/40 p-1 text-[12.5px] font-medium">
+              <ModeTab active={mode === "login"} onClick={() => switchMode("login")}>
+                Log in
+              </ModeTab>
+              <ModeTab active={mode === "signup"} onClick={() => switchMode("signup")}>
+                Sign up
+              </ModeTab>
+            </div>
+          )}
 
-          {/* Google */}
-          <button
-            type="button"
-            onClick={loginWithGoogle}
-            className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-2xl border border-border/70 bg-background px-4 py-2.5 text-[13.5px] font-medium tracking-tight text-foreground transition-colors hover:bg-muted/40"
-          >
-            <GoogleIcon className="h-4 w-4" />
-            Continue with Google
-          </button>
+          {/* Google — only on login/signup */}
+          {mode !== "forgot" && (
+            <>
+              <button
+                type="button"
+                onClick={loginWithGoogle}
+                className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-2xl border border-border/70 bg-background px-4 py-2.5 text-[13.5px] font-medium tracking-tight text-foreground transition-colors hover:bg-muted/40"
+              >
+                <GoogleIcon className="h-4 w-4" />
+                Continue with Google
+              </button>
 
-          {/* Divider */}
-          <div className="mt-5 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-            <span className="h-px flex-1 bg-border/60" />
-            <span>or</span>
-            <span className="h-px flex-1 bg-border/60" />
-          </div>
+              <div className="mt-5 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                <span className="h-px flex-1 bg-border/60" />
+                <span>or</span>
+                <span className="h-px flex-1 bg-border/60" />
+              </div>
+            </>
+          )}
 
-          {/* Form */}
+          {/* ── Form (animated swap per mode) ── */}
           <form onSubmit={submit} className="mt-5 space-y-3">
             <AnimatePresence initial={false} mode="wait">
               {mode === "signup" && (
@@ -136,16 +166,33 @@ export function LoginView() {
                 placeholder="you@northpay.ca"
               />
             </IconField>
-            <IconField icon={Lock} label="Password">
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "login" ? "current-password" : "new-password"}
-                placeholder="••••••••"
-              />
-            </IconField>
 
+            {mode !== "forgot" && (
+              <IconField icon={Lock} label="Password">
+                <Input
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={mode === "login" ? "current-password" : "new-password"}
+                  placeholder="••••••••"
+                />
+              </IconField>
+            )}
+
+            {/* Forgot link — login mode only */}
+            {mode === "login" && (
+              <div className="flex justify-end">
+                <button
+                  type="button"
+                  onClick={() => switchMode("forgot")}
+                  className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Forgot password?
+                </button>
+              </div>
+            )}
+
+            {/* Error toast */}
             <AnimatePresence>
               {error && (
                 <motion.div
@@ -161,25 +208,75 @@ export function LoginView() {
               )}
             </AnimatePresence>
 
-            <Button type="submit" disabled={busy} className="mt-2 w-full">
-              {mode === "login" ? "Log in" : "Create account"}
-            </Button>
+            {/* Reset-sent success */}
+            <AnimatePresence>
+              {mode === "forgot" && resetSent && (
+                <motion.div
+                  initial={{ opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.22, ease }}
+                  className="space-y-3 rounded-xl border border-success/30 bg-success/10 p-3 text-[12.5px] text-success"
+                >
+                  <p className="flex items-center gap-2 font-medium">
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                    Check your email for a reset link.
+                  </p>
+                  <Link
+                    href={{ pathname: "/dashboard/reset-password", query: { email } }}
+                    className="block rounded-lg bg-background/70 px-3 py-2 text-center text-[11.5px] font-semibold tracking-tight text-foreground transition-colors hover:bg-background"
+                  >
+                    Open reset page (demo)
+                  </Link>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {!resetSent && (
+              <Button type="submit" className="mt-2 w-full">
+                {mode === "login"
+                  ? "Log in"
+                  : mode === "signup"
+                  ? "Create account"
+                  : "Send reset link"}
+              </Button>
+            )}
+
+            {mode === "forgot" && (
+              <button
+                type="button"
+                onClick={() => switchMode("login")}
+                className="block w-full pt-1 text-center text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                ← Back to log in
+              </button>
+            )}
           </form>
         </div>
       </section>
 
-      {/* ── Demo credentials hint ── */}
-      <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 p-4 text-[12px] leading-relaxed text-muted-foreground">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">
-          Sample admin
-        </p>
-        <p className="mt-1.5">
-          Email <span className="rounded bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">{ADMIN_CREDENTIALS.email}</span>
-          <br />
-          Password <span className="rounded bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">{ADMIN_CREDENTIALS.password}</span>
-        </p>
-      </div>
+      {/* ── Sample admin hint — only on login/signup ── */}
+      {mode !== "forgot" && (
+        <div className="rounded-2xl border border-dashed border-border/70 bg-muted/30 p-4 text-[12px] leading-relaxed text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">
+            Sample admin
+          </p>
+          <p className="mt-1.5">
+            Email <Code>{ADMIN_CREDENTIALS.email}</Code>
+            <br />
+            Password <Code>{ADMIN_CREDENTIALS.password}</Code>
+          </p>
+        </div>
+      )}
     </div>
+  );
+}
+
+function Code({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded bg-background px-1.5 py-0.5 font-mono text-[11px] text-foreground">
+      {children}
+    </span>
   );
 }
 

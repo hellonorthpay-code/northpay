@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
 import { LandingNav } from "@/components/landing/nav";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
+import { PageTransition, RouteProgressBar } from "@/components/page-transition";
 
 export const metadata: Metadata = {
   title: "NorthPay — Canadian Payroll. Finally Beautiful.",
@@ -22,8 +23,9 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="min-h-screen bg-background text-foreground">
+        <RouteProgressBar />
         <LandingNav />
-        {children}
+        <PageTransition>{children}</PageTransition>
         <MobileNav />
       </body>
     </html>

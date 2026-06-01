@@ -23,6 +23,10 @@ const titles: Record<string, { title: string; sub: string }> = {
     title: "My profile",
     sub: "Your name, contact, and account preferences.",
   },
+  "/dashboard/reset-password": {
+    title: "Reset password",
+    sub: "Choose a new password for your account.",
+  },
 };
 
 export function Topbar() {
