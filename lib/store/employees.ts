@@ -13,6 +13,8 @@ interface EmployeeStore {
   employees: Employee[];
   hydrated: boolean;
   hydrate: () => Promise<void>;
+  /** Clear local state — called on logout/user-switch so next hydrate re-fetches. */
+  reset: () => void;
   addEmployee: (employee: Omit<Employee, "id" | "createdAt">) => Promise<void>;
   updateEmployee: (id: string, patch: Partial<Employee>) => Promise<void>;
   removeEmployee: (id: string) => Promise<void>;
@@ -28,6 +30,8 @@ export const useEmployees = create<EmployeeStore>((set, get) => ({
     const employees = await repos.employees.getAll();
     set({ employees, hydrated: true });
   },
+
+  reset: () => set({ employees: [], hydrated: false }),
 
   addEmployee: async (input) => {
     const repos = getRepositories();

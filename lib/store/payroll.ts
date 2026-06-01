@@ -6,6 +6,7 @@ interface PayrollStore {
   runs: PayrollRun[];
   hydrated: boolean;
   hydrate: () => Promise<void>;
+  reset: () => void;
   /**
    * Append a finalized/preview run to the local view. Persistence happens
    * in PayrollLifecycleService.finalize() — this is the local refresh.
@@ -26,6 +27,8 @@ export const usePayrollRuns = create<PayrollStore>((set, get) => ({
     const runs = await getRepositories().payroll.getAll();
     set({ runs, hydrated: true });
   },
+
+  reset: () => set({ runs: [], hydrated: false }),
 
   upsertRun: (run) => {
     set((s) => {

@@ -1,9 +1,9 @@
 import { create } from "zustand";
+import { supabase } from "@/lib/supabase/client";
 
 /**
- * Operator profile — the human running payroll, not the employees being
- * paid. Single-user for now (no auth yet); stored in localStorage so it
- * survives reloads without a server round-trip.
+ * Operator profile — the human running payroll.
+ * Persisted in Supabase `profiles` table (one row per auth user).
  */
 export interface Profile {
   firstName: string;
@@ -11,62 +11,75 @@ export interface Profile {
   email: string;
   phone: string;
   timezone: string;
-  /** ISO date string — when the account was created. */
   joinedAt: string;
 }
 
 interface ProfileStore {
   profile: Profile;
   hydrated: boolean;
-  hydrate: () => void;
-  setProfile: (patch: Partial<Profile>) => void;
+  hydrate: () => Promise<void>;
+  reset: () => void;
+  setProfile: (patch: Partial<Profile>) => Promise<void>;
 }
-
-const PROFILE_KEY = "northpay.profile";
 
 const DEFAULT_PROFILE: Profile = {
   firstName: "",
   lastName: "",
   email: "",
   phone: "",
-  timezone:
-    typeof Intl !== "undefined"
-      ? Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Toronto"
-      : "America/Toronto",
+  timezone: "America/Toronto",
   joinedAt: new Date().toISOString().slice(0, 10),
 };
-
-function readLS<T>(key: string, fallback: T): T {
-  if (typeof window === "undefined") return fallback;
-  const raw = window.localStorage.getItem(key);
-  if (!raw) return fallback;
-  try {
-    return { ...fallback, ...(JSON.parse(raw) as Partial<T>) } as T;
-  } catch {
-    return fallback;
-  }
-}
-
-function writeLS<T>(key: string, value: T) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(key, JSON.stringify(value));
-}
 
 export const useProfile = create<ProfileStore>((set, get) => ({
   profile: DEFAULT_PROFILE,
   hydrated: false,
 
-  hydrate: () => {
+  hydrate: async () => {
     if (get().hydrated) return;
-    const profile = readLS<Profile>(PROFILE_KEY, DEFAULT_PROFILE);
-    set({ profile, hydrated: true });
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      set({ hydrated: true });
+      return;
+    }
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    set({
+      profile: {
+        firstName: data?.first_name || user.user_metadata?.first_name || "",
+        lastName: data?.last_name || user.user_metadata?.last_name || "",
+        email: data?.email || user.email || "",
+        phone: data?.phone || "",
+        timezone: data?.timezone || "America/Toronto",
+        joinedAt: data?.joined_at || new Date().toISOString().slice(0, 10),
+      },
+      hydrated: true,
+    });
   },
 
-  setProfile: (patch) => {
-    set((s) => {
-      const next = { ...s.profile, ...patch };
-      writeLS(PROFILE_KEY, next);
-      return { profile: next };
-    });
+  reset: () => set({ profile: DEFAULT_PROFILE, hydrated: false }),
+
+  setProfile: async (patch) => {
+    // Optimistic update — UI feels instant
+    set((s) => ({ profile: { ...s.profile, ...patch } }));
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const row: Record<string, unknown> = { id: user.id };
+    if (patch.firstName !== undefined) row.first_name = patch.firstName;
+    if (patch.lastName !== undefined) row.last_name = patch.lastName;
+    if (patch.email !== undefined) row.email = patch.email;
+    if (patch.phone !== undefined) row.phone = patch.phone;
+    if (patch.timezone !== undefined) row.timezone = patch.timezone;
+    if (patch.joinedAt !== undefined) row.joined_at = patch.joinedAt;
+
+    await supabase.from("profiles").upsert(row);
   },
 }));
