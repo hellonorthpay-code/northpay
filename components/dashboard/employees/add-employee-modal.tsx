@@ -304,7 +304,7 @@ function StepDots({ step }: { step: 1 | 2 }) {
         />
       ))}
       <span className="ml-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-        {step === 1 ? "Identity" : "Pay & hours"}
+        {step === 1 ? "Step 1 of 2" : "Pay & hours"}
       </span>
     </div>
   );
@@ -335,8 +335,10 @@ interface StepProps {
 }
 
 function StepOne({ form, setForm }: StepProps) {
+  // Step 1 is the only section on this page, so we drop the explicit
+  // "Identity" heading — the modal title already carries the context.
   return (
-    <Section title="Identity">
+    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
       <Field label="First name">
         <Input
           value={form.firstName}
@@ -376,7 +378,7 @@ function StepOne({ form, setForm }: StepProps) {
           onChange={(v) => setForm({ ...form, startDate: v })}
         />
       </Field>
-    </Section>
+    </div>
   );
 }
 
