@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, CheckCircle2, Lock, Mail, User } from "lucide-react";
+import { AlertCircle, CheckCircle2, Lock, Mail, Phone, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ type Mode = "login" | "signup" | "forgot";
 const ease = [0.22, 1, 0.36, 1] as const;
 
 export function LoginView() {
+  const router = useRouter();
   const login = useAuth((s) => s.login);
   const signup = useAuth((s) => s.signup);
   const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
@@ -23,18 +24,18 @@ export function LoginView() {
   const [mode, setMode] = useState<Mode>("login");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const [needsConfirmation, setNeedsConfirmation] = useState(false);
+  const [signupSuccess, setSignupSuccess] = useState(false);
 
   function switchMode(next: Mode) {
     setMode(next);
     setError(null);
     setResetSent(false);
-    setNeedsConfirmation(false);
   }
 
   async function submit(e: React.FormEvent) {
@@ -45,47 +46,91 @@ export function LoginView() {
     try {
       if (mode === "login") {
         const result = await login(email, password);
-        if (!result.ok) setError(result.error);
-      } else if (mode === "signup") {
-        const result = await signup({ firstName, lastName, email, password });
         if (!result.ok) {
           setError(result.error);
-        } else if (result.needsConfirmation) {
-          setNeedsConfirmation(true);
+        } else {
+          // Success — redirect straight into the app
+          router.replace("/dashboard");
         }
-      } else {
-        const result = await requestPasswordReset(email);
-        if (!result.ok) setError(result.error);
-        else setResetSent(true);
+        return;
       }
+
+      if (mode === "signup") {
+        const result = await signup({ firstName, lastName, email, password, phone });
+        if (!result.ok) {
+          setError(result.error);
+        } else {
+          setSignupSuccess(true);
+        }
+        return;
+      }
+
+      // forgot password
+      const result = await requestPasswordReset(email);
+      if (!result.ok) setError(result.error);
+      else setResetSent(true);
     } finally {
       setBusy(false);
     }
   }
 
-  if (needsConfirmation) {
+  // ── Account created successfully screen ──────────────────────────────
+  if (signupSuccess) {
     return (
       <div className="mx-auto flex w-full max-w-md flex-col gap-5">
-        <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-6 shadow-soft backdrop-blur-xl md:p-8">
-          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
-          <div className="relative text-center">
-            <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-success/15 text-success">
-              <CheckCircle2 className="h-7 w-7" />
-            </div>
-            <p className="text-[20px] font-semibold tracking-tightest">Check your email</p>
-            <p className="mx-auto mt-2 max-w-[280px] text-[13.5px] leading-relaxed text-muted-foreground">
-              We sent a confirmation link to <strong>{email}</strong>.
-              Click it to activate your account, then come back and log in.
-            </p>
-            <Button
-              className="mt-6 w-full"
-              variant="ghost"
-              onClick={() => switchMode("login")}
+        <motion.section
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, ease }}
+          className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-8 shadow-soft backdrop-blur-xl text-center"
+        >
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-success/20 blur-3xl" />
+          <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
+
+          <div className="relative">
+            <motion.div
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ type: "spring", stiffness: 300, damping: 22, delay: 0.15 }}
+              className="mx-auto mb-5 grid h-16 w-16 place-items-center rounded-2xl bg-success/15"
             >
-              Back to log in
-            </Button>
+              <CheckCircle2 className="h-8 w-8 text-success" />
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease, delay: 0.25 }}
+            >
+              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                Welcome to NorthPay
+              </p>
+              <p className="mt-2 text-[22px] font-semibold leading-tight tracking-tightest">
+                Account created!
+              </p>
+              <p className="mx-auto mt-2 max-w-[260px] text-[13.5px] leading-relaxed text-muted-foreground">
+                You're all set. Log in to start running payroll.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.35, ease, delay: 0.38 }}
+              className="mt-6"
+            >
+              <Button
+                className="w-full"
+                onClick={() => {
+                  setSignupSuccess(false);
+                  switchMode("login");
+                }}
+              >
+                Log in now
+              </Button>
+            </motion.div>
           </div>
-        </section>
+        </motion.section>
       </div>
     );
   }
@@ -146,19 +191,30 @@ export function LoginView() {
             <AnimatePresence initial={false} mode="wait">
               {mode === "signup" && (
                 <motion.div
-                  key="names"
+                  key="signup-fields"
                   initial={{ height: 0, opacity: 0 }}
                   animate={{ height: "auto", opacity: 1 }}
                   exit={{ height: 0, opacity: 0 }}
                   transition={{ duration: 0.22, ease }}
                   style={{ overflow: "hidden" }}
                 >
-                  <div className="grid grid-cols-2 gap-3 pb-3">
-                    <IconField icon={User} label="First name">
-                      <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" />
-                    </IconField>
-                    <IconField icon={User} label="Last name">
-                      <Input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" />
+                  <div className="space-y-3 pb-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <IconField icon={User} label="First name">
+                        <Input value={firstName} onChange={(e) => setFirstName(e.target.value)} autoComplete="given-name" />
+                      </IconField>
+                      <IconField icon={User} label="Last name">
+                        <Input value={lastName} onChange={(e) => setLastName(e.target.value)} autoComplete="family-name" />
+                      </IconField>
+                    </div>
+                    <IconField icon={Phone} label="Phone (optional)">
+                      <Input
+                        type="tel"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
+                        autoComplete="tel"
+                        placeholder="(416) 555-0100"
+                      />
                     </IconField>
                   </div>
                 </motion.div>
@@ -207,9 +263,6 @@ export function LoginView() {
                   <p className="flex items-center gap-2 font-medium">
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Reset link sent — check your email.
-                  </p>
-                  <p className="mt-1 text-[11.5px] text-success/80">
-                    Click the link in the email to set a new password.
                   </p>
                 </motion.div>
               )}

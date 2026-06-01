@@ -26,6 +26,7 @@ interface AuthStore {
     lastName: string;
     email: string;
     password: string;
+    phone?: string;
   }) => Promise<{ ok: true; needsConfirmation?: boolean } | { ok: false; error: string }>;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -90,7 +91,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
     return { ok: true };
   },
 
-  signup: async ({ firstName, lastName, email, password }) => {
+  signup: async ({ firstName, lastName, email, password, phone }) => {
     if (!firstName.trim() || !lastName.trim())
       return { ok: false, error: "Please enter your name." };
     if (password.length < 6)
@@ -108,12 +109,23 @@ export const useAuth = create<AuthStore>((set, get) => ({
     });
     if (error) return { ok: false, error: error.message };
 
-    // Supabase may require email confirmation (depends on project settings).
-    // If session is null but user exists, confirmation email was sent.
     if (data.user && !data.session) {
       return { ok: true, needsConfirmation: true };
     }
-    set({ user: sessionToUser(data.session) });
+
+    // Save phone + full profile immediately (trigger only gets name/email)
+    if (data.user) {
+      await supabase.from("profiles").upsert({
+        id: data.user.id,
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
+        email: email.trim().toLowerCase(),
+        phone: (phone ?? "").trim(),
+      });
+      // Sign out so the user must explicitly log in — cleaner UX
+      await supabase.auth.signOut();
+    }
+
     return { ok: true };
   },
 
