@@ -250,12 +250,12 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
           {step === 1 ? (
             <DialogClose asChild>
               <IconButton aria-label="Cancel">
-                <X className="h-5 w-5" strokeWidth={2.4} />
+                <X className="h-6 w-6" strokeWidth={2.6} />
               </IconButton>
             </DialogClose>
           ) : (
             <IconButton aria-label="Back" onClick={goBack}>
-              <ChevronLeft className="h-5 w-5" strokeWidth={2.4} />
+              <ChevronLeft className="h-6 w-6" strokeWidth={2.6} />
             </IconButton>
           )}
           {step === 1 ? (
@@ -266,7 +266,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
               variant="solid"
               className="group"
             >
-              <ChevronRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2.4} />
+              <ChevronRight className="h-6 w-6 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2.6} />
             </IconButton>
           ) : (
             <Button onClick={submit} disabled={!canSubmit}>
@@ -787,7 +787,7 @@ const IconButton = React.forwardRef<
   }
 >(({ className, variant = "ghost", ...props }, ref) => {
   const base =
-    "inline-flex h-11 w-11 items-center justify-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+    "inline-flex h-14 w-14 items-center justify-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
   const tone =
     variant === "solid"
       ? "bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
