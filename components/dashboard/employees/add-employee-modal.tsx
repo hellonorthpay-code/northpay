@@ -269,8 +269,8 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
               <ChevronRight className="h-7 w-7 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2.6} />
             </IconButton>
           ) : (
-            <Button onClick={submit} disabled={!canSubmit}>
-              <Check className="h-4 w-4" />
+            <Button onClick={submit} disabled={!canSubmit} className="h-16 rounded-full px-7 text-[16px] font-semibold">
+              <Check className="h-6 w-6" strokeWidth={2.6} />
               {isEdit ? "Save" : "Add"}
             </Button>
           )}
@@ -383,7 +383,7 @@ function StepOne({ form, setForm }: StepProps) {
 function StepTwo({ form, setForm }: StepProps) {
   return (
     <>
-      <Section title="Employment">
+      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
         <Field label="Province">
           <Select
             value={form.province}
@@ -465,7 +465,7 @@ function StepTwo({ form, setForm }: StepProps) {
             </SelectContent>
           </Select>
         </Field>
-      </Section>
+      </div>
 
       <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
         <Field label="Standard weekly hours">
