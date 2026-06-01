@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertCircle, ArrowLeft, CheckCircle2, KeyRound, Lock, Mail } from "lucide-react";
+import { AlertCircle, ArrowLeft, CheckCircle2, KeyRound, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,23 +14,20 @@ const ease = [0.22, 1, 0.36, 1] as const;
 
 export function ResetPasswordView() {
   const router = useRouter();
-  const params = useSearchParams();
-  const presetEmail = params?.get("email") ?? "";
-
   const resetPassword = useAuth((s) => s.resetPassword);
   const hydrateAuth = useAuth((s) => s.hydrate);
 
-  const [email, setEmail] = useState(presetEmail);
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
 
   useEffect(() => {
-    hydrateAuth();
+    void hydrateAuth();
   }, [hydrateAuth]);
 
-  function submit(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
@@ -38,14 +35,17 @@ export function ResetPasswordView() {
       setError("Passwords don't match.");
       return;
     }
-    const result = resetPassword(email, password);
+
+    setBusy(true);
+    const result = await resetPassword(password);
+    setBusy(false);
+
     if (!result.ok) {
       setError(result.error);
       return;
     }
     setDone(true);
-    // Bounce back to login after a beat so the success state can land.
-    setTimeout(() => router.replace("/dashboard/profile"), 1400);
+    setTimeout(() => router.replace("/dashboard/profile"), 1600);
   }
 
   return (
@@ -60,55 +60,35 @@ export function ResetPasswordView() {
               <KeyRound className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                Account
-              </p>
+              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Account</p>
               <p className="text-[20px] font-semibold leading-none tracking-tightest md:text-[22px]">
                 Set a new password
               </p>
               <p className="mt-1 text-[12px] text-muted-foreground">
-                Choose something at least 6 characters.
+                At least 6 characters.
               </p>
             </div>
           </div>
 
           <form onSubmit={submit} className="mt-5 space-y-3">
-            <IconField icon={Mail} label="Email">
-              <Input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                autoComplete="email"
-                readOnly={!!presetEmail}
-                className={presetEmail ? "bg-muted/30" : ""}
-              />
-            </IconField>
-            <IconField icon={Lock} label="New password">
-              <Input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete="new-password"
-                placeholder="••••••••"
-              />
-            </IconField>
-            <IconField icon={Lock} label="Confirm password">
-              <Input
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                autoComplete="new-password"
-                placeholder="••••••••"
-              />
-            </IconField>
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-[11.5px]">
+                <Lock className="h-3 w-3 text-muted-foreground" />
+                New password
+              </Label>
+              <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="new-password" placeholder="••••••••" />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label className="flex items-center gap-1.5 text-[11.5px]">
+                <Lock className="h-3 w-3 text-muted-foreground" />
+                Confirm password
+              </Label>
+              <Input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" placeholder="••••••••" />
+            </div>
 
             <AnimatePresence>
               {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.18, ease }}
+                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18, ease }}
                   className="flex items-center gap-2 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12.5px] font-medium text-destructive"
                 >
                   <AlertCircle className="h-3.5 w-3.5 shrink-0" />
@@ -116,11 +96,7 @@ export function ResetPasswordView() {
                 </motion.div>
               )}
               {done && (
-                <motion.div
-                  initial={{ opacity: 0, y: -4 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.22, ease }}
+                <motion.div initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.22, ease }}
                   className="flex items-center gap-2 rounded-xl border border-success/30 bg-success/10 px-3 py-2 text-[12.5px] font-medium text-success"
                 >
                   <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
@@ -129,40 +105,17 @@ export function ResetPasswordView() {
               )}
             </AnimatePresence>
 
-            <Button type="submit" className="mt-2 w-full" disabled={done}>
-              Update password
+            <Button type="submit" className="mt-2 w-full" disabled={done || busy}>
+              {busy ? "Updating…" : "Update password"}
             </Button>
           </form>
 
-          <Link
-            href="/dashboard/profile"
-            className="mt-3 flex items-center justify-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
+          <Link href="/dashboard/profile" className="mt-3 flex items-center justify-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground">
             <ArrowLeft className="h-3 w-3" />
             Back to log in
           </Link>
         </div>
       </section>
-    </div>
-  );
-}
-
-function IconField({
-  icon: Icon,
-  label,
-  children,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label className="flex items-center gap-1.5 text-[11.5px]">
-        <Icon className="h-3 w-3 text-muted-foreground" />
-        {label}
-      </Label>
-      {children}
     </div>
   );
 }

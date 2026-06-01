@@ -145,7 +145,7 @@ export function ProfileView() {
           </div>
           <Button
             variant="ghost"
-            onClick={logout}
+            onClick={() => void logout()}
             className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
           >
             <LogOut className="h-4 w-4" />
