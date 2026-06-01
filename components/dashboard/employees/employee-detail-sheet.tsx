@@ -196,8 +196,11 @@ export function EmployeeDetailSheet({
           </button>
         </div>
 
-        {/* Scrollable body */}
-        <div className="flex-1 overflow-y-auto px-6 pb-6 pt-8">
+        {/* Scrollable body — hide native scrollbar, smooth scroll */}
+        <div
+          className="flex-1 overflow-y-auto px-6 pb-6 pt-8 scrollbar-none"
+          style={{ scrollBehavior: "smooth" }}
+        >
           {/* Avatar + Name header */}
           <div className="flex flex-col items-center text-center">
             <div

@@ -202,7 +202,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[88vw] p-5 gap-3 max-h-[85vh] overflow-y-auto sm:max-w-xl sm:p-7 sm:gap-6"
+        className="max-w-[88vw] p-5 gap-3 max-h-[85vh] overflow-y-auto scrollbar-none sm:max-w-xl sm:p-7 sm:gap-6"
         style={originStyle}
       >
         <DialogHeader>
