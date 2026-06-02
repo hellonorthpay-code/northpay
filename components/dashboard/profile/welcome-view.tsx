@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase/client";
 import { useProfile } from "@/lib/store/profile";
+import { PingPongVideo } from "@/components/ui/ping-pong-video";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -74,6 +75,18 @@ export function WelcomeView() {
 
   return (
     <div className="relative flex min-h-[calc(100vh-120px)] items-center justify-center overflow-hidden px-4">
+      {/* ── Looping ping-pong video backdrop ── */}
+      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <PingPongVideo
+          src="https://videos.pexels.com/video-files/34645692/14684158_2560_1440_30fps.mp4"
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ opacity: 0.28, mixBlendMode: "luminosity" }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-br from-background/75 via-background/35 to-background/75" />
+        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background" />
+        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background" />
+      </div>
+
       {/* Background orbs */}
       <div className="pointer-events-none absolute -left-40 top-10 h-[420px] w-[420px] rounded-full bg-rose-300/20 blur-[100px]" />
       <div className="pointer-events-none absolute -right-40 bottom-10 h-[420px] w-[420px] rounded-full bg-sky-300/20 blur-[100px]" />
