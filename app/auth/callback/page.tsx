@@ -7,12 +7,16 @@ import { supabase } from "@/lib/supabase/client";
 /**
  * OAuth callback — CLIENT side.
  *
- * The PKCE code verifier lives in the browser (localStorage), so the
- * code→session exchange must happen here, not in a server route handler.
+ * Our Supabase client has `detectSessionInUrl: true`, so it AUTOMATICALLY
+ * exchanges the `?code=` for a session as soon as it initialises. We must
+ * NOT call exchangeCodeForSession ourselves — the code is single-use, and
+ * a second exchange throws ("code already used"), which previously dumped
+ * users on /profile?error=oauth and skipped onboarding entirely.
  *
- * The browser Supabase client auto-detects the `?code=` in the URL on
- * load (detectSessionInUrl), but we also call exchangeCodeForSession
- * explicitly as a belt-and-suspenders so we control the redirect timing.
+ * So here we just WAIT for the session to materialise (via onAuthStateChange
+ * or a short poll), then route:
+ *   • brand-new account (no first_name yet) → /dashboard/welcome
+ *   • returning account                     → /dashboard
  */
 export default function AuthCallbackPage() {
   const router = useRouter();
@@ -21,62 +25,64 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     let done = false;
 
-    async function finish() {
-      try {
-        // Try explicit exchange first (PKCE flow with ?code=)
-        const url = new URL(window.location.href);
-        const code = url.searchParams.get("code");
+    async function routeForUser() {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!user) return "/dashboard/profile?error=oauth";
 
-        if (code) {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
-          if (error) throw error;
-        }
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("first_name")
+        .eq("id", user.id)
+        .maybeSingle();
 
-        // Confirm we actually have a session
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-
-        async function routeForUser() {
-          // New users (e.g. fresh Google sign-in) have no first_name yet —
-          // send them through the welcome/onboarding screen once.
-          const { data: { user } } = await supabase.auth.getUser();
-          if (!user) return "/dashboard/profile?error=oauth";
-
-          const { data: profile } = await supabase
-            .from("profiles")
-            .select("first_name")
-            .eq("id", user.id)
-            .single();
-
-          const hasName = !!(profile?.first_name && profile.first_name.trim());
-          return hasName ? "/dashboard" : "/dashboard/welcome";
-        }
-
-        if (!done) {
-          done = true;
-          if (session) {
-            router.replace(await routeForUser());
-          } else {
-            // Some flows resolve via onAuthStateChange a beat later
-            setTimeout(async () => {
-              const {
-                data: { session: s2 },
-              } = await supabase.auth.getSession();
-              router.replace(s2 ? await routeForUser() : "/dashboard/profile?error=oauth");
-            }, 600);
-          }
-        }
-      } catch (e) {
-        if (!done) {
-          done = true;
-          setError(e instanceof Error ? e.message : "Sign-in failed.");
-          setTimeout(() => router.replace("/dashboard/profile?error=oauth"), 1500);
-        }
-      }
+      const hasName = !!(profile?.first_name && profile.first_name.trim());
+      return hasName ? "/dashboard" : "/dashboard/welcome";
     }
 
-    void finish();
+    async function go() {
+      if (done) return;
+      done = true;
+      router.replace(await routeForUser());
+    }
+
+    // 1) React the instant the session is established.
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (session && (event === "SIGNED_IN" || event === "INITIAL_SESSION")) {
+        void go();
+      }
+    });
+
+    // 2) Belt-and-suspenders poll — the session may already be present
+    //    (detectSessionInUrl resolved before this effect ran), or land a
+    //    beat later. Check a handful of times, then give up.
+    let tries = 0;
+    const poll = window.setInterval(async () => {
+      tries += 1;
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+      if (session) {
+        window.clearInterval(poll);
+        void go();
+      } else if (tries >= 12) {
+        // ~4.8s with nothing → genuine failure
+        window.clearInterval(poll);
+        if (!done) {
+          done = true;
+          setError("Sign-in didn't complete. Please try again.");
+          setTimeout(() => router.replace("/dashboard/profile?error=oauth"), 1400);
+        }
+      }
+    }, 400);
+
+    return () => {
+      subscription.unsubscribe();
+      window.clearInterval(poll);
+    };
   }, [router]);
 
   return (

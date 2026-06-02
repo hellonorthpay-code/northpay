@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar as CalendarIcon,
@@ -570,8 +569,6 @@ function DatePicker({
   onChange: (next: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [pos, setPos] = useState({ top: 0, left: 0, width: 0 });
   // `viewMonth` is the first day of the month currently displayed —
   // separate from the selected `value` so the user can browse months
   // without committing a date.
@@ -579,54 +576,19 @@ function DatePicker({
   const [viewMonth, setViewMonth] = useState(
     new Date(initial.getFullYear(), initial.getMonth(), 1),
   );
-  const btnRef = React.useRef<HTMLButtonElement>(null);
-  const popRef = React.useRef<HTMLDivElement>(null);
 
-  useEffect(() => setMounted(true), []);
-
-  // Position the portaled popover from the trigger's viewport rect. Opens
-  // below by default; flips above if there isn't room. Recomputed on open,
-  // scroll, and resize so it tracks the trigger even inside a scrolled modal.
-  function reposition() {
-    const el = btnRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    const PANEL_H = 340;
-    const below = r.bottom + 8;
-    const flipUp = below + PANEL_H > window.innerHeight && r.top - PANEL_H > 0;
-    setPos({
-      top: flipUp ? r.top - PANEL_H - 8 : below,
-      left: r.left,
-      width: r.width,
-    });
-  }
-
+  // Close on Escape only. We render INLINE (not portaled / not absolute):
+  // the calendar lives inside the scrollable dialog body. Portaling it to
+  // document.body put it OUTSIDE the Radix Dialog, so Radix treated day
+  // clicks as "interact outside" and swallowed them — the date never
+  // changed. Inline keeps every click inside the dialog where it belongs.
   useEffect(() => {
     if (!open) return;
-    reposition();
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (
-        btnRef.current?.contains(t) ||
-        popRef.current?.contains(t)
-      )
-        return;
-      setOpen(false);
-    };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") setOpen(false);
     };
-    const onScroll = () => reposition();
-    document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
-    window.addEventListener("scroll", onScroll, true);
-    window.addEventListener("resize", onScroll);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-      window.removeEventListener("scroll", onScroll, true);
-      window.removeEventListener("resize", onScroll);
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [open]);
 
   const displayLabel = value
@@ -649,9 +611,8 @@ function DatePicker({
   }
 
   return (
-    <>
+    <div className="relative">
       <button
-        ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
         className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-background px-3 text-[14px] text-foreground shadow-sm transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
@@ -660,37 +621,27 @@ function DatePicker({
         <CalendarIcon className="h-4 w-4 text-muted-foreground" />
       </button>
 
-      {mounted &&
-        createPortal(
-          <AnimatePresence>
-            {open && (
-              <motion.div
-                ref={popRef}
-                initial={{ opacity: 0, y: -4, scale: 0.98 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: -4, scale: 0.98 }}
-                transition={{ duration: 0.18, ease: EASE }}
-                style={{
-                  position: "fixed",
-                  top: pos.top,
-                  left: pos.left,
-                  minWidth: Math.max(pos.width, 280),
-                  zIndex: 100,
-                }}
-                className="origin-top rounded-2xl border border-border bg-background/95 p-3 shadow-pop backdrop-blur-xl"
-              >
-                <CalendarPanel
-                  viewMonth={viewMonth}
-                  onViewMonth={setViewMonth}
-                  selected={value ? new Date(value + "T00:00:00") : null}
-                  onPick={pick}
-                />
-              </motion.div>
-            )}
-          </AnimatePresence>,
-          document.body,
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22, ease: EASE }}
+            style={{ overflow: "hidden" }}
+          >
+            <div className="mt-2 rounded-2xl border border-border bg-background/95 p-3 shadow-soft">
+              <CalendarPanel
+                viewMonth={viewMonth}
+                onViewMonth={setViewMonth}
+                selected={value ? new Date(value + "T00:00:00") : null}
+                onPick={pick}
+              />
+            </div>
+          </motion.div>
         )}
-    </>
+      </AnimatePresence>
+    </div>
   );
 }
 
