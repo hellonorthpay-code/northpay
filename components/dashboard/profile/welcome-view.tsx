@@ -80,24 +80,23 @@ export function WelcomeView() {
 
   return (
     <div className="relative flex min-h-[calc(100vh-120px)] items-center justify-center overflow-hidden px-4">
-      {/* ── Looping ping-pong video backdrop ── */}
-      <div className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+      {/* ── Looping ping-pong video backdrop — full viewport, fixed ── */}
+      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <PingPongVideo
           src="https://videos.pexels.com/video-files/34645692/14684158_2560_1440_30fps.mp4"
           className="absolute inset-0 h-full w-full object-cover"
-          style={{ opacity: 0.28, mixBlendMode: "luminosity" }}
+          style={{ opacity: 0.35, mixBlendMode: "luminosity" }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-background/75 via-background/35 to-background/75" />
+        <div className="absolute inset-0 bg-gradient-to-br from-background/65 via-transparent to-background/65" />
         <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background" />
         <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background" />
+        {/* Colour tint orbs over the video */}
+        <div className="absolute -left-40 top-20 h-[500px] w-[500px] rounded-full bg-rose-400/10 blur-[100px]" />
+        <div className="absolute -right-40 bottom-20 h-[500px] w-[500px] rounded-full bg-sky-400/10 blur-[100px]" />
       </div>
 
-      {/* Background orbs */}
-      <div className="pointer-events-none absolute -left-40 top-10 h-[420px] w-[420px] rounded-full bg-rose-300/20 blur-[100px]" />
-      <div className="pointer-events-none absolute -right-40 bottom-10 h-[420px] w-[420px] rounded-full bg-sky-300/20 blur-[100px]" />
-
       {/* Confetti burst */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-full">
+      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full">
         {confetti.map((c) => (
           <motion.span
             key={c.id}
@@ -114,7 +113,7 @@ export function WelcomeView() {
         initial={{ opacity: 0, y: 16, scale: 0.97 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease }}
-        className="relative w-full max-w-md overflow-hidden rounded-3xl border border-border/70 bg-card/85 p-7 shadow-pop backdrop-blur-xl md:p-8"
+        className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-border/70 bg-card/85 p-7 shadow-pop backdrop-blur-xl md:p-8"
       >
         <AnimatePresence mode="wait">
           {phase === "form" ? (
