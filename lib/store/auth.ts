@@ -36,6 +36,8 @@ interface AuthStore {
   resetPassword: (
     newPassword: string
   ) => Promise<{ ok: true } | { ok: false; error: string }>;
+  /** Permanently delete the account + all data, then sign out. */
+  deleteAccount: () => Promise<{ ok: true } | { ok: false; error: string }>;
 }
 
 function sessionToUser(session: Session | null): AuthUser | null {
@@ -168,6 +170,27 @@ export const useAuth = create<AuthStore>((set, get) => ({
       password: newPassword,
     });
     if (error) return { ok: false, error: error.message };
+    return { ok: true };
+  },
+
+  deleteAccount: async () => {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) return { ok: false, error: "Not signed in." };
+
+    const res = await fetch("/api/account/delete", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      return { ok: false, error: body.error ?? "Couldn't delete account." };
+    }
+
+    await supabase.auth.signOut();
+    set({ user: null });
     return { ok: true };
   },
 }));

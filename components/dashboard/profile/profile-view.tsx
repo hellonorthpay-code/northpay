@@ -1,7 +1,9 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Briefcase, Globe2, LogOut, Mail, User } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { AlertTriangle, Briefcase, Globe2, LogOut, Mail, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,8 +34,12 @@ const TIMEZONES = [
 ];
 
 export function ProfileView() {
+  const router = useRouter();
   const { profile, setProfile } = useProfile();
-  const { user, hydrated, hydrate, logout } = useAuth();
+  const { user, hydrated, hydrate, logout, deleteAccount } = useAuth();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
 
   useEffect(() => {
     hydrate();
@@ -146,11 +152,95 @@ export function ProfileView() {
           <Button
             variant="ghost"
             onClick={() => void logout()}
-            className="w-full justify-center text-destructive hover:bg-destructive/10 hover:text-destructive"
+            className="w-full justify-center"
           >
             <LogOut className="h-4 w-4" />
             Log out
           </Button>
+
+          {/* ── Danger zone ── */}
+          <div className="mt-1 border-t border-border/50 pt-3">
+            <AnimatePresence mode="wait" initial={false}>
+              {!confirmDelete ? (
+                <motion.div
+                  key="delete-trigger"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirmDelete(true);
+                      setDeleteError(null);
+                    }}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Delete account
+                  </button>
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="delete-confirm"
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: "auto" }}
+                  exit={{ opacity: 0, height: 0 }}
+                  transition={{ duration: 0.22 }}
+                  style={{ overflow: "hidden" }}
+                >
+                  <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
+                    <p className="flex items-center gap-2 text-[13px] font-semibold tracking-tight text-destructive">
+                      <AlertTriangle className="h-4 w-4" />
+                      Delete your account?
+                    </p>
+                    <p className="mt-1.5 text-[12px] leading-relaxed text-muted-foreground">
+                      This permanently removes your account and{" "}
+                      <strong>all employees, payroll runs, and settings</strong>.
+                      This cannot be undone.
+                    </p>
+
+                    {deleteError && (
+                      <p className="mt-2 text-[11.5px] font-medium text-destructive">
+                        {deleteError}
+                      </p>
+                    )}
+
+                    <div className="mt-3 flex gap-2">
+                      <Button
+                        variant="ghost"
+                        onClick={() => setConfirmDelete(false)}
+                        disabled={deleting}
+                        className="flex-1 justify-center"
+                      >
+                        Cancel
+                      </Button>
+                      <button
+                        type="button"
+                        disabled={deleting}
+                        onClick={async () => {
+                          setDeleting(true);
+                          setDeleteError(null);
+                          const result = await deleteAccount();
+                          if (result.ok) {
+                            router.replace("/dashboard/profile");
+                          } else {
+                            setDeleteError(result.error);
+                            setDeleting(false);
+                          }
+                        }}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-full bg-destructive px-4 py-2 text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-60"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {deleting ? "Deleting…" : "Delete forever"}
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
         </ProfileGroup>
       </div>
     </div>
