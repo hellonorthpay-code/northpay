@@ -27,6 +27,11 @@ export default function DashboardLayout({
     pathname.startsWith("/dashboard/profile") ||
     pathname.startsWith("/dashboard/reset-password");
 
+  // Welcome/onboarding is authed but should render chrome-free (no sidebar,
+  // no topbar) so it feels like a dedicated moment.
+  const isWelcome = pathname.startsWith("/dashboard/welcome");
+  const hideChrome = isWelcome || (isPublicAuthRoute && !user);
+
   useEffect(() => {
     if (!authHydrated) return;
     if (user) return;
@@ -50,11 +55,11 @@ export default function DashboardLayout({
         {/* Profile + reset-password are personal-settings flows, not part
             of the payroll workflow, so we hide the dashboard sidebar on
             those for a calmer single-column layout. */}
-        {!isPublicAuthRoute && <Sidebar />}
+        {!hideChrome && <Sidebar />}
         <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
-          {/* Hide topbar on login/reset pages — the video fullscreen canvas
-              replaces the whole UI so the title label is irrelevant. */}
-          {!(isPublicAuthRoute && !user) && <Topbar />}
+          {/* Hide topbar on login/reset/welcome — those are full-canvas
+              moments where the title label would be noise. */}
+          {!hideChrome && <Topbar />}
           {/* Page transition — kept short (180ms in / 120ms out) so it
               runs in parallel with the sidebar pill morph instead of
               outlasting it. The previous 350ms × 2 made tab switches

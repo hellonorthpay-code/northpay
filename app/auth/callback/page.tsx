@@ -37,17 +37,33 @@ export default function AuthCallbackPage() {
           data: { session },
         } = await supabase.auth.getSession();
 
+        async function routeForUser() {
+          // New users (e.g. fresh Google sign-in) have no first_name yet —
+          // send them through the welcome/onboarding screen once.
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) return "/dashboard/profile?error=oauth";
+
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("first_name")
+            .eq("id", user.id)
+            .single();
+
+          const hasName = !!(profile?.first_name && profile.first_name.trim());
+          return hasName ? "/dashboard" : "/dashboard/welcome";
+        }
+
         if (!done) {
           done = true;
           if (session) {
-            router.replace("/dashboard");
+            router.replace(await routeForUser());
           } else {
             // Some flows resolve via onAuthStateChange a beat later
             setTimeout(async () => {
               const {
                 data: { session: s2 },
               } = await supabase.auth.getSession();
-              router.replace(s2 ? "/dashboard" : "/dashboard/profile?error=oauth");
+              router.replace(s2 ? await routeForUser() : "/dashboard/profile?error=oauth");
             }, 600);
           }
         }
