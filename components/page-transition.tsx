@@ -7,14 +7,18 @@ import { AnimatePresence, motion } from "framer-motion";
 const ease = [0.22, 1, 0.36, 1] as const;
 
 /**
- * Crossfade-+-tiny-y for every top-LEVEL route change.
+ * Opacity-only crossfade for every top-LEVEL route change.
  *
  * We key on the first path segment ("/", "/dashboard", "/about") rather
  * than the full pathname so navigating inside a section — Employees →
  * Payroll, for example — does NOT remount the entire layout and lose
- * sidebar/pill state. The dashboard already has its own inner
- * AnimatePresence for those intra-section swaps; this outer one only
- * fires when crossing top-level boundaries.
+ * sidebar/pill state.
+ *
+ * IMPORTANT: this animates ONLY opacity. Any `transform` (even a settled
+ * translateY(0)) — or `will-change: transform` — turns this wrapper into a
+ * containing block, which breaks `position: sticky` (the homepage is built
+ * from sticky scroll scenes → it would render blank) and `position: fixed`
+ * descendants (modals, the login video). Keep it transform-free.
  *
  * Pairs with <RouteProgressBar> below for perceived load smoothness.
  */
@@ -32,15 +36,13 @@ export function PageTransition({ children }: { children: React.ReactNode }) {
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={segment}
-        initial={{ opacity: 0, y: 6 }}
-        animate={{ opacity: 1, y: 0 }}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{
-          opacity: { duration: 0.22, ease },
-          y: { duration: 0.32, ease },
-          exit: { duration: 0.14 },
+          opacity: { duration: 0.2, ease },
+          exit: { duration: 0.12 },
         }}
-        className="will-change-[opacity,transform]"
       >
         {children}
       </motion.div>
