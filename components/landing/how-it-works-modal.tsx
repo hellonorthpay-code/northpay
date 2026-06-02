@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence, type MotionValue } from "framer-motion";
 import {
   ArrowLeft,
@@ -143,7 +144,16 @@ export function HowItWorksModal({
   const current = STEPS[step];
   const isLast = step === STEPS.length - 1;
 
-  return (
+  // Only portal on the client. Render via document.body so the modal escapes
+  // any transformed ancestor (the route PageTransition wrapper applies a
+  // transform, which would otherwise trap `position: fixed` and stop the
+  // modal from covering the viewport — making it look like the button is
+  // "not working").
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return null;
+
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -268,7 +278,8 @@ export function HowItWorksModal({
           </div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 }
 
