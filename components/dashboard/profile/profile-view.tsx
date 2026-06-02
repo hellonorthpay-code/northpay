@@ -3,7 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { AlertTriangle, Briefcase, Globe2, LogOut, Mail, Trash2, User } from "lucide-react";
+import Link from "next/link";
+import { AlertTriangle, Briefcase, ExternalLink, Globe2, Info, LogOut, Mail, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -136,6 +137,23 @@ export function ProfileView() {
               </SelectContent>
             </Select>
           </Field>
+        </ProfileGroup>
+
+        <ProfileGroup icon={Info} title="About">
+          <Link
+            href="/about"
+            className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/40 px-4 py-3 transition-colors hover:bg-muted/40"
+          >
+            <div className="min-w-0">
+              <p className="text-[13.5px] font-medium tracking-tight">
+                About NorthPay
+              </p>
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                Our story, the team, and what we're building.
+              </p>
+            </div>
+            <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </Link>
         </ProfileGroup>
 
         <ProfileGroup icon={Briefcase} title="Account">

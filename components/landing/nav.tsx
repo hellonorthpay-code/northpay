@@ -56,23 +56,13 @@ export function LandingNav() {
           NorthPay
         </NavItem>
         {isAuthed && (
-          <>
-            <NavItem
-              href="/about"
-              isActive={active === "about"}
-              className="hidden px-3 py-1.5 text-[13px] font-medium text-muted-foreground transition-colors hover:text-foreground md:inline-flex"
-              activeTextClassName="text-foreground dark:text-white"
-            >
-              About
-            </NavItem>
-            <NavItem
-              href="/dashboard"
-              isActive={active === "dashboard"}
-              className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
-            >
-              Start tracking
-            </NavItem>
-          </>
+          <NavItem
+            href="/dashboard"
+            isActive={active === "dashboard"}
+            className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+          >
+            Start tracking
+          </NavItem>
         )}
         <NavItem
           href="/dashboard/profile"
