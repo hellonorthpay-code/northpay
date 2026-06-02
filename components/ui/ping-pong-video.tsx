@@ -60,14 +60,26 @@ export function PingPongVideo({
 
     function captureNext() {
       if (cancelled || captureDone) return;
-      ctx!.drawImage(video, 0, 0, canvas.width, canvas.height);
-      createImageBitmap(canvas).then((bmp) => {
-        if (cancelled) {
-          bmp.close();
-          return;
-        }
-        frames.push(bmp);
-      });
+      // Wrap in try/catch: if the source is CORS-tainted, drawImage +
+      // createImageBitmap throw a SecurityError. We must never let that
+      // bubble (it would trip React's error boundary). Fall back to just
+      // painting the live video to the canvas (no ping-pong cache).
+      try {
+        ctx!.drawImage(video, 0, 0, canvas.width, canvas.height);
+        createImageBitmap(canvas)
+          .then((bmp) => {
+            if (cancelled) {
+              bmp.close();
+              return;
+            }
+            frames.push(bmp);
+          })
+          .catch(() => {
+            /* tainted canvas — skip caching this frame */
+          });
+      } catch {
+        /* tainted/decode error — ignore this frame */
+      }
       if (v.requestVideoFrameCallback) {
         v.requestVideoFrameCallback(captureNext);
       } else {
@@ -90,7 +102,12 @@ export function PingPongVideo({
         if (cancelled) return;
         if (now - last >= FRAME_INTERVAL) {
           last = now;
-          ctx!.drawImage(frames[idx], 0, 0);
+          try {
+            ctx!.drawImage(frames[idx], 0, 0);
+          } catch {
+            /* canvas detached mid-teardown — stop quietly */
+            return;
+          }
           idx += dir;
           if (idx >= frames.length - 1) {
             idx = frames.length - 1;

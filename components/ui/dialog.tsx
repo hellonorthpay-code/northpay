@@ -45,7 +45,18 @@ export const DialogContent = React.forwardRef<
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
     hideClose?: boolean;
   }
->(({ className, children, hideClose, style, ...props }, ref) => (
+>(({ className, children, hideClose, style, ...props }, ref) => {
+  // Floating popovers (e.g. the date picker calendar) are portaled to
+  // document.body so they aren't clipped by this dialog's overflow. But
+  // that puts them OUTSIDE DialogContent, so Radix would treat clicks on
+  // them as "interact outside" and close the dialog. We mark those
+  // popovers with [data-northpay-popover] and cancel the close here.
+  const ignoreIfPopover = (e: { target: EventTarget | null; preventDefault: () => void }) => {
+    const t = e.target as HTMLElement | null;
+    if (t && t.closest("[data-northpay-popover]")) e.preventDefault();
+  };
+
+  return (
   <DialogPrimitive.Portal>
     <DialogOverlay />
     {/* iOS modal vocabulary:
@@ -56,6 +67,9 @@ export const DialogContent = React.forwardRef<
           rather than abrupt. Same curve on close → symmetric dismiss. */}
     <DialogPrimitive.Content
       ref={ref}
+      onPointerDownOutside={ignoreIfPopover}
+      onInteractOutside={ignoreIfPopover}
+      onFocusOutside={ignoreIfPopover}
       className={cn(
         "fixed left-1/2 top-1/2 z-50 grid w-full max-w-lg -translate-x-1/2 -translate-y-1/2 gap-6 rounded-3xl border border-border bg-background/95 backdrop-blur-2xl p-7 shadow-pop",
         "origin-center will-change-transform",
@@ -80,7 +94,8 @@ export const DialogContent = React.forwardRef<
       )}
     </DialogPrimitive.Content>
   </DialogPrimitive.Portal>
-));
+  );
+});
 DialogContent.displayName = "DialogContent";
 
 export const DialogHeader = ({

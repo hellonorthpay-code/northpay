@@ -55,9 +55,14 @@ export function WelcomeView() {
       lastName: lastName.trim(),
       phone: phone.trim(),
     });
-    // Celebrate before dropping them into the app
+    // Celebrate, then hard-navigate into the app. A full load (rather than
+    // a soft router.replace) guarantees /dashboard mounts fresh — the
+    // celebration screen's video/canvas work is fully torn down first, so
+    // there's no transient client-side exception on the dashboard.
     setPhase("celebrating");
-    setTimeout(() => router.replace("/dashboard"), 2600);
+    setTimeout(() => {
+      window.location.assign("/dashboard");
+    }, 2600);
   }
 
   // Confetti positions — deterministic so SSR + client match
