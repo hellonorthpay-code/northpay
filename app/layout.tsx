@@ -3,7 +3,7 @@ import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
 import { LandingNav } from "@/components/landing/nav";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
-import { PageTransition, RouteProgressBar } from "@/components/page-transition";
+import { RouteProgressBar } from "@/components/page-transition";
 
 export const metadata: Metadata = {
   title: "NorthPay — Canadian Payroll. Finally Beautiful.",
@@ -23,9 +23,14 @@ export default function RootLayout({
         <ThemeScript />
       </head>
       <body className="min-h-screen bg-background text-foreground">
+        {/* A subtle top progress bar gives the "something's happening" cue
+            on navigation. We deliberately do NOT wrap children in a keyed
+            page-transition: pages are prerendered and switch instantly, and
+            wrapping the sticky-scroll homepage in AnimatePresence broke its
+            scroll measurement on soft navigation (blank until refresh). */}
         <RouteProgressBar />
         <LandingNav />
-        <PageTransition>{children}</PageTransition>
+        {children}
         <MobileNav />
       </body>
     </html>
