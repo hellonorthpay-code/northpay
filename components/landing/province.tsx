@@ -409,7 +409,16 @@ function MapPanel({
             const provinceCode = code as ProvinceCode;
             const isActive = activeCode === provinceCode;
             const d = pathGen(feature) ?? "";
-            const [cx, cy] = pathGen.centroid(feature);
+            // Round the centroid to 2 decimals. d3's centroid produces a
+            // value whose last digits differ between the Node (server) and
+            // browser (client) JS engines — e.g. 532.7612312149108 vs
+            // ...087. Rendered raw into x/y, that's a hydration mismatch,
+            // which in a PRODUCTION build throws a client-side exception
+            // (dev only warns). Rounding makes both sides emit identical
+            // strings.
+            const [cxRaw, cyRaw] = pathGen.centroid(feature);
+            const cx = Math.round(cxRaw * 100) / 100;
+            const cy = Math.round(cyRaw * 100) / 100;
             return (
               <ProvincePath
                 key={code}

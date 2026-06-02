@@ -61,7 +61,8 @@ export function WelcomeView() {
     // there's no transient client-side exception on the dashboard.
     setPhase("celebrating");
     setTimeout(() => {
-      window.location.assign("/dashboard");
+      // Go straight to the employees page (skip the /dashboard redirect hop).
+      window.location.assign("/dashboard/employees");
     }, 2600);
   }
 

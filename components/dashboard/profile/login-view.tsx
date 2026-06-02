@@ -50,7 +50,7 @@ export function LoginView() {
           setError(result.error);
         } else {
           // Success — redirect straight into the app
-          router.replace("/dashboard");
+          router.replace("/dashboard/employees");
         }
         return;
       }

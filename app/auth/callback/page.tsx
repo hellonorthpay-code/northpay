@@ -38,7 +38,7 @@ export default function AuthCallbackPage() {
         .maybeSingle();
 
       const hasName = !!(profile?.first_name && profile.first_name.trim());
-      return hasName ? "/dashboard" : "/dashboard/welcome";
+      return hasName ? "/dashboard/employees" : "/dashboard/welcome";
     }
 
     async function go() {
