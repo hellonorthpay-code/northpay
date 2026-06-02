@@ -304,6 +304,12 @@ function ConfirmBody({
 
 // ─────────────────────────────────────────────────────────────────────────
 // Slide-to-confirm — iOS slide-to-unlock style
+//
+// Uses raw Pointer Events with setPointerCapture rather than Framer's
+// `drag`. Framer drag computes constraints from a layout measurement that
+// is unreliable while the modal scales in (reads width 0 → dead slider, or
+// "sticks" if the box resizes mid-gesture). Pointer events track the
+// cursor against the live track rect every move, so it can never get stuck.
 // ─────────────────────────────────────────────────────────────────────────
 function SlideToConfirm({
   onConfirm,
@@ -313,60 +319,68 @@ function SlideToConfirm({
   label: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
-  const [trackWidth, setTrackWidth] = useState(0);
   const [completed, setCompleted] = useState(false);
   const x = useMotionValue(0);
-  const THUMB = 48;
 
-  useEffect(() => {
+  const THUMB = 48; // px
+  const PAD = 4; // left/right inset of the thumb within the track
+
+  // Max travel distance, computed live from the track's current width.
+  const maxRef = useRef(0);
+  function maxTravel() {
     const el = trackRef.current;
-    if (!el) return;
+    if (!el) return 0;
+    return Math.max(0, el.offsetWidth - THUMB - PAD * 2);
+  }
 
-    function measure() {
-      if (el) {
-        setTrackWidth(Math.max(0, el.offsetWidth - THUMB - 8));
-      }
-    }
-
-    // Measure now, on the next frame (after entrance animation lays out),
-    // and whenever the track's box actually changes size. The modal scales
-    // in, so a single mount measurement can read width 0 → dead slider.
-    measure();
-    const raf = requestAnimationFrame(measure);
-
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    window.addEventListener("resize", measure);
-
-    return () => {
-      cancelAnimationFrame(raf);
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-    };
-  }, []);
-
-  const progress = useTransform(x, [0, trackWidth || 1], [0, 1], {
-    clamp: true,
+  const progress = useTransform(x, (v) => {
+    const m = maxRef.current || 1;
+    return Math.min(1, Math.max(0, v / m));
   });
-  const fillWidth = useTransform(progress, (p) => `${Math.min(p, 1) * 100}%`);
+  const fillWidth = useTransform(progress, (p) => `${p * 100}%`);
   const labelOpacity = useTransform(progress, [0, 0.5], [1, 0]);
   const labelX = useTransform(progress, [0, 1], [0, 12]);
 
-  function handleDragEnd() {
+  const draggingRef = useRef(false);
+  const startXRef = useRef(0);
+  const startValRef = useRef(0);
+
+  function onPointerDown(e: React.PointerEvent) {
     if (completed) return;
-    const v = x.get();
-    if (v >= trackWidth * 0.85) {
-      // Confirmed — slam thumb to the end and fire
-      animate(x, trackWidth, {
-        type: "spring",
-        stiffness: 320,
-        damping: 30,
-      });
+    draggingRef.current = true;
+    maxRef.current = maxTravel();
+    startXRef.current = e.clientX;
+    startValRef.current = x.get();
+    (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  }
+
+  function onPointerMove(e: React.PointerEvent) {
+    if (!draggingRef.current || completed) return;
+    const delta = e.clientX - startXRef.current;
+    const next = Math.min(maxRef.current, Math.max(0, startValRef.current + delta));
+    x.set(next);
+  }
+
+  function settle() {
+    if (!draggingRef.current || completed) return;
+    draggingRef.current = false;
+    const m = maxRef.current || 1;
+    if (x.get() >= m * 0.8) {
+      animate(x, m, { type: "spring", stiffness: 320, damping: 30 });
       setCompleted(true);
       onConfirm();
     } else {
       animate(x, 0, { type: "spring", stiffness: 320, damping: 30 });
     }
+  }
+
+  function onPointerUp(e: React.PointerEvent) {
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+    settle();
   }
 
   return (
@@ -427,8 +441,7 @@ function SlideToConfirm({
             initial={{ scale: 0.4, opacity: 0.65 }}
             animate={{ scale: 2.8, opacity: 0 }}
             transition={{ duration: 1.6, ease }}
-            className="pointer-events-none absolute top-1 h-12 w-12 rounded-full bg-success/50"
-            style={{ left: `${trackWidth - 4}px` }}
+            className="pointer-events-none absolute top-1 right-1 h-12 w-12 rounded-full bg-success/50"
           />
         )}
       </AnimatePresence>
@@ -436,17 +449,16 @@ function SlideToConfirm({
       {/* Thumb */}
       <motion.button
         type="button"
-        drag="x"
-        dragConstraints={{ left: 0, right: trackWidth }}
-        dragElastic={0}
-        dragMomentum={false}
         style={{ x, touchAction: "none" }}
-        onDragEnd={handleDragEnd}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
         whileTap={{ scale: 1.04 }}
         disabled={completed}
         aria-label={label}
         className={cn(
-          "absolute left-1 top-1 grid h-12 w-12 cursor-grab place-items-center rounded-full bg-background text-foreground shadow-pop transition-colors duration-300 active:cursor-grabbing",
+          "absolute left-1 top-1 grid h-12 w-12 cursor-grab touch-none select-none place-items-center rounded-full bg-background text-foreground shadow-pop transition-colors duration-300 active:cursor-grabbing",
           completed && "cursor-default text-success"
         )}
       >
