@@ -30,7 +30,14 @@ export default function DashboardLayout({
   // Welcome/onboarding is authed but should render chrome-free (no sidebar,
   // no topbar) so it feels like a dedicated moment.
   const isWelcome = pathname.startsWith("/dashboard/welcome");
-  const hideChrome = isWelcome || (isPublicAuthRoute && !user);
+
+  // Sidebar (Employees/Payroll/CRA/Settings) is the payroll workflow nav —
+  // it doesn't belong on personal-account pages. Hide it on profile,
+  // reset-password, and welcome regardless of auth state.
+  const hideSidebar = isPublicAuthRoute || isWelcome;
+  // Topbar is hidden only on full-canvas moments (welcome, and the login
+  // card shown to signed-out users). The signed-in profile keeps its title.
+  const hideTopbar = isWelcome || (isPublicAuthRoute && !user);
 
   useEffect(() => {
     if (!authHydrated) return;
@@ -55,11 +62,11 @@ export default function DashboardLayout({
         {/* Profile + reset-password are personal-settings flows, not part
             of the payroll workflow, so we hide the dashboard sidebar on
             those for a calmer single-column layout. */}
-        {!hideChrome && <Sidebar />}
+        {!hideSidebar && <Sidebar />}
         <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
-          {/* Hide topbar on login/reset/welcome — those are full-canvas
-              moments where the title label would be noise. */}
-          {!hideChrome && <Topbar />}
+          {/* Hide topbar on login/welcome — those are full-canvas moments
+              where the title label would be noise. */}
+          {!hideTopbar && <Topbar />}
           {/* Page transition — kept short (180ms in / 120ms out) so it
               runs in parallel with the sidebar pill morph instead of
               outlasting it. The previous 350ms × 2 made tab switches

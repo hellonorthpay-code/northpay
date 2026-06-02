@@ -85,14 +85,11 @@ export function WelcomeView() {
         <PingPongVideo
           src="https://videos.pexels.com/video-files/34645692/14684158_2560_1440_30fps.mp4"
           className="absolute inset-0 h-full w-full object-cover"
-          style={{ opacity: 0.35, mixBlendMode: "luminosity" }}
+          style={{ opacity: 0.9 }}
         />
-        <div className="absolute inset-0 bg-gradient-to-br from-background/65 via-transparent to-background/65" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background" />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background" />
-        {/* Colour tint orbs over the video */}
-        <div className="absolute -left-40 top-20 h-[500px] w-[500px] rounded-full bg-rose-400/10 blur-[100px]" />
-        <div className="absolute -right-40 bottom-20 h-[500px] w-[500px] rounded-full bg-sky-400/10 blur-[100px]" />
+        {/* Light scrim only behind the card area for legibility — the rest
+            of the video stays fully visible edge to edge. */}
+        <div className="absolute inset-0 bg-background/10" />
       </div>
 
       {/* Confetti burst */}
