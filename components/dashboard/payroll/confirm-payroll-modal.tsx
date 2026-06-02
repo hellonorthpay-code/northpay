@@ -319,14 +319,30 @@ function SlideToConfirm({
   const THUMB = 48;
 
   useEffect(() => {
+    const el = trackRef.current;
+    if (!el) return;
+
     function measure() {
-      if (trackRef.current) {
-        setTrackWidth(Math.max(0, trackRef.current.offsetWidth - THUMB - 8));
+      if (el) {
+        setTrackWidth(Math.max(0, el.offsetWidth - THUMB - 8));
       }
     }
+
+    // Measure now, on the next frame (after entrance animation lays out),
+    // and whenever the track's box actually changes size. The modal scales
+    // in, so a single mount measurement can read width 0 → dead slider.
     measure();
+    const raf = requestAnimationFrame(measure);
+
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
     window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, []);
 
   const progress = useTransform(x, [0, trackWidth || 1], [0, 1], {
@@ -424,7 +440,7 @@ function SlideToConfirm({
         dragConstraints={{ left: 0, right: trackWidth }}
         dragElastic={0}
         dragMomentum={false}
-        style={{ x }}
+        style={{ x, touchAction: "none" }}
         onDragEnd={handleDragEnd}
         whileTap={{ scale: 1.04 }}
         disabled={completed}
