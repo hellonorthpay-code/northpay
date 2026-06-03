@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowRight, Check, Phone, Sparkles, User } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Phone, Sparkles, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/lib/supabase/client";
+import { useAuth } from "@/lib/store/auth";
 import { useProfile } from "@/lib/store/profile";
 import { PingPongVideo } from "@/components/ui/ping-pong-video";
 
@@ -22,14 +23,16 @@ const ease = [0.22, 1, 0.36, 1] as const;
 export function WelcomeView() {
   const router = useRouter();
   const setProfile = useProfile((s) => s.setProfile);
+  const logout = useAuth((s) => s.logout);
 
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [busy, setBusy] = useState(false);
   const [ready, setReady] = useState(false);
-  /** "form" while collecting details, "celebrating" during the success splash. */
-  const [phase, setPhase] = useState<"form" | "celebrating">("form");
+  /** "form" while collecting details, "celebrating" during the success splash,
+   *  "leaving" when the user clicked Back so the card can fade out cleanly. */
+  const [phase, setPhase] = useState<"form" | "celebrating" | "leaving">("form");
 
   // Prefill from Google metadata if present
   useEffect(() => {
@@ -45,6 +48,30 @@ export function WelcomeView() {
       setReady(true);
     })();
   }, [router]);
+
+  // Browser back-button safety: when we arrived here from /auth/callback,
+  // the previous history entry is the (now stale) callback URL — clicking
+  // Back would bounce the user through it and right back to this page.
+  // Replace that entry with the homepage so Back lands somewhere meaningful.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const ref = document.referrer;
+    if (ref && /\/auth\/callback/.test(ref)) {
+      try {
+        window.history.replaceState(null, "", "/");
+        window.history.pushState(null, "", "/dashboard/welcome");
+      } catch {}
+    }
+  }, []);
+
+  async function goBackToLogin() {
+    setPhase("leaving");
+    // Give the exit animation a beat, then sign out & route home.
+    window.setTimeout(async () => {
+      await logout();
+      router.replace("/dashboard/profile");
+    }, 380);
+  }
 
   async function finish(e: React.FormEvent) {
     e.preventDefault();
@@ -109,10 +136,25 @@ export function WelcomeView() {
 
       <motion.section
         initial={{ opacity: 0, y: 16, scale: 0.97 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.5, ease }}
+        animate={
+          phase === "leaving"
+            ? { opacity: 0, y: 8, scale: 0.98 }
+            : { opacity: 1, y: 0, scale: 1 }
+        }
+        transition={{ duration: phase === "leaving" ? 0.35 : 0.5, ease }}
         className="relative z-10 w-full max-w-md overflow-hidden rounded-3xl border border-border/70 bg-card/85 p-7 shadow-pop backdrop-blur-xl md:p-8"
       >
+        {phase === "form" && (
+          <button
+            type="button"
+            onClick={goBackToLogin}
+            className="absolute left-4 top-4 z-20 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            aria-label="Back to log in"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Back
+          </button>
+        )}
         <AnimatePresence mode="wait">
           {phase === "form" ? (
             <motion.div
