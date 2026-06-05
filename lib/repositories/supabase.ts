@@ -231,12 +231,24 @@ class SupabasePayrollRepository implements IPayrollRepository {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
+    const row = { ...payrollRunToRow(run), owner_id: user.id };
     const { data, error } = await supabase
       .from("payroll_runs")
-      .upsert({ ...payrollRunToRow(run), owner_id: user.id })
+      .upsert(row)
       .select()
       .single();
-    if (error) throw error;
+    if (error) {
+      // Surface the actual Postgres message — Supabase returns a
+      // PostgrestError (not Error), so we must wrap it ourselves or the
+      // caller sees a useless generic "Failed to save payroll run".
+      console.error("[supabase] payroll_runs.upsert failed", { error, row });
+      throw new Error(
+        `payroll_runs.upsert: ${error.message}` +
+          (error.code ? ` (code ${error.code})` : "") +
+          (error.hint ? ` — hint: ${error.hint}` : "") +
+          (error.details ? ` — ${error.details}` : ""),
+      );
+    }
     return rowToPayrollRun(data);
   }
 

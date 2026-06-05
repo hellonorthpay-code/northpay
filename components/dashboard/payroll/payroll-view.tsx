@@ -315,8 +315,18 @@ export function PayrollView() {
       // Surface engine/persist errors as a top-level validation issue so
       // the modal closes cleanly and the page shows what went wrong.
       console.error("[payroll] performFinalize threw:", err);
+      // Supabase PostgrestError is a plain object, not an Error instance.
+      // Stringify whatever we got so the user sees the actual cause
+      // ("permission denied", "violates RLS policy", "column does not
+      // exist", etc.) instead of a useless generic.
       const message =
-        err instanceof Error ? err.message : "Failed to save payroll run.";
+        err instanceof Error
+          ? err.message
+          : typeof err === "object" && err !== null
+            ? // @ts-expect-error — best-effort introspection
+              err.message || err.error_description || err.details ||
+              JSON.stringify(err)
+            : String(err) || "Failed to save payroll run.";
       setErrors([
         {
           code: "PERSIST_FAILED",
