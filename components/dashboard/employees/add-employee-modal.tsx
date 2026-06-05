@@ -806,21 +806,16 @@ function CalendarPanel({
         })}
       </div>
 
-      {/* Footer actions */}
-      <div className="mt-2 flex items-center justify-between border-t border-border/60 px-1 pt-2">
+      {/* Footer: single "Today" action — jumps the view to the current
+          month AND selects today's date. Two separate buttons were
+          confusing and did effectively the same thing. */}
+      <div className="mt-2 flex items-center justify-center border-t border-border/60 px-1 pt-2">
         <button
           type="button"
           onClick={jumpToday}
-          className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+          className="rounded-full px-3 py-1 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
         >
           Today
-        </button>
-        <button
-          type="button"
-          onClick={() => onPick(today)}
-          className="text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-        >
-          Pick today
         </button>
       </div>
     </div>
