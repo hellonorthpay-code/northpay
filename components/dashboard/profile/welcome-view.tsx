@@ -111,7 +111,7 @@ export function WelcomeView() {
       {/* ── Looping ping-pong video backdrop — full viewport, fixed ── */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <PingPongVideo
-          src="https://videos.pexels.com/video-files/34645692/14684158_2560_1440_30fps.mp4"
+          src="/api/proxy-video"
           className="absolute inset-0 h-full w-full object-cover"
           style={{ opacity: 0.9 }}
         />

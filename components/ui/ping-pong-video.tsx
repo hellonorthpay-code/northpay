@@ -144,7 +144,6 @@ export function PingPongVideo({
         ref={videoRef}
         muted
         playsInline
-        crossOrigin="anonymous"
         preload="auto"
         style={{
           position: "absolute",
