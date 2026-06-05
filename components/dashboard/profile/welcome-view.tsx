@@ -95,20 +95,16 @@ export function WelcomeView() {
 
   return (
     <div className="relative flex min-h-[calc(100vh-120px)] items-center justify-center overflow-hidden px-4">
-      {/* ── Looping ping-pong video backdrop — full viewport, fixed ──
-          Light mode: invert + reduced opacity so the cinematic dark
-          waves render as soft pale ripples on white background. Dark
-          mode: untouched, the video plays as authored. */}
+      {/* ── Looping ping-pong video backdrop — full viewport, fixed ── */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
         <PingPongVideo
           src="/api/proxy-video"
-          className="absolute inset-0 h-full w-full object-cover invert dark:invert-0 [filter:invert(1)_hue-rotate(180deg)_brightness(1.05)] dark:[filter:none]"
-          style={{ opacity: 0.85 }}
+          className="absolute inset-0 h-full w-full object-cover"
+          style={{ opacity: 0.9 }}
         />
-        {/* Theme-aware scrim. In light mode we add a stronger white
-            wash so the bright-inverted video doesn't overpower the
-            form; in dark mode the original light scrim is preserved. */}
-        <div className="absolute inset-0 bg-white/35 dark:bg-background/10" />
+        {/* Light scrim only behind the card area for legibility — the rest
+            of the video stays fully visible edge to edge. */}
+        <div className="absolute inset-0 bg-background/10" />
       </div>
 
       <motion.section
