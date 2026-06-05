@@ -25,8 +25,40 @@ export function formatDate(d: string | Date) {
   }).format(date);
 }
 
-export function uid() {
-  return Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+/**
+ * Generate a v4 UUID. We persist IDs into Postgres columns typed as
+ * `uuid` (e.g. payroll_runs.id) — the previous base36 string would
+ * crash the insert with "invalid input syntax for type uuid (22P02)".
+ *
+ * Uses the browser-native crypto.randomUUID when available (all modern
+ * browsers + Node ≥ 19), with a safe RFC4122-compliant fallback for
+ * older runtimes / SSR.
+ */
+export function uid(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  // RFC 4122 v4 fallback
+  const bytes = new Uint8Array(16);
+  if (typeof crypto !== "undefined" && crypto.getRandomValues) {
+    crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < 16; i++) bytes[i] = Math.floor(Math.random() * 256);
+  }
+  bytes[6] = (bytes[6] & 0x0f) | 0x40; // version 4
+  bytes[8] = (bytes[8] & 0x3f) | 0x80; // variant 10
+  const hex = Array.from(bytes, (b) => b.toString(16).padStart(2, "0"));
+  return (
+    hex.slice(0, 4).join("") +
+    "-" +
+    hex.slice(4, 6).join("") +
+    "-" +
+    hex.slice(6, 8).join("") +
+    "-" +
+    hex.slice(8, 10).join("") +
+    "-" +
+    hex.slice(10, 16).join("")
+  );
 }
 
 export function round2(n: number) {
