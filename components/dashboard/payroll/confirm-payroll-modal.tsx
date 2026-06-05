@@ -79,20 +79,38 @@ export function ConfirmPayrollModal({
     const visualDuration =
       START_DELAY + Math.max(1, lines.length) * STAGGER + TAIL;
 
-    const [r] = await Promise.all([
-      onConfirm(),
-      new Promise((res) => setTimeout(res, visualDuration)),
-    ]);
+    // CRITICAL: must catch — if onConfirm() throws (e.g. Supabase save
+    // fails on prod), an uncaught rejection here leaves the modal frozen
+    // on "Generating paystubs…" forever. Always exit the stuck state.
+    try {
+      const [r] = await Promise.all([
+        onConfirm(),
+        new Promise((res) => setTimeout(res, visualDuration)),
+      ]);
 
-    if (r.ok) {
-      setResult({
-        netPaid: r.netPaid ?? netPay,
-        emailedCount: r.emailedCount ?? 0,
-      });
-      setStage("success");
-      setTimeout(onClose, 4000);
-    } else {
-      // Hand back to the page so it can render validation errors
+      if (r.ok) {
+        setResult({
+          netPaid: r.netPaid ?? netPay,
+          emailedCount: r.emailedCount ?? 0,
+        });
+        setStage("success");
+        setTimeout(onClose, 4000);
+      } else {
+        // Hand back to the page so it can render validation errors
+        onClose();
+      }
+    } catch (err) {
+      console.error("[payroll] finalize failed:", err);
+      // Surface a brief alert so the user knows what happened, then close
+      // the modal cleanly. Without this they'd be stuck on the loading
+      // screen and forced to refresh.
+      if (typeof window !== "undefined") {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Unknown error while processing payroll.";
+        window.alert(`Payroll couldn't be saved: ${msg}\n\nNothing was persisted. Please try again.`);
+      }
       onClose();
     }
   }

@@ -124,9 +124,28 @@ function dispatchEmails(
       subject,
     )}&body=${encodeURIComponent(body)}`;
 
-    // Stagger opens so the OS mail app can keep up
+    // Stagger opens so the OS mail app can keep up. CRITICAL: use
+    // window.open(_self via about:blank → mailto) rather than assigning
+    // window.location.href — that assignment was treated as a real top-
+    // level navigation and tore down the React tree mid-animation,
+    // freezing the "Processing payroll" modal on prod. window.open with
+    // a mailto URL hands off to the OS mail app without unloading the
+    // current document.
     setTimeout(() => {
-      window.location.href = url;
+      try {
+        const w = window.open(url, "_blank");
+        // Most browsers immediately close the blank tab once the OS
+        // hands off the mailto — but if the popup was blocked, fall
+        // back to a hidden anchor click which also avoids navigation.
+        if (!w) {
+          const a = document.createElement("a");
+          a.href = url;
+          a.rel = "noopener";
+          a.click();
+        }
+      } catch (e) {
+        console.warn("[payroll] mailto dispatch failed", e);
+      }
     }, i * 800);
 
     count++;
@@ -255,36 +274,57 @@ export function PayrollView() {
     setErrors([]);
     setWarnings([]);
 
-    const result = await lifecycle.finalize({
-      employees: activeEmployees,
-      inputs: inputsArray,
-      periodStart: period.periodStart,
-      periodEnd: period.periodEnd,
-      payDate: period.payDate,
-    });
+    try {
+      const result = await lifecycle.finalize({
+        employees: activeEmployees,
+        inputs: inputsArray,
+        periodStart: period.periodStart,
+        periodEnd: period.periodEnd,
+        payDate: period.payDate,
+      });
 
-    if (!result.ok) {
-      setErrors(result.result.errors);
-      setWarnings(result.result.warnings);
+      if (!result.ok) {
+        setErrors(result.result.errors);
+        setWarnings(result.result.warnings);
+        return { ok: false };
+      }
+
+      upsertRun(result.run);
+      setWarnings(result.warnings);
+      setDoneRunId(result.run.id);
+
+      // Email dispatch is best-effort — failures here should NEVER block
+      // the success path. The run is already persisted.
+      let sentCount = 0;
+      if (emailAfter) {
+        try {
+          const allRuns = await getRepositories().payroll.getAll();
+          sentCount = dispatchEmails(result.run, allRuns, company);
+        } catch (e) {
+          console.warn("[payroll] email dispatch failed (non-fatal):", e);
+        }
+      }
+      setEmailedCount(sentCount);
+
+      return {
+        ok: true,
+        netPaid: result.run.totals.net,
+        emailedCount: sentCount,
+      };
+    } catch (err) {
+      // Surface engine/persist errors as a top-level validation issue so
+      // the modal closes cleanly and the page shows what went wrong.
+      console.error("[payroll] performFinalize threw:", err);
+      const message =
+        err instanceof Error ? err.message : "Failed to save payroll run.";
+      setErrors([
+        {
+          code: "PERSIST_FAILED",
+          message,
+        } as ValidationIssue,
+      ]);
       return { ok: false };
     }
-
-    upsertRun(result.run);
-    setWarnings(result.warnings);
-    setDoneRunId(result.run.id);
-
-    let sentCount = 0;
-    if (emailAfter) {
-      const allRuns = await getRepositories().payroll.getAll();
-      sentCount = dispatchEmails(result.run, allRuns, company);
-    }
-    setEmailedCount(sentCount);
-
-    return {
-      ok: true,
-      netPaid: result.run.totals.net,
-      emailedCount: sentCount,
-    };
   }
 
   const totalDeductions =
