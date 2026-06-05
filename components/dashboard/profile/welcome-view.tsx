@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, ArrowRight, Check, Phone, Sparkles, User } from "lucide-react";
@@ -93,19 +93,6 @@ export function WelcomeView() {
     }, 2600);
   }
 
-  // Confetti positions — deterministic so SSR + client match
-  const confetti = useMemo(
-    () =>
-      Array.from({ length: 14 }).map((_, i) => ({
-        id: i,
-        x: (i / 14) * 100,
-        delay: (i % 7) * 0.06,
-        hue: ["bg-rose-400", "bg-sky-400", "bg-amber-400", "bg-emerald-400", "bg-violet-400"][i % 5],
-        size: 6 + (i % 3) * 3,
-      })),
-    []
-  );
-
   return (
     <div className="relative flex min-h-[calc(100vh-120px)] items-center justify-center overflow-hidden px-4">
       {/* ── Looping ping-pong video backdrop — full viewport, fixed ── */}
@@ -118,20 +105,6 @@ export function WelcomeView() {
         {/* Light scrim only behind the card area for legibility — the rest
             of the video stays fully visible edge to edge. */}
         <div className="absolute inset-0 bg-background/10" />
-      </div>
-
-      {/* Confetti burst */}
-      <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-full">
-        {confetti.map((c) => (
-          <motion.span
-            key={c.id}
-            initial={{ y: -40, opacity: 0, rotate: 0 }}
-            animate={{ y: ["-5%", "60%"], opacity: [0, 1, 1, 0], rotate: 360 }}
-            transition={{ duration: 2.4, delay: c.delay, ease: "easeIn", repeat: Infinity, repeatDelay: 1.6 }}
-            className={`absolute rounded-[2px] ${c.hue}`}
-            style={{ left: `${c.x}%`, width: c.size, height: c.size }}
-          />
-        ))}
       </div>
 
       <motion.section
