@@ -4,8 +4,6 @@ import { useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronRight,
-  FileDown,
-  FileText,
   Mail,
   MessageCircle,
   Pencil,
@@ -19,12 +17,10 @@ import {
   type Employee,
   type PayrollLineResult,
 } from "@/lib/payroll/types";
-import { TAX_YEAR } from "@/lib/payroll/constants";
 import { useEmployees } from "@/lib/store/employees";
 import { usePayrollRuns } from "@/lib/store/payroll";
 import { useSettings } from "@/lib/store/settings";
 import { generatePaystubPDF } from "@/lib/pdf/paystub";
-import { generateT4PDF } from "@/lib/pdf/t4";
 import { formatCAD, formatDate, cn } from "@/lib/utils";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -138,11 +134,6 @@ export function EmployeeDetailSheet({
     window.open(url, "_blank", "noopener,noreferrer");
   }
 
-  function downloadT4() {
-    if (!hasRuns) return;
-    generateT4PDF(employee, company, runs, TAX_YEAR);
-  }
-
   function handleRemove() {
     if (confirmRemove) {
       void removeEmployee(employee.id);
@@ -176,24 +167,16 @@ export function EmployeeDetailSheet({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
           transition={{ duration: 0.35, ease }}
-          className="pointer-events-auto flex max-h-[72vh] w-[min(94vw,520px)] flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-pop sm:max-h-[88vh]"
+          className="pointer-events-auto relative flex max-h-[72vh] w-[min(94vw,520px)] flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-pop sm:max-h-[88vh]"
         >
-        {/* Top-right action buttons — Edit + Close */}
-        <div className="absolute right-4 top-4 z-10 flex items-center gap-1">
-          <button
-            onClick={() => setEditOpen(true)}
-            className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
-            aria-label="Edit employee"
-            title="Edit"
-          >
-            <Pencil className="h-[15px] w-[15px]" />
-          </button>
+        {/* Top-right close button */}
+        <div className="absolute right-4 top-4 z-10">
           <button
             onClick={onClose}
-            className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+            className="grid h-10 w-10 place-items-center rounded-full bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
             aria-label="Close"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" strokeWidth={2.4} />
           </button>
         </div>
 
@@ -318,22 +301,6 @@ export function EmployeeDetailSheet({
               <PillRow label="SIN" value={employee.sin} />
               <PillRow label="Started" value={formatDate(employee.startDate)} />
             </Section>
-          </div>
-
-          {/* ───────── Year-end document ───────── */}
-          <div className="mt-8 flex justify-center">
-            <button
-              onClick={downloadT4}
-              disabled={!hasRuns}
-              className={cn(
-                "inline-flex items-center gap-2 rounded-full border border-border/60 bg-background/60 px-4 py-2 text-[12px] font-medium text-foreground/80 transition-all duration-200",
-                "hover:bg-muted/60 hover:text-foreground hover:shadow-soft",
-                "disabled:cursor-not-allowed disabled:opacity-40"
-              )}
-            >
-              <FileText className="h-3.5 w-3.5" />
-              Download T4 {TAX_YEAR}
-            </button>
           </div>
         </div>
         </motion.div>
