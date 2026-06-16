@@ -176,7 +176,7 @@ export function EmployeeDetailSheet({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
           transition={{ duration: 0.35, ease }}
-          className="pointer-events-auto flex max-h-[88vh] w-[min(94vw,520px)] flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-pop"
+          className="pointer-events-auto flex max-h-[72vh] w-[min(94vw,520px)] flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-pop sm:max-h-[88vh]"
         >
         {/* Top-right action buttons — Edit + Close */}
         <div className="absolute right-4 top-4 z-10 flex items-center gap-1">
@@ -199,7 +199,7 @@ export function EmployeeDetailSheet({
 
         {/* Scrollable body — hide native scrollbar, smooth scroll */}
         <div
-          className="flex-1 overflow-y-auto px-6 pb-6 pt-8 scrollbar-none"
+          className="flex-1 overflow-y-auto px-5 pb-5 pt-7 scrollbar-none sm:px-6 sm:pb-6 sm:pt-8"
           style={{ scrollBehavior: "smooth" }}
         >
           {/* Avatar + Name header */}
