@@ -203,7 +203,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[88vw] p-5 gap-3 max-h-[85vh] overflow-y-auto scrollbar-none sm:max-w-xl sm:p-7 sm:gap-6"
+        className="max-w-[88vw] p-4 gap-2.5 max-h-[72vh] overflow-y-auto scrollbar-none sm:max-w-xl sm:p-7 sm:gap-6 sm:max-h-[85vh]"
         style={originStyle}
       >
         <DialogHeader>
@@ -247,16 +247,16 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
         {/* Footer adapts to the step. Icons replace text:
             Step 1: × (cancel) on the left, › (continue) on the right.
             Step 2: ‹ (back) on the left, ✓ Add/Save on the right. */}
-        <div className="flex items-center justify-between gap-2 pt-2">
+        <div className="flex items-center justify-between gap-2 pt-1">
           {step === 1 ? (
             <DialogClose asChild>
               <IconButton aria-label="Cancel">
-                <X className="h-7 w-7" strokeWidth={2.6} />
+                <X className="h-5 w-5 sm:h-7 sm:w-7" strokeWidth={2.6} />
               </IconButton>
             </DialogClose>
           ) : (
             <IconButton aria-label="Back" onClick={goBack}>
-              <ChevronLeft className="h-7 w-7" strokeWidth={2.6} />
+              <ChevronLeft className="h-5 w-5 sm:h-7 sm:w-7" strokeWidth={2.6} />
             </IconButton>
           )}
           {step === 1 ? (
@@ -267,11 +267,11 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
               variant="solid"
               className="group"
             >
-              <ChevronRight className="h-7 w-7 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2.6} />
+              <ChevronRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-7 sm:w-7" strokeWidth={2.6} />
             </IconButton>
           ) : (
-            <Button onClick={submit} disabled={!canSubmit} className="h-16 rounded-full px-7 text-[16px] font-semibold">
-              <Check className="h-6 w-6" strokeWidth={2.6} />
+            <Button onClick={submit} disabled={!canSubmit} className="h-12 rounded-full px-6 text-[15px] font-semibold sm:h-16 sm:px-7 sm:text-[16px]">
+              <Check className="h-5 w-5 sm:h-6 sm:w-6" strokeWidth={2.6} />
               {isEdit ? "Save" : "Add"}
             </Button>
           )}
@@ -293,7 +293,7 @@ const pageVariants = {
 // ─── Progress dots ───────────────────────────────────────────────────────
 function StepDots({ step }: { step: 1 | 2 }) {
   return (
-    <div className="mt-3 flex items-center gap-2">
+    <div className="mt-2 flex items-center gap-2">
       {[1, 2].map((n) => (
         <span
           key={n}
@@ -336,7 +336,7 @@ function StepOne({ form, setForm }: StepProps) {
   // Step 1 is the only section on this page, so we drop the explicit
   // "Identity" heading — the modal title already carries the context.
   return (
-    <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
       <Field label="First name">
         <Input
           value={form.firstName}
@@ -384,7 +384,7 @@ function StepOne({ form, setForm }: StepProps) {
 function StepTwo({ form, setForm }: StepProps) {
   return (
     <>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
         <Field label="Province">
           <Select
             value={form.province}
@@ -468,7 +468,7 @@ function StepTwo({ form, setForm }: StepProps) {
         </Field>
       </div>
 
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
         <Field label="Standard weekly hours">
           <Input
             type="number"
@@ -535,7 +535,7 @@ function Section({
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:mb-3">
         {title}
       </p>
-      <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">{children}</div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">{children}</div>
     </div>
   );
 }
@@ -581,6 +581,20 @@ function DatePicker({
   );
   const btnRef = React.useRef<HTMLButtonElement>(null);
   const popRef = React.useRef<HTMLDivElement>(null);
+
+  // Mobile gets a plain typed field instead of the calendar popover — kept
+  // as its own local string so the user can type freely (e.g. mid-digit)
+  // without the parent value flipping to an invalid date.
+  const [typed, setTyped] = useState(value);
+  useEffect(() => setTyped(value), [value]);
+
+  function handleTypedChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value;
+    setTyped(v);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v) && !isNaN(new Date(v + "T00:00:00").getTime())) {
+      onChange(v);
+    }
+  }
 
   useEffect(() => setMounted(true), []);
 
@@ -654,11 +668,22 @@ function DatePicker({
 
   return (
     <>
+      {/* Mobile: plain typed input — no calendar popover. */}
+      <Input
+        type="text"
+        inputMode="numeric"
+        placeholder="YYYY-MM-DD"
+        value={typed}
+        onChange={handleTypedChange}
+        className="sm:hidden"
+      />
+
+      {/* Desktop: calendar button + popover. */}
       <button
         ref={btnRef}
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex h-10 w-full items-center justify-between rounded-xl border border-input bg-background px-3 text-[14px] text-foreground shadow-sm transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1"
+        className="hidden h-10 w-full items-center justify-between rounded-xl border border-input bg-background px-3 text-[14px] text-foreground shadow-sm transition-colors hover:border-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 sm:flex"
       >
         <span className={value ? "" : "text-muted-foreground"}>{displayLabel}</span>
         <CalendarIcon className="h-4 w-4 text-muted-foreground" />
@@ -675,6 +700,12 @@ function DatePicker({
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -4, scale: 0.98 }}
                 transition={{ duration: 0.16, ease: EASE }}
+                // Stop pointer events from bubbling to the document /
+                // Radix Dialog — without this, parent listeners would
+                // swallow the click and the day buttons wouldn't fire.
+                onPointerDown={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
                 style={{
                   position: "fixed",
                   top: pos.top,
@@ -831,7 +862,7 @@ const IconButton = React.forwardRef<
   }
 >(({ className, variant = "ghost", ...props }, ref) => {
   const base =
-    "inline-flex h-16 w-16 items-center justify-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
+    "inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed sm:h-16 sm:w-16";
   const tone =
     variant === "solid"
       ? "bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-white/90"
