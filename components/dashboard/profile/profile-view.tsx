@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { AlertTriangle, Briefcase, ExternalLink, Globe2, Info, LogOut, Mail, Trash2, User } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Briefcase, ExternalLink, Globe2, Info, LogOut, Mail, Trash2, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -58,6 +58,15 @@ export function ProfileView() {
 
   return (
     <div className="space-y-5">
+      {/* ── Back button (mobile only) ── */}
+      <button
+        onClick={() => router.back()}
+        className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground md:hidden"
+      >
+        <ArrowLeft className="h-5 w-5" />
+        <span className="text-[14px] font-medium">Back</span>
+      </button>
+
       {/* ── Identity hero card ── */}
       <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-5 shadow-soft backdrop-blur-xl md:p-7">
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
