@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
+  ChevronRight,
   FileDown,
   FileText,
   Mail,
@@ -258,69 +259,66 @@ export function EmployeeDetailSheet({
             </p>
           )}
 
-          {/* ───────── Latest paystub ───────── */}
-          {hasRuns && (
-            <Section title="Latest paystub">
-              <PillRow label="Net pay" value={formatCAD(latest.netPay)} bold />
-              <PillRow label="Gross" value={formatCAD(latest.grossPay)} />
+          {/* ───────── Collapsible detail sections ───────── */}
+          <div className="mt-7 space-y-2">
+            {hasRuns && (
+              <Section title="Latest paystub" defaultOpen>
+                <PillRow label="Net pay" value={formatCAD(latest.netPay)} bold />
+                <PillRow label="Gross" value={formatCAD(latest.grossPay)} />
+                <PillRow
+                  label="Period"
+                  value={`${formatDate(latest.periodStart)} → ${formatDate(latest.periodEnd)}`}
+                />
+                <PillRow label="Pay date" value={formatDate(latest.periodEnd)} />
+              </Section>
+            )}
+
+            <Section title="Employment">
+              <PillRow label="Province" value={PROVINCE_NAMES[employee.province]} />
               <PillRow
-                label="Period"
-                value={`${formatDate(latest.periodStart)} → ${formatDate(latest.periodEnd)}`}
+                label="Type"
+                value={employee.employmentType === "salary" ? "Salary" : "Hourly"}
               />
-              <PillRow label="Pay date" value={formatDate(latest.periodEnd)} />
+              <PillRow
+                label={employee.employmentType === "salary" ? "Annual salary" : "Hourly rate"}
+                value={compRate}
+              />
+              <PillRow
+                label="Pay frequency"
+                value={employee.payFrequency.replace("semimonthly", "semi-monthly")}
+              />
             </Section>
-          )}
 
+            <Section title="Hours & overtime">
+              <PillRow
+                label="Standard weekly hours"
+                value={String(employee.standardWeeklyHours)}
+              />
+              <PillRow
+                label="Overtime after"
+                value={`${employee.overtimeThresholdHours} hrs / week`}
+              />
+            </Section>
 
-          {/* ───────── Employment ───────── */}
-          <Section title="Employment">
-            <PillRow label="Province" value={PROVINCE_NAMES[employee.province]} />
-            <PillRow
-              label="Type"
-              value={employee.employmentType === "salary" ? "Salary" : "Hourly"}
-            />
-            <PillRow
-              label={employee.employmentType === "salary" ? "Annual salary" : "Hourly rate"}
-              value={compRate}
-            />
-            <PillRow
-              label="Pay frequency"
-              value={employee.payFrequency.replace("semimonthly", "semi-monthly")}
-            />
-          </Section>
+            <Section title="Vacation">
+              <PillRow label="Rate" value={`${employee.vacationPercent}%`} />
+              <PillRow
+                label="Handling"
+                value={
+                  employee.vacationMode === "payout"
+                    ? "Pay out each period"
+                    : "Accrue & bank"
+                }
+              />
+            </Section>
 
-          {/* ───────── Hours & Overtime ───────── */}
-          <Section title="Hours & overtime">
-            <PillRow
-              label="Standard weekly hours"
-              value={String(employee.standardWeeklyHours)}
-            />
-            <PillRow
-              label="Overtime after"
-              value={`${employee.overtimeThresholdHours} hrs / week`}
-            />
-          </Section>
-
-          {/* ───────── Vacation ───────── */}
-          <Section title="Vacation">
-            <PillRow label="Rate" value={`${employee.vacationPercent}%`} />
-            <PillRow
-              label="Handling"
-              value={
-                employee.vacationMode === "payout"
-                  ? "Pay out each period"
-                  : "Accrue & bank"
-              }
-            />
-          </Section>
-
-          {/* ───────── Identity ───────── */}
-          <Section title="Identity">
-            <PillRow label="Email" value={employee.email || "—"} />
-            <PillRow label="Phone" value={employee.phone || "—"} />
-            <PillRow label="SIN" value={employee.sin} />
-            <PillRow label="Started" value={formatDate(employee.startDate)} />
-          </Section>
+            <Section title="Identity">
+              <PillRow label="Email" value={employee.email || "—"} />
+              <PillRow label="Phone" value={employee.phone || "—"} />
+              <PillRow label="SIN" value={employee.sin} />
+              <PillRow label="Started" value={formatDate(employee.startDate)} />
+            </Section>
+          </div>
 
           {/* ───────── Year-end document ───────── */}
           <div className="mt-8 flex justify-center">
@@ -413,16 +411,45 @@ function ActionTile({
 function Section({
   title,
   children,
+  defaultOpen,
 }: {
   title: string;
   children: React.ReactNode;
+  defaultOpen?: boolean;
 }) {
+  const [open, setOpen] = useState(!!defaultOpen);
+
   return (
-    <div className="mt-7">
-      <p className="mb-2 px-1 text-[10.5px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-        {title}
-      </p>
-      <div className="space-y-1.5">{children}</div>
+    <div className="overflow-hidden rounded-2xl bg-muted/30">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+      >
+        <span className="text-[12px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
+          {title}
+        </span>
+        <motion.span
+          animate={{ rotate: open ? 90 : 0 }}
+          transition={{ duration: 0.2 }}
+          className="shrink-0 text-muted-foreground"
+        >
+          <ChevronRight className="h-4 w-4" />
+        </motion.span>
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.22 }}
+            style={{ overflow: "hidden" }}
+          >
+            <div className="space-y-1.5 px-3 pb-3 pt-1">{children}</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
