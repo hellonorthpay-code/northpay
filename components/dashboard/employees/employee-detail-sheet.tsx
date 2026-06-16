@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ChevronRight,
@@ -375,6 +375,9 @@ function ActionTile({
   );
 }
 
+// Sections collapse into accordions ONLY on mobile to keep the sheet short.
+// On desktop (≥768px) everything stays expanded and the toggle is inert —
+// the original always-visible layout.
 function Section({
   title,
   children,
@@ -384,28 +387,35 @@ function Section({
   children: React.ReactNode;
   defaultOpen?: boolean;
 }) {
+  const isDesktop = useIsDesktop();
   const [open, setOpen] = useState(!!defaultOpen);
+
+  // Desktop always shows content; mobile respects the toggle.
+  const expanded = isDesktop || open;
 
   return (
     <div className="overflow-hidden rounded-2xl bg-muted/30">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
+        disabled={isDesktop}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left disabled:cursor-default"
       >
         <span className="text-[12px] font-semibold uppercase tracking-[0.1em] text-muted-foreground">
           {title}
         </span>
-        <motion.span
-          animate={{ rotate: open ? 90 : 0 }}
-          transition={{ duration: 0.2 }}
-          className="shrink-0 text-muted-foreground"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </motion.span>
+        {!isDesktop && (
+          <motion.span
+            animate={{ rotate: open ? 90 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="shrink-0 text-muted-foreground"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </motion.span>
+        )}
       </button>
       <AnimatePresence initial={false}>
-        {open && (
+        {expanded && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
@@ -419,6 +429,26 @@ function Section({
       </AnimatePresence>
     </div>
   );
+}
+
+// Tracks whether the viewport is at/above Tailwind's `md` breakpoint (768px).
+// Initialised synchronously from matchMedia so the first paint is already
+// correct (the sheet only mounts client-side after a user opens it).
+function useIsDesktop() {
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia("(min-width: 768px)").matches
+      : false,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const onChange = () => setIsDesktop(mq.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  return isDesktop;
 }
 
 /**
