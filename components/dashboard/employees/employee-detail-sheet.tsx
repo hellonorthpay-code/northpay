@@ -173,7 +173,7 @@ export function EmployeeDetailSheet({
         <div className="absolute right-4 top-4 z-10">
           <button
             onClick={onClose}
-            className="grid h-14 w-14 place-items-center rounded-full bg-muted/70 text-black transition-colors hover:bg-muted dark:text-white"
+            className="grid h-14 w-14 place-items-center rounded-full bg-black text-white transition-colors hover:bg-black/80 dark:bg-white dark:text-black dark:hover:bg-white/80"
             aria-label="Close"
           >
             <X className="h-7 w-7" strokeWidth={2.6} />
