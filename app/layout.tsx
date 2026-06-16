@@ -10,6 +10,11 @@ export const metadata: Metadata = {
   description:
     "The payroll system designed for modern Canadian businesses. Effortless. Compliant. Calm.",
   metadataBase: new URL("https://northpay.example"),
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
 };
 
 export default function RootLayout({
