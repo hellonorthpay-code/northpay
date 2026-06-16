@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { Home, Play, PlayCircle, Settings } from "lucide-react";
+import { Home, Play, PlayCircle, Receipt, Settings } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +20,7 @@ const tabs: Tab[] = [
   { href: "/", label: "Home", icon: Home, exact: true },
   { href: "/dashboard/employees", label: "Tracking", icon: Play, requiresAuth: true },
   { href: "/dashboard/payroll", label: "Payroll", icon: PlayCircle, requiresAuth: true },
+  { href: "/dashboard/cra", label: "CRA", icon: Receipt, requiresAuth: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true },
 ];
 
