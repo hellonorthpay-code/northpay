@@ -161,7 +161,7 @@ export function EmployeeDetailSheet({
       />
 
       {/* Centering wrapper — flexbox handles position, Motion only animates scale/opacity */}
-      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+      <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4 pb-24">
         <motion.div
           initial={{ opacity: 0, scale: 0.94 }}
           animate={{ opacity: 1, scale: 1 }}
