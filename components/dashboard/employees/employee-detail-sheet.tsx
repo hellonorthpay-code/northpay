@@ -25,19 +25,6 @@ import { formatCAD, formatDate, cn } from "@/lib/utils";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
-// Light: uniform charcoal→silver. Dark: original per-province palette.
-const PROVINCE_TONES: Record<string, string> = {
-  ON: "from-slate-700 to-slate-400 dark:from-rose-300 dark:to-amber-200",
-  AB: "from-slate-700 to-slate-400 dark:from-amber-300 dark:to-orange-200",
-  BC: "from-slate-700 to-slate-400 dark:from-sky-300 dark:to-emerald-200",
-  MB: "from-slate-700 to-slate-400 dark:from-violet-300 dark:to-pink-200",
-  SK: "from-slate-700 to-slate-400 dark:from-emerald-300 dark:to-lime-200",
-  NS: "from-slate-700 to-slate-400 dark:from-indigo-300 dark:to-sky-200",
-  NB: "from-slate-700 to-slate-400 dark:from-pink-300 dark:to-violet-200",
-  PE: "from-slate-700 to-slate-400 dark:from-rose-300 dark:to-violet-200",
-  NL: "from-slate-700 to-slate-400 dark:from-blue-300 dark:to-indigo-200",
-};
-
 export function EmployeeDetailSheet({
   employee,
   onClose,
@@ -167,7 +154,7 @@ export function EmployeeDetailSheet({
           animate={{ opacity: 1, scale: 1 }}
           exit={{ opacity: 0, scale: 0.96 }}
           transition={{ duration: 0.35, ease }}
-          className="pointer-events-auto relative flex max-h-[72vh] w-[min(94vw,520px)] flex-col overflow-hidden rounded-[28px] border border-border bg-background shadow-pop sm:max-h-[88vh]"
+          className="pointer-events-auto relative flex max-h-[72vh] w-[min(94vw,520px)] flex-col overflow-hidden rounded-[28px] border border-zinc-200 bg-white shadow-pop dark:border-zinc-800 dark:bg-black sm:max-h-[88vh]"
         >
         {/* Top-right close button */}
         <div className="absolute right-4 top-4 z-10">
@@ -187,12 +174,7 @@ export function EmployeeDetailSheet({
         >
           {/* Avatar + Name header */}
           <div className="flex flex-col items-center text-center">
-            <div
-              className={cn(
-                "grid h-[88px] w-[88px] place-items-center rounded-full bg-gradient-to-br text-[26px] font-semibold text-white shadow-pop",
-                PROVINCE_TONES[employee.province] ?? "from-zinc-300 to-zinc-200"
-              )}
-            >
+            <div className="grid h-[88px] w-[88px] place-items-center rounded-full bg-zinc-900 text-[26px] font-semibold text-white shadow-pop dark:bg-white dark:text-black">
               {initials}
             </div>
             <p className="mt-4 text-[22px] font-semibold uppercase tracking-tighter">
@@ -237,7 +219,7 @@ export function EmployeeDetailSheet({
           </div>
 
           {!hasRuns && (
-            <p className="mt-3 rounded-2xl bg-muted/40 px-4 py-2.5 text-center text-[11.5px] text-muted-foreground">
+            <p className="mt-3 rounded-2xl bg-zinc-100 px-4 py-2.5 text-center text-[11.5px] text-muted-foreground dark:bg-zinc-900">
               Run payroll to enable Download, Email, and WhatsApp.
             </p>
           )}
@@ -322,11 +304,13 @@ export function EmployeeDetailSheet({
 
 type Tone = "blue" | "rose" | "emerald" | "violet" | "red";
 
+// Monochrome (Wealthsimple-style): all icons sit in the foreground colour;
+// only the destructive Remove keeps a red accent.
 const TONE_CLASSES: Record<Tone, string> = {
-  blue: "text-blue-500 dark:text-blue-400",
-  rose: "text-rose-500 dark:text-rose-400",
-  emerald: "text-emerald-500 dark:text-emerald-400",
-  violet: "text-violet-500 dark:text-violet-400",
+  blue: "text-foreground",
+  rose: "text-foreground",
+  emerald: "text-foreground",
+  violet: "text-foreground",
   red: "text-red-500 dark:text-red-400",
 };
 
@@ -357,7 +341,7 @@ function ActionTile({
         "disabled:pointer-events-none disabled:opacity-40",
         highlighted
           ? "bg-red-500/15 ring-1 ring-red-500/40"
-          : "bg-muted/50 hover:bg-muted"
+          : "bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-800"
       )}
     >
       <span className={cn("transition-transform group-active:scale-90", TONE_CLASSES[tone])}>
@@ -394,7 +378,7 @@ function Section({
   const expanded = isDesktop || open;
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-muted/30">
+    <div className="overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-900">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -496,7 +480,7 @@ function PillRow({
   bold?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-xl bg-muted/40 px-4 py-3">
+    <div className="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-3 dark:bg-zinc-800">
       <span className="text-[12.5px] text-muted-foreground">{label}</span>
       <span
         className={cn(
