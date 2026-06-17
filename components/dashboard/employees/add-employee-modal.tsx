@@ -8,8 +8,6 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
 } from "lucide-react";
 import {
   Dialog,
@@ -836,6 +834,15 @@ function DatePicker({
   );
 }
 
+const MONTH_FULL = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+const MONTH_SHORT = [
+  "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+  "Jul", "Aug", "Sep", "Oct", "Nov", "Dec",
+];
+
 function CalendarPanel({
   viewMonth,
   onViewMonth,
@@ -847,10 +854,10 @@ function CalendarPanel({
   selected: Date | null;
   onPick: (d: Date) => void;
 }) {
-  const monthLabel = viewMonth.toLocaleDateString(undefined, {
-    month: "long",
-    year: "numeric",
-  });
+  // Which switcher is showing: the day grid (default), the month grid, or
+  // the scrollable year list. Clicking the month/year label in the header
+  // toggles into the matching switcher; picking a value returns to "day".
+  const [mode, setMode] = useState<"day" | "month" | "year">("day");
 
   // Build the 6-row grid: leading blanks from the previous month so the
   // first of the current month lands under its real weekday column.
@@ -869,106 +876,139 @@ function CalendarPanel({
   }
   while (cells.length % 7 !== 0) cells.push(null);
 
-  function shiftMonth(delta: number) {
-    onViewMonth(new Date(year, month + delta, 1));
+  function pickMonth(m: number) {
+    onViewMonth(new Date(year, m, 1));
+    setMode("day");
   }
-  function shiftYear(delta: number) {
-    onViewMonth(new Date(year + delta, month, 1));
+  function pickYear(y: number) {
+    onViewMonth(new Date(y, month, 1));
+    setMode("day");
   }
   function jumpToday() {
+    setMode("day");
     onViewMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     onPick(today);
   }
 
-  const navBtn =
-    "grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground dark:hover:bg-white/10";
+  // Years offered in the year switcher: a generous window around today,
+  // scrollable so the header stays free of paging arrows.
+  const YEARS: number[] = [];
+  for (let y = today.getFullYear() - 80; y <= today.getFullYear() + 10; y++) {
+    YEARS.push(y);
+  }
+  const selectedYearRef = React.useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (mode === "year") {
+      selectedYearRef.current?.scrollIntoView({ block: "center" });
+    }
+  }, [mode]);
+
+  const headerBtn =
+    "rounded-lg px-2.5 py-1 text-[13px] font-semibold tracking-tight text-foreground transition-colors hover:bg-muted/70 dark:hover:bg-white/10";
 
   return (
     <div className="w-full">
-      {/* Header: « year ‹ month   Month YYYY   month › year ».
-          Double chevrons step the year, single chevrons step the month. */}
-      <div className="mb-2 flex items-center justify-between px-1">
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => shiftYear(-1)}
-            aria-label="Previous year"
-            className={navBtn}
-          >
-            <ChevronsLeft className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => shiftMonth(-1)}
-            aria-label="Previous month"
-            className={navBtn}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </button>
-        </div>
-        <span className="text-[13px] font-semibold tracking-tight">
-          {monthLabel}
-        </span>
-        <div className="flex items-center gap-0.5">
-          <button
-            type="button"
-            onClick={() => shiftMonth(1)}
-            aria-label="Next month"
-            className={navBtn}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => shiftYear(1)}
-            aria-label="Next year"
-            className={navBtn}
-          >
-            <ChevronsRight className="h-4 w-4" />
-          </button>
-        </div>
+      {/* Header: tapping the month or year opens its switcher. */}
+      <div className="mb-2 flex items-center justify-center gap-1 px-1">
+        <button
+          type="button"
+          onClick={() => setMode(mode === "month" ? "day" : "month")}
+          className={`${headerBtn} ${mode === "month" ? "bg-muted" : ""}`}
+        >
+          {MONTH_FULL[month]}
+        </button>
+        <button
+          type="button"
+          onClick={() => setMode(mode === "year" ? "day" : "year")}
+          className={`${headerBtn} tabular-nums ${mode === "year" ? "bg-muted" : ""}`}
+        >
+          {year}
+        </button>
       </div>
 
-      {/* Weekday header */}
-      <div className="grid grid-cols-7 gap-0.5 px-1 pb-1">
-        {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
-          <div
-            key={i}
-            className="grid h-7 place-items-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
-          >
-            {d}
-          </div>
-        ))}
-      </div>
-
-      {/* Day grid */}
-      <div className="grid grid-cols-7 gap-0.5 px-1">
-        {cells.map((cell, i) => {
-          if (!cell) return <div key={i} className="h-8" />;
-          const isToday = cell.d.getTime() === today.getTime();
-          const isSelected =
-            selected !== null &&
-            cell.d.getFullYear() === selected.getFullYear() &&
-            cell.d.getMonth() === selected.getMonth() &&
-            cell.d.getDate() === selected.getDate();
-          return (
+      {mode === "month" ? (
+        /* Month switcher — 3 × 4 grid of month names. */
+        <div className="grid grid-cols-3 gap-1 px-1 py-1">
+          {MONTH_SHORT.map((m, i) => (
             <button
-              key={i}
+              key={m}
               type="button"
-              onClick={() => onPick(cell.d)}
-              className={`grid h-8 w-full place-items-center rounded-lg text-[12.5px] font-medium transition-colors ${
-                isSelected
+              onClick={() => pickMonth(i)}
+              className={`rounded-lg py-2.5 text-[13px] font-medium transition-colors ${
+                i === month
                   ? "bg-foreground text-background dark:bg-white dark:text-black"
-                  : isToday
-                    ? "text-foreground ring-1 ring-foreground/30 dark:ring-white/30"
-                    : "text-foreground hover:bg-muted/70 dark:hover:bg-white/10"
+                  : "text-foreground hover:bg-muted/70 dark:hover:bg-white/10"
               }`}
             >
-              {cell.d.getDate()}
+              {m}
             </button>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : mode === "year" ? (
+        /* Year switcher — scrollable list, auto-centred on the current year. */
+        <div className="max-h-[212px] overflow-y-auto px-1 py-1 scrollbar-none">
+          <div className="grid grid-cols-4 gap-1">
+            {YEARS.map((y) => (
+              <button
+                key={y}
+                ref={y === year ? selectedYearRef : undefined}
+                type="button"
+                onClick={() => pickYear(y)}
+                className={`rounded-lg py-2 text-[13px] font-medium tabular-nums transition-colors ${
+                  y === year
+                    ? "bg-foreground text-background dark:bg-white dark:text-black"
+                    : "text-foreground hover:bg-muted/70 dark:hover:bg-white/10"
+                }`}
+              >
+                {y}
+              </button>
+            ))}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Weekday header */}
+          <div className="grid grid-cols-7 gap-0.5 px-1 pb-1">
+            {["S", "M", "T", "W", "T", "F", "S"].map((d, i) => (
+              <div
+                key={i}
+                className="grid h-7 place-items-center text-[10px] font-medium uppercase tracking-wider text-muted-foreground"
+              >
+                {d}
+              </div>
+            ))}
+          </div>
+
+          {/* Day grid */}
+          <div className="grid grid-cols-7 gap-0.5 px-1">
+            {cells.map((cell, i) => {
+              if (!cell) return <div key={i} className="h-8" />;
+              const isToday = cell.d.getTime() === today.getTime();
+              const isSelected =
+                selected !== null &&
+                cell.d.getFullYear() === selected.getFullYear() &&
+                cell.d.getMonth() === selected.getMonth() &&
+                cell.d.getDate() === selected.getDate();
+              return (
+                <button
+                  key={i}
+                  type="button"
+                  onClick={() => onPick(cell.d)}
+                  className={`grid h-8 w-full place-items-center rounded-lg text-[12.5px] font-medium transition-colors ${
+                    isSelected
+                      ? "bg-foreground text-background dark:bg-white dark:text-black"
+                      : isToday
+                        ? "text-foreground ring-1 ring-foreground/30 dark:ring-white/30"
+                        : "text-foreground hover:bg-muted/70 dark:hover:bg-white/10"
+                  }`}
+                >
+                  {cell.d.getDate()}
+                </button>
+              );
+            })}
+          </div>
+        </>
+      )}
 
       {/* Footer: single "Today" action — jumps the view to the current
           month AND selects today's date. Two separate buttons were
