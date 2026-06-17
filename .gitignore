@@ -5,3 +5,6 @@ out
 .DS_Store
 *.log
 .vercel
+
+# TypeScript incremental build cache
+tsconfig.tsbuildinfo
