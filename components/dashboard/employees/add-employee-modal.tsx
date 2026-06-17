@@ -8,6 +8,8 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   X,
 } from "lucide-react";
 import {
@@ -70,17 +72,17 @@ const EASE = [0.32, 0.72, 0, 1] as const;
 // places employees text from. The stored phone keeps the "+<code>" prefix
 // so WhatsApp deep-links (wa.me/<digits>) resolve to the right country.
 const COUNTRY_CODES = [
-  { code: "+1", label: "🇨🇦 +1 (CA/US)" },
-  { code: "+44", label: "🇬🇧 +44 (UK)" },
-  { code: "+91", label: "🇮🇳 +91 (India)" },
-  { code: "+61", label: "🇦🇺 +61 (Australia)" },
-  { code: "+63", label: "🇵🇭 +63 (Philippines)" },
-  { code: "+52", label: "🇲🇽 +52 (Mexico)" },
-  { code: "+92", label: "🇵🇰 +92 (Pakistan)" },
-  { code: "+880", label: "🇧🇩 +880 (Bangladesh)" },
-  { code: "+234", label: "🇳🇬 +234 (Nigeria)" },
-  { code: "+86", label: "🇨🇳 +86 (China)" },
-  { code: "+971", label: "🇦🇪 +971 (UAE)" },
+  { code: "+1", flag: "🇨🇦", name: "Canada / US" },
+  { code: "+44", flag: "🇬🇧", name: "United Kingdom" },
+  { code: "+91", flag: "🇮🇳", name: "India" },
+  { code: "+61", flag: "🇦🇺", name: "Australia" },
+  { code: "+63", flag: "🇵🇭", name: "Philippines" },
+  { code: "+52", flag: "🇲🇽", name: "Mexico" },
+  { code: "+92", flag: "🇵🇰", name: "Pakistan" },
+  { code: "+880", flag: "🇧🇩", name: "Bangladesh" },
+  { code: "+234", flag: "🇳🇬", name: "Nigeria" },
+  { code: "+86", flag: "🇨🇳", name: "China" },
+  { code: "+971", flag: "🇦🇪", name: "United Arab Emirates" },
 ] as const;
 
 // Pragmatic email shape check — "something@something.tld". Not RFC-exhaustive
@@ -389,6 +391,9 @@ interface StepProps {
 function StepOne({ form, setForm }: StepProps) {
   // Step 1 is the only section on this page, so we drop the explicit
   // "Identity" heading — the modal title already carries the context.
+  // Selected dial code drives the compact flag + code shown in the trigger.
+  const selectedCountry =
+    COUNTRY_CODES.find((c) => c.code === form.countryCode) ?? COUNTRY_CODES[0];
   return (
     <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
       <Field label="First name">
@@ -425,13 +430,27 @@ function StepOne({ form, setForm }: StepProps) {
             value={form.countryCode}
             onValueChange={(v) => setForm({ ...form, countryCode: v })}
           >
-            <SelectTrigger className="w-[120px] shrink-0">
-              <SelectValue />
+            <SelectTrigger
+              className="w-[96px] shrink-0 px-3"
+              aria-label="Country code"
+            >
+              <span className="flex items-center gap-1.5 whitespace-nowrap">
+                <span className="text-[15px] leading-none">
+                  {selectedCountry.flag}
+                </span>
+                <span className="text-[15px] tabular-nums">
+                  {selectedCountry.code}
+                </span>
+              </span>
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="min-w-[15rem]">
               {COUNTRY_CODES.map((c) => (
                 <SelectItem key={c.code} value={c.code}>
-                  {c.label}
+                  <span className="flex items-center gap-2.5">
+                    <span className="text-[15px] leading-none">{c.flag}</span>
+                    <span className="w-10 shrink-0 tabular-nums">{c.code}</span>
+                    <span className="text-muted-foreground">{c.name}</span>
+                  </span>
                 </SelectItem>
               ))}
             </SelectContent>
@@ -860,34 +879,61 @@ function CalendarPanel({
   function shiftMonth(delta: number) {
     onViewMonth(new Date(year, month + delta, 1));
   }
+  function shiftYear(delta: number) {
+    onViewMonth(new Date(year + delta, month, 1));
+  }
   function jumpToday() {
     onViewMonth(new Date(today.getFullYear(), today.getMonth(), 1));
     onPick(today);
   }
 
+  const navBtn =
+    "grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground dark:hover:bg-white/10";
+
   return (
     <div className="w-full">
-      {/* Header: month/year + nav arrows */}
+      {/* Header: « year ‹ month   Month YYYY   month › year ».
+          Double chevrons step the year, single chevrons step the month. */}
       <div className="mb-2 flex items-center justify-between px-1">
-        <button
-          type="button"
-          onClick={() => shiftMonth(-1)}
-          aria-label="Previous month"
-          className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground dark:hover:bg-white/10"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => shiftYear(-1)}
+            aria-label="Previous year"
+            className={navBtn}
+          >
+            <ChevronsLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => shiftMonth(-1)}
+            aria-label="Previous month"
+            className={navBtn}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+        </div>
         <span className="text-[13px] font-semibold tracking-tight">
           {monthLabel}
         </span>
-        <button
-          type="button"
-          onClick={() => shiftMonth(1)}
-          aria-label="Next month"
-          className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground dark:hover:bg-white/10"
-        >
-          <ChevronRight className="h-4 w-4" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={() => shiftMonth(1)}
+            aria-label="Next month"
+            className={navBtn}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => shiftYear(1)}
+            aria-label="Next year"
+            className={navBtn}
+          >
+            <ChevronsRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
 
       {/* Weekday header */}
