@@ -10,14 +10,12 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  X,
 } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogClose,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -300,16 +298,11 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
         </div>
 
         {/* Footer adapts to the step. Icons replace text:
-            Step 1: × (cancel) on the left, › (continue) on the right.
+            Step 1: › (continue) on the right — the dialog's top-right × is
+                    the only close affordance (no duplicate in the footer).
             Step 2: ‹ (back) on the left, ✓ Add/Save on the right. */}
         <div className="flex items-center justify-between gap-2 pt-1">
-          {step === 1 ? (
-            <DialogClose asChild>
-              <IconButton aria-label="Cancel">
-                <X className="h-5 w-5 sm:h-7 sm:w-7" strokeWidth={2.6} />
-              </IconButton>
-            </DialogClose>
-          ) : (
+          {step === 2 && (
             <IconButton aria-label="Back" onClick={goBack}>
               <ChevronLeft className="h-5 w-5 sm:h-7 sm:w-7" strokeWidth={2.6} />
             </IconButton>
@@ -320,7 +313,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
               onClick={goNext}
               disabled={!canAdvance}
               variant="solid"
-              className="group"
+              className="group ml-auto"
             >
               <ChevronRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-7 sm:w-7" strokeWidth={2.6} />
             </IconButton>
