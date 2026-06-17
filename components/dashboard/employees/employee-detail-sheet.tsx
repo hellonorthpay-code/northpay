@@ -250,7 +250,9 @@ export function EmployeeDetailSheet({
               />
               <PillRow
                 label="Pay frequency"
-                value={employee.payFrequency.replace("semimonthly", "semi-monthly")}
+                value={employee.payFrequency
+                  .replace("semimonthly", "semi-monthly")
+                  .replace("semiannually", "semi-annually")}
               />
             </Section>
 

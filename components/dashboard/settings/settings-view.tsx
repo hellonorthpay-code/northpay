@@ -76,6 +76,8 @@ export function SettingsView() {
             <SelectItem value="biweekly">Bi-weekly</SelectItem>
             <SelectItem value="semimonthly">Semi-monthly</SelectItem>
             <SelectItem value="monthly">Monthly</SelectItem>
+            <SelectItem value="semiannually">Semi-Annually</SelectItem>
+            <SelectItem value="annually">Annually</SelectItem>
           </SelectContent>
         </Select>
       </Field>

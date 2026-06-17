@@ -78,7 +78,9 @@ export function EmployeeCard({ employee }: { employee: Employee }) {
         <Field label="Compensation" value={compRate} />
         <Field
           label="Cycle"
-          value={employee.payFrequency.replace("semimonthly", "semi-monthly")}
+          value={employee.payFrequency
+            .replace("semimonthly", "semi-monthly")
+            .replace("semiannually", "semi-annually")}
         />
         <Field label="Vacation" value={`${employee.vacationPercent}%`} />
         <Field label="Since" value={formatDate(employee.startDate)} />

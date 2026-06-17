@@ -33,13 +33,21 @@ export const PROVINCE_NAMES: Record<ProvinceCode, string> = {
   NL: "Newfoundland and Labrador",
 };
 
-export type PayFrequency = "weekly" | "biweekly" | "semimonthly" | "monthly";
+export type PayFrequency =
+  | "weekly"
+  | "biweekly"
+  | "semimonthly"
+  | "monthly"
+  | "semiannually"
+  | "annually";
 
 export const PERIODS_PER_YEAR: Record<PayFrequency, number> = {
   weekly: 52,
   biweekly: 26,
   semimonthly: 24,
   monthly: 12,
+  semiannually: 2,
+  annually: 1,
 };
 
 export type EmploymentType = "salary" | "hourly";

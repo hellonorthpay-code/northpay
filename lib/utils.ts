@@ -75,6 +75,8 @@ const PAY_FREQ_DAYS: Record<string, number> = {
   biweekly: 14,
   semimonthly: 15,
   monthly: 30,
+  semiannually: 182,
+  annually: 365,
 };
 
 /**

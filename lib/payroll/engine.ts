@@ -51,14 +51,17 @@ function defaultHoursForPeriod(
     return { regular: 0, overtime: overtimeHours ?? 0 };
   }
   const weeklyThreshold = OVERTIME_WEEKLY_HOURS[employee.province];
-  const weeksPerPeriod =
-    employee.payFrequency === "weekly"
-      ? 1
-      : employee.payFrequency === "biweekly"
-      ? 2
-      : employee.payFrequency === "semimonthly"
-      ? 2.1667
-      : 4.3333;
+  // Weeks covered by one pay period (52 / periods-per-year). Used to scale
+  // default regular hours for hourly staff who don't log explicit hours.
+  const WEEKS_PER_PERIOD: Record<typeof employee.payFrequency, number> = {
+    weekly: 1,
+    biweekly: 2,
+    semimonthly: 2.1667,
+    monthly: 4.3333,
+    semiannually: 26,
+    annually: 52,
+  };
+  const weeksPerPeriod = WEEKS_PER_PERIOD[employee.payFrequency];
   const regular = hours ?? Math.min(weeklyThreshold, 40) * weeksPerPeriod;
   return { regular, overtime: overtimeHours ?? 0 };
 }

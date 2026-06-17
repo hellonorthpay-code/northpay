@@ -113,7 +113,9 @@ export function generatePaystubPDF(
   y += 12;
   doc.text(`SIN: ${emp.sin}`, MARGIN, y);
   doc.text(
-    `Pay frequency: ${emp.payFrequency.replace("semimonthly", "semi-monthly")}`,
+    `Pay frequency: ${emp.payFrequency
+      .replace("semimonthly", "semi-monthly")
+      .replace("semiannually", "semi-annually")}`,
     MARGIN + INNER_W / 2,
     y
   );

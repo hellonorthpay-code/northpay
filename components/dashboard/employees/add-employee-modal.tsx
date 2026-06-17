@@ -65,6 +65,52 @@ interface Props {
 // transitions feel like part of the same motion vocabulary.
 const EASE = [0.32, 0.72, 0, 1] as const;
 
+// Common dialing codes for the country-code selector. Canada (+1) leads
+// since this is a Canadian payroll product; the rest cover the most common
+// places employees text from. The stored phone keeps the "+<code>" prefix
+// so WhatsApp deep-links (wa.me/<digits>) resolve to the right country.
+const COUNTRY_CODES = [
+  { code: "+1", label: "🇨🇦 +1 (CA/US)" },
+  { code: "+44", label: "🇬🇧 +44 (UK)" },
+  { code: "+91", label: "🇮🇳 +91 (India)" },
+  { code: "+61", label: "🇦🇺 +61 (Australia)" },
+  { code: "+63", label: "🇵🇭 +63 (Philippines)" },
+  { code: "+52", label: "🇲🇽 +52 (Mexico)" },
+  { code: "+92", label: "🇵🇰 +92 (Pakistan)" },
+  { code: "+880", label: "🇧🇩 +880 (Bangladesh)" },
+  { code: "+234", label: "🇳🇬 +234 (Nigeria)" },
+  { code: "+86", label: "🇨🇳 +86 (China)" },
+  { code: "+971", label: "🇦🇪 +971 (UAE)" },
+] as const;
+
+// Pragmatic email shape check — "something@something.tld". Not RFC-exhaustive
+// (that's a losing battle), just enough to catch obvious typos like a missing
+// "@" or domain. Used for a soft, non-blocking warning.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+function isValidEmail(email: string): boolean {
+  return EMAIL_RE.test(email.trim());
+}
+
+/**
+ * Split a stored phone (e.g. "+1 4165550100") into its country code and the
+ * local part for editing. Falls back to +1 when no recognizable prefix is
+ * present, so legacy numbers stored without a code still load cleanly.
+ */
+function splitPhone(stored: string): { countryCode: string; local: string } {
+  const trimmed = stored.trim();
+  if (trimmed.startsWith("+")) {
+    // Longest-prefix match so "+1" doesn't shadow "+1..." vs "+91" etc.
+    const match = [...COUNTRY_CODES]
+      .map((c) => c.code)
+      .sort((a, b) => b.length - a.length)
+      .find((code) => trimmed.startsWith(code));
+    if (match) {
+      return { countryCode: match, local: trimmed.slice(match.length).trim() };
+    }
+  }
+  return { countryCode: "+1", local: trimmed };
+}
+
 export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props) {
   const company = useSettings((s) => s.company);
   const addEmployee = useEmployees((s) => s.addEmployee);
@@ -76,6 +122,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
     firstName: "",
     lastName: "",
     email: "",
+    countryCode: "+1",
     phone: "",
     sin: "",
     province: company.defaultProvince as ProvinceCode,
@@ -95,7 +142,8 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
     firstName: emp.firstName,
     lastName: emp.lastName,
     email: emp.email ?? "",
-    phone: emp.phone ?? "",
+    countryCode: splitPhone(emp.phone ?? "").countryCode,
+    phone: splitPhone(emp.phone ?? "").local,
     sin: emp.sin ?? "",
     province: emp.province,
     employmentType: emp.employmentType,
@@ -136,7 +184,12 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
       firstName: form.firstName.trim(),
       lastName: form.lastName.trim(),
       email: form.email.trim(),
-      phone: form.phone.trim() || undefined,
+      // Store in international format ("+1 4165550100") so WhatsApp
+      // deep-links resolve to the right country. Drop it entirely when no
+      // local number was entered.
+      phone: form.phone.trim()
+        ? `${form.countryCode} ${form.phone.trim()}`
+        : undefined,
       sin: form.sin.trim() || "*** *** ***",
       province: form.province,
       employmentType: form.employmentType,
@@ -313,6 +366,7 @@ interface FormState {
   firstName: string;
   lastName: string;
   email: string;
+  countryCode: string;
   phone: string;
   sin: string;
   province: ProvinceCode;
@@ -350,19 +404,45 @@ function StepOne({ form, setForm }: StepProps) {
           onChange={(e) => setForm({ ...form, lastName: e.target.value })}
         />
       </Field>
-      <Field label="Email">
+      <Field
+        label="Email"
+        hint={
+          form.email.trim() && !isValidEmail(form.email)
+            ? "This doesn’t look like a valid email address."
+            : undefined
+        }
+      >
         <Input
           type="email"
           value={form.email}
           onChange={(e) => setForm({ ...form, email: e.target.value })}
+          aria-invalid={!!form.email.trim() && !isValidEmail(form.email)}
         />
       </Field>
-      <Field label="Phone (for WhatsApp)">
-        <Input
-          type="tel"
-          value={form.phone}
-          onChange={(e) => setForm({ ...form, phone: e.target.value })}
-        />
+      <Field label="Phone">
+        <div className="flex gap-2">
+          <Select
+            value={form.countryCode}
+            onValueChange={(v) => setForm({ ...form, countryCode: v })}
+          >
+            <SelectTrigger className="w-[120px] shrink-0">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {COUNTRY_CODES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  {c.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Input
+            type="tel"
+            value={form.phone}
+            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            placeholder="(416) 555-0100"
+          />
+        </div>
       </Field>
       <Field label="SIN">
         <Input
@@ -463,6 +543,8 @@ function StepTwo({ form, setForm }: StepProps) {
               <SelectItem value="biweekly">Bi-weekly</SelectItem>
               <SelectItem value="semimonthly">Semi-monthly</SelectItem>
               <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="semiannually">Semi-Annually</SelectItem>
+              <SelectItem value="annually">Annually</SelectItem>
             </SelectContent>
           </Select>
         </Field>
@@ -543,16 +625,22 @@ function Section({
 function Field({
   label,
   wide,
+  hint,
   children,
 }: {
   label: string;
   wide?: boolean;
+  /** Optional inline warning shown below the field (e.g. soft validation). */
+  hint?: string;
   children: React.ReactNode;
 }) {
   return (
     <div className={`flex flex-col gap-1.5 ${wide ? "col-span-2" : ""}`}>
       <Label>{label}</Label>
       {children}
+      {hint ? (
+        <p className="text-xs text-amber-600 dark:text-amber-500">{hint}</p>
+      ) : null}
     </div>
   );
 }
@@ -712,6 +800,12 @@ function DatePicker({
                   left: pos.left,
                   width: PANEL_W,
                   zIndex: 80,
+                  // Radix Dialog (modal) sets `pointer-events: none` on
+                  // <body> while open. This popover is portaled to <body>,
+                  // so it inherits that and every click is swallowed —
+                  // the calendar renders but nothing is selectable. Re-enable
+                  // pointer events here so day/nav clicks register.
+                  pointerEvents: "auto",
                 }}
                 className="origin-top rounded-2xl border border-border bg-background p-3 shadow-pop"
               >

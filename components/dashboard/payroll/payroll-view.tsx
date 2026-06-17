@@ -156,14 +156,17 @@ function dispatchEmails(
 function defaultRegularHours(emp: Employee): number {
   if (emp.employmentType === "salary") return 0;
   const std = emp.standardWeeklyHours || 40;
-  const weeks =
-    emp.payFrequency === "weekly"
-      ? 1
-      : emp.payFrequency === "biweekly"
-      ? 2
-      : emp.payFrequency === "semimonthly"
-      ? 2.1667
-      : 4.3333;
+  // Weeks per pay period (52 / periods-per-year) — mirrors WEEKS_PER_PERIOD
+  // in lib/payroll/engine.ts.
+  const WEEKS_PER_PERIOD: Record<typeof emp.payFrequency, number> = {
+    weekly: 1,
+    biweekly: 2,
+    semimonthly: 2.1667,
+    monthly: 4.3333,
+    semiannually: 26,
+    annually: 52,
+  };
+  const weeks = WEEKS_PER_PERIOD[emp.payFrequency];
   return Math.round(std * weeks);
 }
 
