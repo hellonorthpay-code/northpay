@@ -75,7 +75,8 @@ function installSystemThemeListener(getTheme: () => "light" | "dark" | "system")
 
 export const useSettings = create<SettingsStore>((set, get) => ({
   company: DEFAULT_COMPANY,
-  theme: "system",
+  // Default to light/white mode for everyone until they pick a theme in Settings.
+  theme: "light",
   notifications: {
     payrollReminders: true,
     paystubReady: true,
@@ -86,7 +87,7 @@ export const useSettings = create<SettingsStore>((set, get) => ({
   hydrate: async () => {
     if (get().hydrated) return;
     const company = await getRepositories().settings.get();
-    const theme = readLS<SettingsStore["theme"]>(THEME_KEY, "system");
+    const theme = readLS<SettingsStore["theme"]>(THEME_KEY, "light");
     const notifications = readLS<SettingsStore["notifications"]>(
       NOTIF_KEY,
       get().notifications
