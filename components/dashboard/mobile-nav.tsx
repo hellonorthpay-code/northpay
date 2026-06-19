@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { Home, Play, PlayCircle, Receipt, Settings } from "lucide-react";
+import { Home, Play, PlayCircle, Receipt, Settings, User } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
@@ -22,6 +22,8 @@ const tabs: Tab[] = [
   { href: "/dashboard/payroll", label: "Payroll", icon: PlayCircle, requiresAuth: true },
   { href: "/dashboard/cra", label: "CRA", icon: Receipt, requiresAuth: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true },
+  // No requiresAuth — signed-out users tap this to reach the login/profile card.
+  { href: "/dashboard/profile", label: "Profile", icon: User },
 ];
 
 export function MobileNav() {
@@ -42,7 +44,9 @@ export function MobileNav() {
     if (tab.href === "/dashboard/employees")
       return pathname.startsWith("/dashboard/employees");
     if (tab.href === "/dashboard/settings")
-      return pathname.startsWith("/dashboard/settings") || pathname.startsWith("/dashboard/profile");
+      return pathname.startsWith("/dashboard/settings");
+    if (tab.href === "/dashboard/profile")
+      return pathname.startsWith("/dashboard/profile");
     return pathname === tab.href || pathname.startsWith(tab.href + "/");
   }
 
