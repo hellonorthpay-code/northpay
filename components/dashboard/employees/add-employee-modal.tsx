@@ -8,6 +8,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  ExternalLink,
 } from "lucide-react";
 import {
   Dialog,
@@ -517,6 +518,9 @@ function StepTwo({ form, setForm }: StepProps) {
               ))}
             </SelectContent>
           </Select>
+          <CraRefLink href="https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/set-up-new-employee/determine-province-employment.html">
+            Province of Employment information
+          </CraRefLink>
         </Field>
 
         <Field label="Type">
@@ -607,7 +611,7 @@ function StepTwo({ form, setForm }: StepProps) {
             placeholder={String(OVERTIME_WEEKLY_HOURS[form.province])}
           />
         </Field>
-        <Field label="Vacation %">
+        <Field label="Vacation pay calculation">
           <Input
             type="number"
             inputMode="decimal"
@@ -617,6 +621,9 @@ function StepTwo({ form, setForm }: StepProps) {
             }
             placeholder="4"
           />
+          <CraRefLink href="https://www.canada.ca/en/services/jobs/workplace/federal-labour-standards/vacations-holidays.html">
+            Vacation pay standards
+          </CraRefLink>
         </Field>
         <Field label="Handling (required)">
           <Select
@@ -653,6 +660,23 @@ function Section({
       </p>
       <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">{children}</div>
     </div>
+  );
+}
+
+// Small inline link to an authoritative CRA / labour-standards page. Opens in
+// a new tab; used to point operators at the official source for rules they may
+// need to look up (province of employment, vacation pay, etc.).
+function CraRefLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+    >
+      {children}
+      <ExternalLink className="h-3 w-3" />
+    </a>
   );
 }
 
