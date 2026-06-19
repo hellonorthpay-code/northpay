@@ -39,6 +39,12 @@ export default function DashboardLayout({
   // card shown to signed-out users). The signed-in profile keeps its title.
   const hideTopbar = isWelcome || (isPublicAuthRoute && !user);
 
+  // The signed-out login card should materialise with a calm opacity-only
+  // fade. The richer scale/slide entrance below is tuned for the authenticated
+  // dashboard reveal; on the login card it stacks under the route crossfade
+  // and reads as a heavy, late "swoop" — i.e. not smooth.
+  const isLoginCard = (isPublicAuthRoute || isWelcome) && !user;
+
   useEffect(() => {
     if (!authHydrated) return;
     if (user) return;
@@ -48,9 +54,9 @@ export default function DashboardLayout({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.97, y: 12 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.55, ease }}
+      initial={isLoginCard ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 12 }}
+      animate={isLoginCard ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: isLoginCard ? 0.3 : 0.55, ease }}
       className="relative min-h-screen"
     >
       <div className="pointer-events-none fixed inset-0 -z-10">
