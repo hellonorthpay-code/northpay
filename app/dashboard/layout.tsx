@@ -54,9 +54,13 @@ export default function DashboardLayout({
 
   return (
     <motion.div
-      initial={isLoginCard ? { opacity: 0 } : { opacity: 0, scale: 0.97, y: 12 }}
-      animate={isLoginCard ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: isLoginCard ? 0.3 : 0.55, ease }}
+      // Login card: no wrapper entrance (initial={false}) so the page chrome
+      // is painted instantly and the card itself owns the single, smooth
+      // entrance — no stacked fades to flicker against. Authenticated
+      // dashboard keeps its richer scale/slide reveal.
+      initial={isLoginCard ? false : { opacity: 0, scale: 0.97, y: 12 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.55, ease }}
       className="relative min-h-screen"
     >
       <div className="pointer-events-none fixed inset-0 -z-10">
@@ -80,7 +84,8 @@ export default function DashboardLayout({
           <AnimatePresence mode="wait">
             <motion.div
               key={pathname}
-              initial={{ opacity: 0, y: 4 }}
+              // No inner-page fade on the login card — the card owns the entrance.
+              initial={isLoginCard ? false : { opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               transition={{

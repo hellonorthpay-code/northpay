@@ -113,13 +113,19 @@ export function LoginView() {
       <PremiumReveal show={premiumReveal} />
 
       <div className="mx-auto flex w-full max-w-md flex-col gap-5">
-        {/* No `layout` prop here: it locks an explicit pixel height for the
-            card, and when that height is mismeasured (e.g. on mobile, where an
-            ancestor entrance transform is still moving as it measures) the
-            `overflow-hidden` clips the form below it. Letting the card size to
-            its content avoids the clip; the inner field height animations still
-            give a smooth login↔signup resize. */}
+        {/* The card owns the ONE entrance animation for the home→login
+            transition — a calm rise + settle + fade. The dashboard layout
+            paints its chrome instantly (no wrapper/page fade on this route),
+            so this is the only motion and nothing flickers against it.
+
+            No `layout` prop here: it locks an explicit pixel height, and when
+            mismeasured (mobile) `overflow-hidden` clips the form. Letting the
+            card size to its content avoids that; inner field height animations
+            still give a smooth login↔signup resize. */}
         <motion.section
+          initial={{ opacity: 0, y: 18, scale: 0.985 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.5, ease }}
           className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-6 shadow-soft backdrop-blur-xl md:p-8"
         >
           <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
