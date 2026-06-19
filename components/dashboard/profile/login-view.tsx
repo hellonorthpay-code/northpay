@@ -123,9 +123,12 @@ export function LoginView() {
             card size to its content avoids that; inner field height animations
             still give a smooth login↔signup resize. */}
         <motion.section
-          initial={{ opacity: 0, y: 18, scale: 0.985 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.5, ease }}
+          // Opacity + a small rise only — NO scale. Animating `scale` on a
+          // backdrop-blurred element forces the mobile GPU to re-rasterize the
+          // blur every frame, which is what made the entrance lag on phones.
+          initial={{ opacity: 0, y: 14 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.42, ease }}
           className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-6 shadow-soft backdrop-blur-xl md:p-8"
         >
           <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />

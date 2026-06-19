@@ -28,21 +28,52 @@ function topSegment(pathname: string | null): string {
   return "/" + (parts[0] ?? "");
 }
 
+// Tracks the mobile breakpoint (<768px). Initialised false; corrected in an
+// effect before any navigation happens, so the transition timing is right by
+// the time the user taps.
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 767px)");
+    const sync = () => setIsMobile(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
+  return isMobile;
+}
+
 export function PageTransition({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const segment = topSegment(pathname);
+  const isMobile = useIsMobile();
+
+  // On mobile the homepage is heavy (cinematic, blur-heavy scroll scenes).
+  // Compositing it as a slow fade-out tanks the GPU and makes the next page
+  // feel like it "takes time" to arrive. So on mobile the exit is near-instant
+  // (the heavy page clears in a frame or two) and the enter is quick. Desktop
+  // keeps the calmer 200ms crossfade. Opacity-ONLY on both — a transform here
+  // would create a containing block and break the homepage's sticky scenes.
+  const variants = {
+    initial: { opacity: 0 },
+    enter: {
+      opacity: 1,
+      transition: { duration: isMobile ? 0.16 : 0.2, ease },
+    },
+    exit: {
+      opacity: 0,
+      transition: { duration: isMobile ? 0.07 : 0.2, ease },
+    },
+  };
 
   return (
     <AnimatePresence mode="wait" initial={false}>
       <motion.div
         key={segment}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{
-          opacity: { duration: 0.2, ease },
-          exit: { duration: 0.12 },
-        }}
+        variants={variants}
+        initial="initial"
+        animate="enter"
+        exit="exit"
       >
         {children}
       </motion.div>
