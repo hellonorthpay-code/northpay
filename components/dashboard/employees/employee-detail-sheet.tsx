@@ -14,6 +14,7 @@ import { AddEmployeeModal } from "./add-employee-modal";
 import { Button } from "@/components/ui/button";
 import {
   PROVINCE_NAMES,
+  ROE_REASON_CODES,
   type Employee,
   type PayrollLineResult,
 } from "@/lib/payroll/types";
@@ -285,6 +286,25 @@ export function EmployeeDetailSheet({
               <PillRow label="SIN" value={employee.sin} />
               <PillRow label="Started" value={formatDate(employee.startDate)} />
             </Section>
+
+            {(employee.endDate || employee.roeReasonCode) && (
+              <Section title="End of employment">
+                {employee.endDate && (
+                  <PillRow label="End date" value={formatDate(employee.endDate)} />
+                )}
+                {employee.roeReasonCode && (
+                  <PillRow
+                    label="ROE reason (Block 16)"
+                    value={`${employee.roeReasonCode} — ${
+                      ROE_REASON_CODES.find((c) => c.code === employee.roeReasonCode)?.label ?? "Unknown"
+                    }`}
+                  />
+                )}
+                {employee.roeReasonCode === "K" && employee.roeReasonOther && (
+                  <PillRow label="Details" value={employee.roeReasonOther} />
+                )}
+              </Section>
+            )}
           </div>
         </div>
         </motion.div>

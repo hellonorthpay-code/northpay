@@ -37,6 +37,9 @@ function rowToEmployee(row: any): Employee {
     standardWeeklyHours: Number(row.standard_weekly_hours),
     overtimeThresholdHours: Number(row.overtime_threshold_hours),
     startDate: row.start_date,
+    endDate: row.end_date ?? undefined,
+    roeReasonCode: row.roe_reason_code ?? undefined,
+    roeReasonOther: row.roe_reason_other ?? undefined,
     bankInstitution: row.bank_institution ?? undefined,
     bankTransit: row.bank_transit ?? undefined,
     bankAccount: row.bank_account ?? undefined,
@@ -61,6 +64,9 @@ function employeeToRow(e: NewEmployee | Partial<Employee>) {
     standard_weekly_hours: e.standardWeeklyHours,
     overtime_threshold_hours: e.overtimeThresholdHours,
     start_date: e.startDate,
+    end_date: (e as Employee).endDate ?? null,
+    roe_reason_code: (e as Employee).roeReasonCode ?? null,
+    roe_reason_other: (e as Employee).roeReasonOther ?? null,
     bank_institution: (e as Employee).bankInstitution ?? null,
     bank_transit: (e as Employee).bankTransit ?? null,
     bank_account: (e as Employee).bankAccount ?? null,
@@ -184,6 +190,9 @@ class SupabaseEmployeeRepository implements IEmployeeRepository {
     if (patch.standardWeeklyHours !== undefined) row.standard_weekly_hours = patch.standardWeeklyHours;
     if (patch.overtimeThresholdHours !== undefined) row.overtime_threshold_hours = patch.overtimeThresholdHours;
     if (patch.startDate !== undefined) row.start_date = patch.startDate;
+    if (patch.endDate !== undefined) row.end_date = patch.endDate || null;
+    if (patch.roeReasonCode !== undefined) row.roe_reason_code = patch.roeReasonCode || null;
+    if (patch.roeReasonOther !== undefined) row.roe_reason_other = patch.roeReasonOther || null;
     if (patch.bankInstitution !== undefined) row.bank_institution = patch.bankInstitution;
     if (patch.bankTransit !== undefined) row.bank_transit = patch.bankTransit;
     if (patch.bankAccount !== undefined) row.bank_account = patch.bankAccount;

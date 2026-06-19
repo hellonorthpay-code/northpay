@@ -85,6 +85,12 @@ export interface Employee {
    */
   overtimeThresholdHours: number;
   startDate: string;
+  /** When the employee left. Drives ROE generation. */
+  endDate?: string;
+  /** Service Canada Block 16 reason code (A/B/D/E/F/G/H/J/K/M/N/P/Z). */
+  roeReasonCode?: string;
+  /** Free-text reason — required when roeReasonCode === "K" (Other). */
+  roeReasonOther?: string;
   /** Optional phone number for WhatsApp deep-links. International format preferred. */
   phone?: string;
   bankInstitution?: string;
@@ -92,6 +98,23 @@ export interface Employee {
   bankAccount?: string;
   createdAt: string;
 }
+
+/** Service Canada ROE Block 16 reason codes. */
+export const ROE_REASON_CODES = [
+  { code: "A", label: "Shortage of work" },
+  { code: "B", label: "Strike or lockout" },
+  { code: "D", label: "Illness or injury" },
+  { code: "E", label: "Quit" },
+  { code: "F", label: "Maternity leave" },
+  { code: "G", label: "Retirement" },
+  { code: "H", label: "Work-sharing" },
+  { code: "J", label: "Apprentice training" },
+  { code: "K", label: "Other" },
+  { code: "M", label: "Dismissal" },
+  { code: "N", label: "Leave of absence" },
+  { code: "P", label: "Parental leave" },
+  { code: "Z", label: "Compassionate care / Family caregiver" },
+];
 
 export interface TaxBracket {
   upTo: number;

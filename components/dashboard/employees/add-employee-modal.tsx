@@ -28,6 +28,7 @@ import {
 } from "@/components/ui/select";
 import {
   PROVINCE_NAMES,
+  ROE_REASON_CODES,
   SUPPORTED_PROVINCES,
   type Employee,
   type EmploymentType,
@@ -134,6 +135,9 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
     standardWeeklyHours: String(DEFAULT_STANDARD_WEEKLY_HOURS),
     overtimeThresholdHours: String(OVERTIME_WEEKLY_HOURS[company.defaultProvince]),
     startDate: new Date().toISOString().slice(0, 10),
+    endDate: "",
+    roeReasonCode: "",
+    roeReasonOther: "",
   });
 
   /** Pre-filled form for EDIT mode — stringifies numeric fields for inputs. */
@@ -155,6 +159,9 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
     standardWeeklyHours: String(emp.standardWeeklyHours),
     overtimeThresholdHours: String(emp.overtimeThresholdHours),
     startDate: emp.startDate,
+    endDate: emp.endDate ?? "",
+    roeReasonCode: emp.roeReasonCode ?? "",
+    roeReasonOther: emp.roeReasonOther ?? "",
   });
 
   const [form, setForm] = useState(() =>
@@ -209,6 +216,10 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
         Number(form.overtimeThresholdHours) ||
         OVERTIME_WEEKLY_HOURS[form.province],
       startDate: form.startDate,
+      endDate: form.endDate || undefined,
+      roeReasonCode: form.roeReasonCode || undefined,
+      roeReasonOther:
+        form.roeReasonCode === "K" ? form.roeReasonOther || undefined : undefined,
     };
 
     if (isEdit && employee) {
@@ -373,6 +384,9 @@ interface FormState {
   standardWeeklyHours: string;
   overtimeThresholdHours: string;
   startDate: string;
+  endDate: string;
+  roeReasonCode: string;
+  roeReasonOther: string;
 }
 
 interface StepProps {
@@ -381,117 +395,152 @@ interface StepProps {
 }
 
 function StepOne({ form, setForm }: StepProps) {
-  // Step 1 is the only section on this page, so we drop the explicit
-  // "Identity" heading — the modal title already carries the context.
   // Selected dial code drives the compact flag + code shown in the trigger.
   const selectedCountry =
     COUNTRY_CODES.find((c) => c.code === form.countryCode) ?? COUNTRY_CODES[0];
   return (
-    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-      <Field label="First name">
-        <Input
-          value={form.firstName}
-          onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-          autoFocus
-        />
-      </Field>
-      <Field label="Last name">
-        <Input
-          value={form.lastName}
-          onChange={(e) => setForm({ ...form, lastName: e.target.value })}
-        />
-      </Field>
-      <Field
-        label="Email"
-        hint={
-          form.email.trim() && !isValidEmail(form.email)
-            ? "This doesn’t look like a valid email address."
-            : undefined
-        }
-      >
-        <Input
-          type="email"
-          value={form.email}
-          onChange={(e) => setForm({ ...form, email: e.target.value })}
-          aria-invalid={!!form.email.trim() && !isValidEmail(form.email)}
-        />
-      </Field>
-      <Field label="Phone">
-        <div className="flex gap-2">
-          <Select
-            value={form.countryCode}
-            onValueChange={(v) => setForm({ ...form, countryCode: v })}
-          >
-            <SelectTrigger
-              className="w-[96px] shrink-0 px-3"
-              aria-label="Country code"
+    <>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+        <Field label="First name">
+          <Input
+            value={form.firstName}
+            onChange={(e) => setForm({ ...form, firstName: e.target.value })}
+            autoFocus
+          />
+        </Field>
+        <Field label="Last name">
+          <Input
+            value={form.lastName}
+            onChange={(e) => setForm({ ...form, lastName: e.target.value })}
+          />
+        </Field>
+        <Field
+          label="Email"
+          hint={
+            form.email.trim() && !isValidEmail(form.email)
+              ? "This doesn’t look like a valid email address."
+              : undefined
+          }
+        >
+          <Input
+            type="email"
+            value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            aria-invalid={!!form.email.trim() && !isValidEmail(form.email)}
+          />
+        </Field>
+        <Field label="Phone">
+          <div className="flex gap-2">
+            <Select
+              value={form.countryCode}
+              onValueChange={(v) => setForm({ ...form, countryCode: v })}
             >
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <span className="text-[15px] leading-none">
-                  {selectedCountry.flag}
-                </span>
-                <span className="text-[15px] tabular-nums">
-                  {selectedCountry.code}
-                </span>
-              </span>
-            </SelectTrigger>
-            <SelectContent className="min-w-[15rem]">
-              {COUNTRY_CODES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  <span className="flex items-center gap-2.5">
-                    <span className="text-[15px] leading-none">{c.flag}</span>
-                    <span className="w-10 shrink-0 tabular-nums">{c.code}</span>
-                    <span className="text-muted-foreground">{c.name}</span>
+              <SelectTrigger
+                className="w-[96px] shrink-0 px-3"
+                aria-label="Country code"
+              >
+                <span className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-[15px] leading-none">
+                    {selectedCountry.flag}
                   </span>
+                  <span className="text-[15px] tabular-nums">
+                    {selectedCountry.code}
+                  </span>
+                </span>
+              </SelectTrigger>
+              <SelectContent className="min-w-[15rem]">
+                {COUNTRY_CODES.map((c) => (
+                  <SelectItem key={c.code} value={c.code}>
+                    <span className="flex items-center gap-2.5">
+                      <span className="text-[15px] leading-none">{c.flag}</span>
+                      <span className="w-10 shrink-0 tabular-nums">{c.code}</span>
+                      <span className="text-muted-foreground">{c.name}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Input
+              type="tel"
+              value={form.phone}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  phone: e.target.value.replace(/[^\d\s()+.-]/g, ""),
+                })
+              }
+              placeholder="(416) 555-0100"
+            />
+          </div>
+        </Field>
+        <Field
+          label="SIN"
+          hint={
+            form.sin.length > 0 && form.sin.length < 9
+              ? "SIN must be 9 digits."
+              : undefined
+          }
+        >
+          <Input
+            inputMode="numeric"
+            value={form.sin}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                sin: e.target.value.replace(/\D/g, "").slice(0, 9),
+              })
+            }
+            aria-invalid={form.sin.length > 0 && form.sin.length < 9}
+            placeholder="123456789"
+          />
+        </Field>
+        <Field label="Start date">
+          <DatePicker
+            value={form.startDate}
+            onChange={(v) => setForm({ ...form, startDate: v })}
+          />
+        </Field>
+      </div>
+
+      <Section title="End of employment (optional)">
+        <Field label="End date">
+          <DatePicker
+            value={form.endDate}
+            onChange={(v) => setForm({ ...form, endDate: v })}
+          />
+        </Field>
+        <Field label="ROE reason (Block 16)">
+          <Select
+            value={form.roeReasonCode}
+            onValueChange={(v) =>
+              setForm({ ...form, roeReasonCode: v })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Select reason" />
+            </SelectTrigger>
+            <SelectContent>
+              {ROE_REASON_CODES.map((c) => (
+                <SelectItem key={c.code} value={c.code}>
+                  {c.code} — {c.label}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <Input
-            type="tel"
-            value={form.phone}
-            // Numbers only — keeps digits and common formatting (spaces,
-            // dashes, parentheses) but rejects letters.
-            onChange={(e) =>
-              setForm({
-                ...form,
-                phone: e.target.value.replace(/[^\d\s()+.-]/g, ""),
-              })
-            }
-            placeholder="(416) 555-0100"
-          />
-        </div>
-      </Field>
-      <Field
-        label="SIN"
-        hint={
-          form.sin.length > 0 && form.sin.length < 9
-            ? "SIN must be 9 digits."
-            : undefined
-        }
-      >
-        <Input
-          inputMode="numeric"
-          value={form.sin}
-          // Digits only, capped at 9 — strips letters/punctuation as you type
-          // and refuses anything past the 9th digit.
-          onChange={(e) =>
-            setForm({
-              ...form,
-              sin: e.target.value.replace(/\D/g, "").slice(0, 9),
-            })
-          }
-          aria-invalid={form.sin.length > 0 && form.sin.length < 9}
-          placeholder="123456789"
-        />
-      </Field>
-      <Field label="Start date">
-        <DatePicker
-          value={form.startDate}
-          onChange={(v) => setForm({ ...form, startDate: v })}
-        />
-      </Field>
-    </div>
+        </Field>
+        {form.roeReasonCode === "K" && (
+          <Field label="Describe reason" wide>
+            <Input
+              value={form.roeReasonOther}
+              onChange={(e) =>
+                setForm({ ...form, roeReasonOther: e.target.value })
+              }
+              placeholder="Reason for departure"
+            />
+          </Field>
+        )}
+      </Section>
+    </>
   );
 }
 
