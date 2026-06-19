@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { useEmployees } from "@/lib/store/employees";
 import { usePayrollRuns } from "@/lib/store/payroll";
 import { useSettings } from "@/lib/store/settings";
-import { cn, formatCAD, formatDate } from "@/lib/utils";
+import { cn, formatCAD, formatDate, round2 } from "@/lib/utils";
 import {
   type Employee,
   type PayrollLineInput,
@@ -168,6 +168,22 @@ function defaultRegularHours(emp: Employee): number {
   };
   const weeks = WEEKS_PER_PERIOD[emp.payFrequency];
   return Math.round(std * weeks);
+}
+
+// The overtime threshold for a whole pay period: the employee's weekly
+// "overtime after" hours scaled by the number of weeks in the period. Hours
+// entered above this are what the OT prompt offers to pay at 1.5×.
+function periodOtThreshold(emp: Employee): number {
+  const WEEKS_PER_PERIOD: Record<typeof emp.payFrequency, number> = {
+    weekly: 1,
+    biweekly: 2,
+    semimonthly: 2.1667,
+    monthly: 4.3333,
+    semiannually: 26,
+    annually: 52,
+  };
+  const weekly = emp.overtimeThresholdHours || 44;
+  return Math.round(weekly * WEEKS_PER_PERIOD[emp.payFrequency]);
 }
 
 // Tabular grid template — used in header AND rows so columns align exactly.
@@ -808,9 +824,27 @@ function GridRow({
   onUpdateInput: (patch: Partial<PayrollLineInput>) => void;
 }) {
   const [statModalOpen, setStatModalOpen] = useState(false);
+  const [otPromptOpen, setOtPromptOpen] = useState(false);
   const initials = `${employee.firstName[0] ?? ""}${employee.lastName[0] ?? ""}`;
   const isHourly = employee.employmentType === "hourly";
   const defaultRegular = defaultRegularHours(employee);
+  const otThreshold = periodOtThreshold(employee);
+  const payingOt = input?.payOvertime === true;
+
+  // Called when the operator finishes editing the Hrs cell. For hourly staff
+  // whose hours clear the period overtime threshold — and who haven't already
+  // answered the prompt — surface the "are you paying OT?" sheet.
+  function maybePromptOvertime(hrs: number | undefined) {
+    if (
+      isHourly &&
+      !excluded &&
+      hrs != null &&
+      hrs > otThreshold &&
+      input?.payOvertime === undefined
+    ) {
+      setOtPromptOpen(true);
+    }
+  }
 
   const avatar = (
     <div
@@ -860,6 +894,11 @@ function GridRow({
             {isHourly
               ? `Hourly · ${formatCAD(employee.hourlyRate ?? 0)}/hr`
               : `Salary · ${formatCAD(employee.annualSalary ?? 0)}/yr`}
+            {payingOt && (
+              <span className="ml-1.5 font-medium text-foreground/70">
+                · OT 1.5×
+              </span>
+            )}
           </p>
         </div>
 
@@ -869,6 +908,7 @@ function GridRow({
           value={input?.hoursWorked}
           placeholder={isHourly ? String(defaultRegular) : "—"}
           onChange={(v) => onUpdateInput({ hoursWorked: v })}
+          onCommit={maybePromptOvertime}
         />
 
         {/* Bonus — column header implies dollars, no $ prefix in the cell */}
@@ -908,6 +948,7 @@ function GridRow({
         onToggleExclude={onToggleExclude}
         onUpdateInput={onUpdateInput}
         onOpenStatModal={() => setStatModalOpen(true)}
+        onHoursCommit={maybePromptOvertime}
       />
 
       {/* Stat-pay picker modal — opens when StatPayCell is tapped */}
@@ -917,6 +958,19 @@ function GridRow({
         employee={employee}
         current={input?.statPay}
         onConfirm={(next) => onUpdateInput({ statPay: next })}
+      />
+
+      {/* Overtime prompt — opens when entered hours exceed the threshold */}
+      <OvertimePromptModal
+        open={otPromptOpen}
+        onClose={() => setOtPromptOpen(false)}
+        employee={employee}
+        hoursWorked={input?.hoursWorked ?? 0}
+        threshold={otThreshold}
+        onDecide={(pay) => {
+          onUpdateInput({ payOvertime: pay });
+          setOtPromptOpen(false);
+        }}
       />
     </div>
   );
@@ -940,6 +994,7 @@ function MobileEmployeeCard({
   onToggleExclude,
   onUpdateInput,
   onOpenStatModal,
+  onHoursCommit,
 }: {
   employee: Employee;
   line: PayrollLineResult | null;
@@ -951,6 +1006,7 @@ function MobileEmployeeCard({
   onToggleExclude: () => void;
   onUpdateInput: (patch: Partial<PayrollLineInput>) => void;
   onOpenStatModal: () => void;
+  onHoursCommit: (hrs: number | undefined) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   // True 3D flip: both faces always live in the DOM, stacked in the same
@@ -1035,6 +1091,7 @@ function MobileEmployeeCard({
                       placeholder={String(defaultRegular)}
                       value={input?.hoursWorked}
                       onChange={(v) => onUpdateInput({ hoursWorked: v })}
+                      onCommit={onHoursCommit}
                     />
                   </MobileField>
                 )}
@@ -1204,10 +1261,12 @@ function MobileNumberInput({
   placeholder,
   value,
   onChange,
+  onCommit,
 }: {
   placeholder: string;
   value: number | undefined;
   onChange: (next: number | undefined) => void;
+  onCommit?: (next: number | undefined) => void;
 }) {
   return (
     <input
@@ -1221,6 +1280,10 @@ function MobileNumberInput({
       onChange={(e) => {
         const raw = e.target.value.replace(/[^0-9.]/g, "");
         onChange(raw === "" ? undefined : Number(raw));
+      }}
+      onBlur={(e) => {
+        const raw = e.target.value.replace(/[^0-9.]/g, "");
+        onCommit?.(raw === "" ? undefined : Number(raw));
       }}
       className={cn(
         "w-full rounded-xl border border-border/60 bg-background/60 px-4 py-3 text-[16px] font-medium tabular-nums text-foreground transition-colors duration-150 placeholder:text-muted-foreground/60 focus:border-foreground/40 focus:outline-none focus:ring-2 focus:ring-foreground/10"
@@ -1246,11 +1309,15 @@ function Cell({
   value,
   placeholder,
   onChange,
+  onCommit,
 }: {
   editable: boolean;
   value: number | undefined;
   placeholder: string;
   onChange: (next: number | undefined) => void;
+  /** Fires on blur with the committed value — used to trigger the OT prompt
+   *  only once the operator finishes typing, not on every keystroke. */
+  onCommit?: (next: number | undefined) => void;
 }) {
   if (!editable) {
     return (
@@ -1278,6 +1345,10 @@ function Cell({
           onChange={(e) => {
             const v = e.target.value;
             onChange(v === "" ? undefined : Number(v));
+          }}
+          onBlur={(e) => {
+            const v = e.target.value;
+            onCommit?.(v === "" ? undefined : Number(v));
           }}
           onClick={(e) => e.stopPropagation()}
           className={cn(
@@ -1309,6 +1380,115 @@ function ReadCell({
     >
       {value}
     </span>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Overtime prompt — opens when an hourly employee's entered hours clear the
+// period overtime threshold. Asks whether to pay OT; "Yes" splits the excess
+// off at 1.5×, "No" keeps every hour at the regular rate. Never blocks the run.
+// ─────────────────────────────────────────────────────────────────────────
+function OvertimePromptModal({
+  open,
+  onClose,
+  employee,
+  hoursWorked,
+  threshold,
+  onDecide,
+}: {
+  open: boolean;
+  onClose: () => void;
+  employee: Employee;
+  hoursWorked: number;
+  threshold: number;
+  onDecide: (payOvertime: boolean) => void;
+}) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  const hourlyRate =
+    employee.employmentType === "hourly"
+      ? employee.hourlyRate ?? 0
+      : (employee.annualSalary ?? 0) /
+        ((employee.standardWeeklyHours || 40) * 52);
+  const excess = Math.max(0, round2(hoursWorked - threshold));
+  const otPay = round2(hourlyRate * 1.5 * excess);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-md"
+            onClick={onClose}
+          />
+          <div className="pointer-events-none fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
+            <motion.div
+              initial={{ opacity: 0, y: "100%" }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: "100%" }}
+              transition={{ type: "spring", stiffness: 360, damping: 36, mass: 0.9 }}
+              className="pointer-events-auto flex max-h-[90vh] w-full flex-col overflow-hidden rounded-t-[28px] border border-border bg-background shadow-pop pb-[max(0.5rem,env(safe-area-inset-bottom))] sm:w-[min(94vw,420px)] sm:rounded-[28px] sm:pb-0"
+            >
+              <div className="mx-auto mt-2.5 h-1 w-9 rounded-full bg-muted-foreground/25 sm:hidden" />
+              <div className="px-6 pb-2 pt-5 text-center sm:pt-7">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                  Overtime
+                </p>
+                <p className="mt-2 text-[18px] font-semibold tracking-tight">
+                  {employee.firstName} {employee.lastName}
+                </p>
+                <p className="mt-1 text-[12.5px] text-muted-foreground">
+                  Logged {hoursWorked} hrs — above the {threshold} hr threshold
+                  for this period.
+                </p>
+              </div>
+
+              <div className="space-y-2.5 px-5 py-4">
+                <button
+                  type="button"
+                  onClick={() => onDecide(true)}
+                  className="flex w-full items-center justify-between rounded-2xl border border-border bg-muted/40 px-4 py-3.5 text-left transition-colors hover:border-foreground/30 hover:bg-muted"
+                >
+                  <span>
+                    <span className="block text-[14px] font-semibold tracking-tight">
+                      Yes, pay overtime
+                    </span>
+                    <span className="block text-[12px] text-muted-foreground">
+                      {excess} hrs × 1.5 × ${hourlyRate.toFixed(2)}/hr
+                    </span>
+                  </span>
+                  <span className="text-[15px] font-semibold tabular-nums">
+                    +{formatCAD(otPay)}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onDecide(false)}
+                  className="flex w-full items-center rounded-2xl border border-border px-4 py-3.5 text-left transition-colors hover:border-foreground/30 hover:bg-muted/50"
+                >
+                  <span>
+                    <span className="block text-[14px] font-semibold tracking-tight">
+                      No, pay all as regular
+                    </span>
+                    <span className="block text-[12px] text-muted-foreground">
+                      Every hour at the standard rate
+                    </span>
+                  </span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
   );
 }
 

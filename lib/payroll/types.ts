@@ -126,6 +126,12 @@ export interface PayrollLineInput {
   employeeId: string;
   hoursWorked?: number;
   overtimeHours?: number;
+  /**
+   * Operator's answer to the "are you paying overtime?" prompt for this line.
+   * When true, hoursWorked above the employee's period overtime threshold is
+   * split off and paid at 1.5×. When false/undefined, all hours are regular.
+   */
+  payOvertime?: boolean;
   bonusAmount?: number;
   /** When set, stat-pay is added to gross using the chosen method. */
   statPay?: {

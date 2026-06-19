@@ -44,7 +44,8 @@ export function hourlyEquivalent(employee: Employee): number {
 function defaultHoursForPeriod(
   employee: Employee,
   hours?: number,
-  overtimeHours?: number
+  overtimeHours?: number,
+  payOvertime?: boolean
 ): PeriodHours {
   if (employee.employmentType === "salary") {
     // Salaried — no "regular hours" tracked, OT only if explicitly logged.
@@ -62,6 +63,22 @@ function defaultHoursForPeriod(
     annually: 52,
   };
   const weeksPerPeriod = WEEKS_PER_PERIOD[employee.payFrequency];
+
+  // When the operator has confirmed overtime for this line, split the entered
+  // hours at the employee's period threshold (weekly "overtime after" × weeks
+  // in the period) and pay the excess as overtime (1.5× handled by caller).
+  if (payOvertime && hours != null) {
+    const periodThreshold =
+      (employee.overtimeThresholdHours || weeklyThreshold) * weeksPerPeriod;
+    if (hours > periodThreshold) {
+      return {
+        regular: periodThreshold,
+        overtime: round2(hours - periodThreshold),
+      };
+    }
+    return { regular: hours, overtime: 0 };
+  }
+
   const regular = hours ?? Math.min(weeklyThreshold, 40) * weeksPerPeriod;
   return { regular, overtime: overtimeHours ?? 0 };
 }
@@ -84,7 +101,8 @@ export function calculatePayrollLine(
   const { regular, overtime } = defaultHoursForPeriod(
     employee,
     input.hoursWorked,
-    input.overtimeHours
+    input.overtimeHours,
+    input.payOvertime
   );
 
   let regularPay = 0;
