@@ -113,9 +113,13 @@ export function LoginView() {
       <PremiumReveal show={premiumReveal} />
 
       <div className="mx-auto flex w-full max-w-md flex-col gap-5">
+        {/* No `layout` prop here: it locks an explicit pixel height for the
+            card, and when that height is mismeasured (e.g. on mobile, where an
+            ancestor entrance transform is still moving as it measures) the
+            `overflow-hidden` clips the form below it. Letting the card size to
+            its content avoids the clip; the inner field height animations still
+            give a smooth login↔signup resize. */}
         <motion.section
-          layout
-          transition={{ layout: { duration: 0.45, ease } }}
           className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-6 shadow-soft backdrop-blur-xl md:p-8"
         >
           <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
