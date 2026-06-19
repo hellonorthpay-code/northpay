@@ -449,15 +449,39 @@ function StepOne({ form, setForm }: StepProps) {
           <Input
             type="tel"
             value={form.phone}
-            onChange={(e) => setForm({ ...form, phone: e.target.value })}
+            // Numbers only — keeps digits and common formatting (spaces,
+            // dashes, parentheses) but rejects letters.
+            onChange={(e) =>
+              setForm({
+                ...form,
+                phone: e.target.value.replace(/[^\d\s()+.-]/g, ""),
+              })
+            }
             placeholder="(416) 555-0100"
           />
         </div>
       </Field>
-      <Field label="SIN">
+      <Field
+        label="SIN"
+        hint={
+          form.sin.length > 0 && form.sin.length < 9
+            ? "SIN must be 9 digits."
+            : undefined
+        }
+      >
         <Input
+          inputMode="numeric"
           value={form.sin}
-          onChange={(e) => setForm({ ...form, sin: e.target.value })}
+          // Digits only, capped at 9 — strips letters/punctuation as you type
+          // and refuses anything past the 9th digit.
+          onChange={(e) =>
+            setForm({
+              ...form,
+              sin: e.target.value.replace(/\D/g, "").slice(0, 9),
+            })
+          }
+          aria-invalid={form.sin.length > 0 && form.sin.length < 9}
+          placeholder="123456789"
         />
       </Field>
       <Field label="Start date">
