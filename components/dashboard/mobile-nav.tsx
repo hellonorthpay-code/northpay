@@ -60,6 +60,12 @@ export function MobileNav() {
               <Link
                 key={tab.href}
                 href={tab.href}
+                // Force full-route prefetch. Next skips automatic prefetch on
+                // slower mobile connections, which made the dashboard bundle
+                // download only on tap (a multi-second stall). The bottom bar
+                // is always on screen, so prefetching here loads the route in
+                // the background while the user is still on the homepage.
+                prefetch
                 aria-label={tab.label}
                 className={cn(
                   "relative grid h-12 w-12 place-items-center rounded-full transition-colors duration-200",
