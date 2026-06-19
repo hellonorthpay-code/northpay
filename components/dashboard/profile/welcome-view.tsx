@@ -97,14 +97,17 @@ export function WelcomeView() {
     <div className="relative flex min-h-[calc(100vh-120px)] items-center justify-center overflow-hidden px-4">
       {/* ── Looping ping-pong video backdrop — full viewport, fixed ── */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
+        {/* White-tinted backdrop: `invert` flips the dark video to a white
+            base and `hue-rotate-180` swings the colours back to roughly their
+            originals, so the waves stay their natural blue/teal on white. Only
+            in light mode — dark mode keeps the original dark video. */}
         <PingPongVideo
           src="/api/proxy-video"
-          className="absolute inset-0 h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full object-cover invert hue-rotate-180 dark:invert-0 dark:hue-rotate-0"
           style={{ opacity: 0.9 }}
         />
-        {/* Light scrim only behind the card area for legibility — the rest
-            of the video stays fully visible edge to edge. */}
-        <div className="absolute inset-0 bg-background/10" />
+        {/* Soft white wash for legibility and to keep the tint clean. */}
+        <div className="absolute inset-0 bg-background/25" />
       </div>
 
       <motion.section
