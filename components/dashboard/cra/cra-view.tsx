@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertCircle,
+  Calendar,
   Check,
   Clock,
   FileText,
@@ -157,24 +158,9 @@ function NextDueCard({
           <p className="mt-3 text-[44px] font-semibold leading-none tracking-tightest tabular-nums">
             {formatCAD(month.total)}
           </p>
-          <p
-            className={cn(
-              "mt-2 text-[13px]",
-              tone === "destructive" && "text-destructive font-medium",
-              tone === "amber" &&
-                "text-amber-600 dark:text-amber-400 font-medium",
-              tone === "default" && "text-muted-foreground"
-            )}
-          >
-            Due {formatDate(month.dueDate)}
-            {daysToDue < 0
-              ? ` · ${Math.abs(daysToDue)} day${
-                  Math.abs(daysToDue) === 1 ? "" : "s"
-                } late`
-              : daysToDue === 0
-              ? " · today"
-              : ` · in ${daysToDue} day${daysToDue === 1 ? "" : "s"}`}
-          </p>
+          <div className="mt-4">
+            <DueBadge dueDate={month.dueDate} daysToDue={daysToDue} tone={tone} />
+          </div>
         </div>
         <div className="self-center sm:self-end">
           <Button size="lg" onClick={onMark} className="w-full sm:w-auto">
@@ -192,6 +178,45 @@ function NextDueCard({
         <Stat label="EI (×2.4)" value={formatCAD(month.ei)} />
       </div>
     </motion.div>
+  );
+}
+
+// Prominent, colour-coded due-date pill. Dates matter most on this screen, so
+// the due date gets its own badge (calendar icon + relative countdown) instead
+// of the small grey line it used to be.
+function DueBadge({
+  dueDate,
+  daysToDue,
+  tone,
+}: {
+  dueDate: string;
+  daysToDue: number;
+  tone: "destructive" | "amber" | "default";
+}) {
+  const relative =
+    daysToDue < 0
+      ? `${Math.abs(daysToDue)} day${Math.abs(daysToDue) === 1 ? "" : "s"} late`
+      : daysToDue === 0
+      ? "Due today"
+      : `in ${daysToDue} day${daysToDue === 1 ? "" : "s"}`;
+
+  return (
+    <span
+      className={cn(
+        "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-medium shadow-soft",
+        tone === "destructive" &&
+          "border-destructive/30 bg-destructive/10 text-destructive",
+        tone === "amber" &&
+          "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+        tone === "default" &&
+          "border-border/70 bg-background/70 text-foreground"
+      )}
+    >
+      <Calendar className="h-4 w-4 shrink-0" />
+      <span className="tabular-nums">Due {formatDate(dueDate)}</span>
+      <span className="opacity-40">·</span>
+      <span>{relative}</span>
+    </span>
   );
 }
 
