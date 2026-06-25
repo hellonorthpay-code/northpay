@@ -1,12 +1,23 @@
 "use client";
 
 import { useState } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { HeroPayrollCards } from "./hero-cards";
-import { HowItWorksModal } from "./how-it-works-modal";
+
+// Both are deferred so they don't block the hero/nav becoming interactive on
+// mobile: the modal is only needed on click, and the mockup cards sit below the
+// fold. ssr:false keeps them out of the initial hydration pass.
+const HeroPayrollCards = dynamic(
+  () => import("./hero-cards").then((m) => m.HeroPayrollCards),
+  { ssr: false }
+);
+const HowItWorksModal = dynamic(
+  () => import("./how-it-works-modal").then((m) => m.HowItWorksModal),
+  { ssr: false }
+);
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -76,10 +87,13 @@ export function Hero() {
             </Button>
           </motion.div>
 
-          <HowItWorksModal
-            open={howItWorksOpen}
-            onClose={() => setHowItWorksOpen(false)}
-          />
+          {/* Only mount (and download) the modal once it's actually opened. */}
+          {howItWorksOpen && (
+            <HowItWorksModal
+              open={howItWorksOpen}
+              onClose={() => setHowItWorksOpen(false)}
+            />
+          )}
 
         </motion.div>
 
