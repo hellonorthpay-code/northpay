@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { FileText, Landmark, Play, Settings, Users } from "lucide-react";
+import { FileText, Landmark, Play, Settings, ShieldCheck, Users } from "lucide-react";
+import { useIsAdmin } from "@/lib/admin/client";
 import { cn } from "@/lib/utils";
 
 const tabs = [
@@ -16,6 +17,12 @@ const tabs = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const isAdmin = useIsAdmin();
+  // Admin tab only renders for allowlisted accounts; the server enforces this
+  // independently, so hiding it here is purely cosmetic.
+  const navTabs = isAdmin
+    ? [...tabs, { href: "/dashboard/admin", label: "Admin", icon: ShieldCheck }]
+    : tabs;
 
   return (
     <aside className="sticky top-5 hidden h-[calc(100vh-40px)] w-[232px] shrink-0 md:block">
@@ -43,7 +50,7 @@ export function Sidebar() {
             sibling tabs — no remount can split it. */}
         <LayoutGroup id="sidebar-nav">
           <nav className="mt-4 flex flex-col gap-1">
-            {tabs.map((tab) => {
+            {navTabs.map((tab) => {
               const active =
                 pathname === tab.href || pathname.startsWith(tab.href + "/");
               return (

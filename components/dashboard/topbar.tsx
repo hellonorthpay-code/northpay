@@ -20,6 +20,10 @@ const titles: Record<string, { title: string; sub: string }> = {
     title: "Reports",
     sub: "T4s, T4As, ROEs, and year-end filings.",
   },
+  "/dashboard/admin": {
+    title: "Admin",
+    sub: "Platform overview and user management.",
+  },
   "/dashboard/settings": {
     title: "Settings",
     sub: "Company, CRA, and appearance preferences.",
