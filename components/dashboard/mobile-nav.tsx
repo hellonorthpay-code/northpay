@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGroup, motion } from "framer-motion";
 import { Home, Play, PlayCircle, Receipt, Settings, User } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
@@ -63,39 +62,37 @@ export function MobileNav() {
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
-      <LayoutGroup id="mobile-nav">
-        <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border/60 bg-background/70 p-1 shadow-pop backdrop-blur-2xl">
-          {visibleTabs.map((tab) => {
-            const active = isActive(tab);
-            return (
-              <Link
-                key={tab.href}
-                href={tab.href}
-                // Force full-route prefetch. Next skips automatic prefetch on
-                // slower mobile connections, which made the dashboard bundle
-                // download only on tap (a multi-second stall). The bottom bar
-                // is always on screen, so prefetching here loads the route in
-                // the background while the user is still on the homepage.
-                prefetch
-                aria-label={tab.label}
-                className={cn(
-                  "relative grid h-11 w-11 place-items-center rounded-full transition-colors duration-200",
-                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {active && (
-                  <motion.span
-                    layoutId="mobile-active-pill"
-                    transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.8 }}
-                    className="absolute inset-0 -z-10 rounded-full bg-muted dark:bg-white/[0.12]"
-                  />
-                )}
-                <tab.icon className={cn("h-5 w-5 transition-transform duration-200", active ? "scale-110" : "")} />
-              </Link>
-            );
-          })}
-        </div>
-      </LayoutGroup>
+      {/* No framer-motion or backdrop-blur here: this bar must hydrate fast and
+          stay cheap to paint on mobile. The active pill is a plain CSS span and
+          the background is near-opaque (blur over scrolling content is a
+          per-frame GPU cost on phones). */}
+      <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border/60 bg-background/95 p-1 shadow-pop">
+        {visibleTabs.map((tab) => {
+          const active = isActive(tab);
+          return (
+            <Link
+              key={tab.href}
+              href={tab.href}
+              // Force full-route prefetch. Next skips automatic prefetch on
+              // slower mobile connections, which made the dashboard bundle
+              // download only on tap (a multi-second stall). The bottom bar is
+              // always on screen, so prefetching here loads the route in the
+              // background while the user is still on the homepage.
+              prefetch
+              aria-label={tab.label}
+              className={cn(
+                "relative grid h-11 w-11 place-items-center rounded-full transition-colors duration-200",
+                active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+              )}
+            >
+              {active && (
+                <span className="absolute inset-0 -z-10 rounded-full bg-muted dark:bg-white/[0.12]" />
+              )}
+              <tab.icon className={cn("h-5 w-5 transition-transform duration-200", active ? "scale-110" : "")} />
+            </Link>
+          );
+        })}
+      </div>
     </nav>
   );
 }

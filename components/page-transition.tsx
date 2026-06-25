@@ -2,58 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
-
-const ease = [0.22, 1, 0.36, 1] as const;
-
-/**
- * Opacity-only crossfade for every top-LEVEL route change.
- *
- * We key on the first path segment ("/", "/dashboard", "/about") rather
- * than the full pathname so navigating inside a section — Employees →
- * Payroll, for example — does NOT remount the entire layout and lose
- * sidebar/pill state.
- *
- * IMPORTANT: this animates ONLY opacity. Any `transform` (even a settled
- * translateY(0)) — or `will-change: transform` — turns this wrapper into a
- * containing block, which breaks `position: sticky` (the homepage is built
- * from sticky scroll scenes → it would render blank) and `position: fixed`
- * descendants (modals, the login video). Keep it transform-free.
- *
- * Pairs with <RouteProgressBar> below for perceived load smoothness.
- */
-function topSegment(pathname: string | null): string {
-  if (!pathname || pathname === "/") return "/";
-  const parts = pathname.split("/").filter(Boolean);
-  return "/" + (parts[0] ?? "");
-}
-
-export function PageTransition({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
-  const segment = topSegment(pathname);
-
-  return (
-    <AnimatePresence mode="wait" initial={false}>
-      <motion.div
-        key={segment}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        transition={{
-          opacity: { duration: 0.2, ease },
-          exit: { duration: 0.12 },
-        }}
-      >
-        {children}
-      </motion.div>
-    </AnimatePresence>
-  );
-}
 
 /**
  * Subtle top progress bar that blinks on every navigation. Pages are
- * pre-rendered so navigation is effectively instant — the bar is purely
- * a perceptual cue ("something happened") and disappears within ~600ms.
+ * pre-rendered so navigation is effectively instant — the bar is purely a
+ * perceptual cue ("something happened") and disappears within ~600ms.
+ *
+ * Pure CSS (tailwindcss-animate + a keyframe in globals.css) — no framer-motion,
+ * so this root-layout component doesn't pull framer onto the homepage's eager
+ * path.
  */
 export function RouteProgressBar() {
   const pathname = usePathname();
@@ -71,25 +28,11 @@ export function RouteProgressBar() {
     return () => window.clearTimeout(hide);
   }, [pathname]);
 
+  if (!visible) return null;
+
   return (
-    <AnimatePresence>
-      {visible && (
-        <motion.div
-          key="route-progress"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.18 }}
-          className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2px] overflow-hidden"
-        >
-          <motion.div
-            initial={{ width: "5%" }}
-            animate={{ width: "100%" }}
-            transition={{ duration: 0.5, ease }}
-            className="h-full bg-gradient-to-r from-rose-300/0 via-foreground to-sky-300/0 dark:via-white"
-          />
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <div className="pointer-events-none fixed inset-x-0 top-0 z-[60] h-[2px] overflow-hidden duration-150 animate-in fade-in">
+      <div className="route-progress-bar h-full w-full bg-gradient-to-r from-rose-300/0 via-foreground to-sky-300/0 dark:via-white" />
+    </div>
   );
 }

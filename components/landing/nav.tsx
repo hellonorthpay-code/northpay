@@ -3,16 +3,14 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { AnimatePresence, motion } from "framer-motion";
 import { User } from "lucide-react";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
-// Four routes share the same morphing pill via Framer's `layoutId`.
-// Whichever item is "active" renders <ActivePill/> inside itself; the rest
-// don't. As the route changes, the pill animates from one link's bounds to
-// another instead of fading out and fading in.
+// No framer-motion here so the desktop nav doesn't pull framer onto the
+// homepage's eager path. The active item gets a plain CSS pill; entrance is a
+// pure-CSS (tailwindcss-animate) fade-down.
 type ActiveKey = "home" | "about" | "dashboard" | "profile";
 
 function resolveActive(pathname: string | null): ActiveKey {
@@ -40,17 +38,8 @@ export function LandingNav() {
     (profile.lastName[0] ?? "").toUpperCase();
 
   return (
-    <motion.header
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
-      className="pointer-events-none fixed inset-x-0 top-4 z-40 hidden justify-center md:flex"
-    >
-      <motion.nav
-        layout
-        transition={{ type: "spring", stiffness: 380, damping: 34, mass: 0.7 }}
-        className="glass-strong pointer-events-auto flex items-center gap-1 rounded-full px-2 py-2 shadow-soft"
-      >
+    <header className="pointer-events-none fixed inset-x-0 top-4 z-40 hidden justify-center duration-500 animate-in fade-in slide-in-from-top-2 md:flex">
+      <nav className="glass-strong pointer-events-auto flex items-center gap-1 rounded-full px-2 py-2 shadow-soft">
         <NavItem
           href="/"
           isActive={active === "home"}
@@ -59,26 +48,15 @@ export function LandingNav() {
           <Logo />
           NorthPay
         </NavItem>
-        <AnimatePresence initial={false} mode="popLayout">
-          {isAuthed && (
-            <motion.div
-              key="dashboard-link"
-              initial={{ opacity: 0, scale: 0.85, width: 0 }}
-              animate={{ opacity: 1, scale: 1, width: "auto" }}
-              exit={{ opacity: 0, scale: 0.85, width: 0 }}
-              transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.7 }}
-              style={{ overflow: "hidden" }}
-            >
-              <NavItem
-                href="/dashboard"
-                isActive={active === "dashboard"}
-                className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
-              >
-                Start tracking
-              </NavItem>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {isAuthed && (
+          <NavItem
+            href="/dashboard"
+            isActive={active === "dashboard"}
+            className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+          >
+            Start tracking
+          </NavItem>
+        )}
         <NavItem
           href="/dashboard/profile"
           isActive={active === "profile"}
@@ -95,8 +73,8 @@ export function LandingNav() {
             </span>
           )}
         </NavItem>
-      </motion.nav>
-    </motion.header>
+      </nav>
+    </header>
   );
 }
 
@@ -137,11 +115,7 @@ function NavItem({
 
 function ActivePill() {
   return (
-    <motion.span
-      layoutId="nav-active-pill"
-      transition={{ type: "spring", stiffness: 420, damping: 36, mass: 0.7 }}
-      className="absolute inset-0 rounded-full bg-muted dark:bg-white/10"
-    />
+    <span className="absolute inset-0 rounded-full bg-muted dark:bg-white/10" />
   );
 }
 

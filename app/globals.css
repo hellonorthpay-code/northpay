@@ -137,3 +137,18 @@
 ::selection {
   background: hsl(var(--foreground) / 0.12);
 }
+
+/* Top navigation progress bar — grows left→right via transform (cheap on the
+   compositor). Used by <RouteProgressBar>; replaces the old framer animation. */
+@keyframes route-progress {
+  from {
+    transform: scaleX(0.05);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.route-progress-bar {
+  transform-origin: left;
+  animation: route-progress 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}

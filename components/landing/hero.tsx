@@ -3,7 +3,6 @@
 import { useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { motion } from "framer-motion";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -19,8 +18,8 @@ const HowItWorksModal = dynamic(
   { ssr: false }
 );
 
-const ease = [0.22, 1, 0.36, 1] as const;
-
+// Entrances use tailwindcss-animate (pure CSS) instead of framer-motion, so the
+// hero hydrates without pulling framer onto the homepage's critical path.
 export function Hero() {
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
   return (
@@ -32,21 +31,11 @@ export function Hero() {
       </div>
 
       <div className="container relative">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.9, ease }}
-          className="mx-auto max-w-3xl text-center"
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: 0.1, duration: 0.8, ease }}
-            className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[12px] text-muted-foreground backdrop-blur-md"
-          >
+        <div className="mx-auto max-w-3xl text-center duration-700 animate-in fade-in slide-in-from-bottom-4">
+          <div className="mx-auto mb-6 inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[12px] text-muted-foreground backdrop-blur-md">
             <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
             Designed for 2026 Canadian payroll
-          </motion.div>
+          </div>
 
           <h1 className="text-balance text-[clamp(2.6rem,7vw,5.25rem)] font-semibold leading-[1.02] tracking-tightest text-foreground">
             Canadian payroll.
@@ -56,22 +45,12 @@ export function Hero() {
             </span>
           </h1>
 
-          <motion.p
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.3, duration: 0.8, ease }}
-            className="mx-auto mt-6 max-w-xl text-balance text-[17px] leading-relaxed text-muted-foreground"
-          >
+          <p className="mx-auto mt-6 max-w-xl text-balance text-[17px] leading-relaxed text-muted-foreground">
             The payroll system designed for modern Canadian businesses. CPP, EI,
             federal and provincial — calmly automated.
-          </motion.p>
+          </p>
 
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.45, duration: 0.8, ease }}
-            className="mt-9 flex flex-wrap items-center justify-center gap-3"
-          >
+          <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
             <Link href="/dashboard">
               <Button size="lg" className="group">
                 Start tracking
@@ -85,7 +64,7 @@ export function Hero() {
             >
               See how it works
             </Button>
-          </motion.div>
+          </div>
 
           {/* Only mount (and download) the modal once it's actually opened. */}
           {howItWorksOpen && (
@@ -94,17 +73,11 @@ export function Hero() {
               onClose={() => setHowItWorksOpen(false)}
             />
           )}
+        </div>
 
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7, duration: 1.1, ease }}
-          className="relative mx-auto mt-20 max-w-5xl"
-        >
+        <div className="relative mx-auto mt-20 max-w-5xl duration-1000 animate-in fade-in slide-in-from-bottom-6">
           <HeroPayrollCards />
-        </motion.div>
+        </div>
       </div>
     </section>
   );
