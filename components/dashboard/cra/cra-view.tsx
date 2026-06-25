@@ -2,7 +2,19 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Check, Clock, FileText, History, X } from "lucide-react";
+import {
+  Banknote,
+  Calendar,
+  Check,
+  ChevronDown,
+  Clock,
+  ExternalLink,
+  FileText,
+  History,
+  Info,
+  X,
+} from "lucide-react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -40,12 +52,13 @@ export function CRAView() {
   const upcoming = months.filter((m) => !m.remitted);
   const history = months.filter((m) => m.remitted);
 
-  // Which previous remittance (if any) the operator is peeking at via the
-  // hero-card dropdown. Shows its full breakdown in a panel under the hero.
+  // Which month the operator is inspecting via the hero-card dropdown. ANY
+  // month can be selected (not just remitted ones) and its full breakdown
+  // pops up below — "select a month, the calculation shows for it".
   const [viewingKey, setViewingKey] = useState<string | null>(null);
   const viewing = useMemo(
-    () => history.find((m) => m.monthKey === viewingKey) ?? null,
-    [history, viewingKey]
+    () => months.find((m) => m.monthKey === viewingKey) ?? null,
+    [months, viewingKey]
   );
 
   // Year-to-date PD7A summary — the source deductions reported across every
@@ -73,8 +86,8 @@ export function CRAView() {
         <NextDueCard
           month={nextDue}
           onMark={() => markRemitted(nextDue.monthKey)}
-          history={history}
-          onViewPrevious={setViewingKey}
+          months={months}
+          onViewMonth={setViewingKey}
         />
       ) : (
         <NothingDueCard />
@@ -83,7 +96,7 @@ export function CRAView() {
       {/* ─── Selected previous remittance breakdown ─── */}
       <AnimatePresence initial={false}>
         {viewing && (
-          <PreviousRemittancePanel
+          <MonthBreakdownPanel
             month={viewing}
             onClose={() => setViewingKey(null)}
           />
@@ -220,13 +233,13 @@ function BigStat({
 function NextDueCard({
   month,
   onMark,
-  history,
-  onViewPrevious,
+  months,
+  onViewMonth,
 }: {
   month: MonthlyRemittance;
   onMark: () => void;
-  history: MonthlyRemittance[];
-  onViewPrevious: (key: string | null) => void;
+  months: MonthlyRemittance[];
+  onViewMonth: (key: string | null) => void;
 }) {
   const daysToDue = useMemo(() => {
     const due = new Date(month.dueDate);
@@ -253,30 +266,31 @@ function NextDueCard({
       <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
       <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
 
-      {/* Top row: context label + a dropdown to peek at previous remittances
-          (the thing operators reach for most). Sits in the card's top-right. */}
+      {/* Top row: context label + a dropdown to inspect ANY month — picking
+          one pops its calculation up in a panel below. */}
       <div className="relative flex items-start justify-between gap-3">
         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           Next remittance · for {month.monthLabel}
         </p>
-        {history.length > 0 && (
-          <Select
-            // Action menu, not a persistent selection: the trigger always
-            // reads "Previous remittances" and picking a month opens its
-            // breakdown panel below. Keeping value="" lets the same month be
-            // re-opened, and avoids the selected row rendering in the trigger.
-            value=""
-            onValueChange={(v) => onViewPrevious(v || null)}
-          >
+        {months.length > 0 && (
+          <Select value="" onValueChange={(v) => onViewMonth(v || null)}>
             <SelectTrigger className="h-9 w-auto shrink-0 gap-2 rounded-full border-border/70 bg-background/70 px-3.5 text-[12.5px] font-medium">
               <History className="h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue placeholder="Previous remittances" />
+              <SelectValue placeholder="View a month" />
             </SelectTrigger>
-            <SelectContent className="min-w-[16rem]">
-              {history.map((m) => (
+            <SelectContent className="min-w-[17rem]">
+              {months.map((m) => (
                 <SelectItem key={m.monthKey} value={m.monthKey}>
-                  <span className="flex w-full items-center justify-between gap-6">
-                    <span>{m.monthLabel}</span>
+                  <span className="flex w-full items-center justify-between gap-5">
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "h-1.5 w-1.5 rounded-full",
+                          m.remitted ? "bg-success" : "bg-amber-500"
+                        )}
+                      />
+                      {m.monthLabel}
+                    </span>
                     <span className="tabular-nums text-muted-foreground">
                       {formatCAD(m.total)}
                     </span>
@@ -288,6 +302,7 @@ function NextDueCard({
         )}
       </div>
 
+      {/* Q1 "How much?" + Q2 "When is it due?" */}
       <div className="relative mt-3 grid gap-6 sm:grid-cols-[1.4fr_auto] sm:items-end">
         <div>
           <p className="text-[44px] font-semibold leading-none tracking-tightest tabular-nums">
@@ -305,21 +320,112 @@ function NextDueCard({
         </div>
       </div>
 
-      {/* Tiny breakdown strip */}
-      <div className="relative mt-7 grid grid-cols-4 divide-x divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center">
+      {/* Breakdown strip */}
+      <div className="relative mt-7 grid grid-cols-2 divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center sm:grid-cols-4 sm:divide-x">
         <Stat label="Federal tax" value={formatCAD(month.federalTax)} />
         <Stat label="Provincial tax" value={formatCAD(month.provincialTax)} />
         <Stat label="CPP (×2)" value={formatCAD(month.cpp)} />
         <Stat label="EI (×2.4)" value={formatCAD(month.ei)} />
       </div>
+
+      {/* Q4 "Can I trust this number?" — provenance + method */}
+      <TrustLine runCount={month.runCount} />
+
+      {/* Q3 "How do I pay it?" */}
+      <HowToPay />
     </motion.div>
   );
 }
 
-// Breakdown panel for a previously-remitted month, opened from the hero
-// dropdown. Mirrors the next-due card's stat strip so a past remittance reads
-// the same way as the current one.
-function PreviousRemittancePanel({
+// Provenance line so the number is auditable: where it came from (which runs)
+// and how it's built (employer side included). Answers "can I trust this?".
+function TrustLine({ runCount }: { runCount: number }) {
+  return (
+    <div className="relative mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted-foreground">
+      <Info className="h-3.5 w-3.5 shrink-0" />
+      <span>
+        From {runCount} finalized payroll run{runCount === 1 ? "" : "s"} this
+        month. CPP counts both halves (×2); EI is employee + 1.4× employer.
+      </span>
+      <Link
+        href="/dashboard/payroll"
+        className="font-medium text-foreground underline-offset-2 hover:underline"
+      >
+        View runs
+      </Link>
+    </div>
+  );
+}
+
+// Answers "how do I pay it?" — collapsible CRA payment options.
+function HowToPay() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative mt-5 border-t border-border/60 pt-4">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-3 text-left"
+      >
+        <span className="flex items-center gap-2 text-[13px] font-medium tracking-tight">
+          <Banknote className="h-4 w-4 text-muted-foreground" />
+          How do I pay this?
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180"
+          )}
+        />
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.26, ease }}
+            style={{ overflow: "hidden" }}
+          >
+            <ul className="mt-3 space-y-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
+              <li>
+                <span className="font-medium text-foreground">Online banking</span>{" "}
+                — add the payee “Federal – Payroll Deductions” and use your
+                15-character payroll (RP) account number.
+              </li>
+              <li>
+                <span className="font-medium text-foreground">
+                  CRA My Business Account
+                </span>{" "}
+                — “Pay now” by Interac or set up pre-authorized debit.
+              </li>
+              <li>
+                <span className="font-medium text-foreground">In person</span> —
+                at your bank with a remittance voucher, or by mailed cheque.
+              </li>
+            </ul>
+            <a
+              href="https://www.canada.ca/en/revenue-agency/services/make-a-payment-canada-revenue-agency.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium text-foreground underline-offset-2 hover:underline"
+            >
+              CRA — Make a payment
+              <ExternalLink className="h-3 w-3" />
+            </a>
+            <p className="mt-2 text-[11px] text-muted-foreground">
+              Pay on or before the due date to avoid penalties and interest.
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Breakdown panel for any month opened from the hero dropdown. Shows the same
+// stat strip, with a status line that adapts to remitted vs. still-due.
+function MonthBreakdownPanel({
   month,
   onClose,
 }: {
@@ -338,16 +444,24 @@ function PreviousRemittancePanel({
         <div className="flex items-start justify-between gap-3">
           <div>
             <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-              Previous remittance · {month.monthLabel}
+              Remittance · {month.monthLabel}
             </p>
             <p className="mt-2 text-[28px] font-semibold leading-none tracking-tightest tabular-nums">
               {formatCAD(month.total)}
             </p>
-            <p className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-success">
-              <Check className="h-3.5 w-3.5" strokeWidth={3} />
-              Remitted{month.remittedAt ? ` ${formatDate(month.remittedAt)}` : ""} ·{" "}
-              {month.runCount} run{month.runCount === 1 ? "" : "s"}
-            </p>
+            {month.remitted ? (
+              <p className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-success">
+                <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                Remitted{month.remittedAt ? ` ${formatDate(month.remittedAt)}` : ""}{" "}
+                · {month.runCount} run{month.runCount === 1 ? "" : "s"}
+              </p>
+            ) : (
+              <p className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
+                <Clock className="h-3.5 w-3.5" />
+                Not yet remitted · due {formatDate(month.dueDate)} ·{" "}
+                {month.runCount} run{month.runCount === 1 ? "" : "s"}
+              </p>
+            )}
           </div>
           <button
             onClick={onClose}
