@@ -279,15 +279,27 @@ export function ProfileView() {
 // Login page with blended looping video background
 // ─────────────────────────────────────────────────────────────────────────
 function LoginWithVideo() {
+  // The background video is a ~multi-MB 1440p stream for a barely-visible
+  // (opacity 0.22) effect. On mobile that download stalled the first-visit
+  // navigation, so we only mount it on larger screens. Default false (also the
+  // SSR value) so phones never start the download; a desktop client enables it
+  // just after mount. The gradient + orbs carry the look on mobile.
+  const [showVideo, setShowVideo] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 768px)").matches) setShowVideo(true);
+  }, []);
+
   return (
     <>
       {/* ── Full-viewport video layer (fixed, behind everything) ── */}
       <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <PingPongVideo
-          src="https://videos.pexels.com/video-files/37014189/15682104_2560_1440_30fps.mp4"
-          className="absolute inset-0 h-full w-full object-cover"
-          style={{ opacity: 0.22, mixBlendMode: "luminosity" }}
-        />
+        {showVideo && (
+          <PingPongVideo
+            src="https://videos.pexels.com/video-files/37014189/15682104_2560_1440_30fps.mp4"
+            className="absolute inset-0 h-full w-full object-cover"
+            style={{ opacity: 0.22, mixBlendMode: "luminosity" }}
+          />
+        )}
 
         {/* Gradient overlays */}
         <div className="absolute inset-0 bg-gradient-to-br from-background/70 via-transparent to-background/70" />
