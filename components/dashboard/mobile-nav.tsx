@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { Home, Play, PlayCircle, Receipt, Settings, User } from "lucide-react";
+import { FileText, Home, Play, PlayCircle, Receipt, Settings, User } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +21,7 @@ const tabs: Tab[] = [
   { href: "/dashboard/employees", label: "Tracking", icon: Play, requiresAuth: true },
   { href: "/dashboard/payroll", label: "Payroll", icon: PlayCircle, requiresAuth: true },
   { href: "/dashboard/cra", label: "CRA", icon: Receipt, requiresAuth: true },
+  { href: "/dashboard/reports", label: "Reports", icon: FileText, requiresAuth: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true },
   // No requiresAuth — signed-out users tap this to reach the login/profile card.
   { href: "/dashboard/profile", label: "Profile", icon: User },
@@ -53,7 +54,7 @@ export function MobileNav() {
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
       <LayoutGroup id="mobile-nav">
-        <div className="pointer-events-auto flex items-center gap-1 rounded-full border border-border/60 bg-background/70 p-1.5 shadow-pop backdrop-blur-2xl">
+        <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border/60 bg-background/70 p-1 shadow-pop backdrop-blur-2xl">
           {visibleTabs.map((tab) => {
             const active = isActive(tab);
             return (
@@ -68,7 +69,7 @@ export function MobileNav() {
                 prefetch
                 aria-label={tab.label}
                 className={cn(
-                  "relative grid h-12 w-12 place-items-center rounded-full transition-colors duration-200",
+                  "relative grid h-11 w-11 place-items-center rounded-full transition-colors duration-200",
                   active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >

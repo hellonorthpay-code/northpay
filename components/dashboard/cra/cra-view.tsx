@@ -2,17 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import {
-  AlertCircle,
-  Calendar,
-  Check,
-  Clock,
-  FileText,
-  History,
-  Users,
-  X,
-} from "lucide-react";
-import Link from "next/link";
+import { Calendar, Check, Clock, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -23,13 +13,11 @@ import {
 } from "@/components/ui/select";
 import { usePayrollRuns } from "@/lib/store/payroll";
 import { useRemittance } from "@/lib/store/remittance";
-import { useEmployees } from "@/lib/store/employees";
 import {
   RemittanceService,
   type MonthlyRemittance,
 } from "@/lib/services/remittance";
 import { cn, formatCAD, formatDate } from "@/lib/utils";
-import { TAX_YEAR } from "@/lib/payroll/constants";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -38,7 +26,6 @@ export function CRAView() {
   const remittedMap = useRemittance((s) => s.remitted);
   const markRemitted = useRemittance((s) => s.markRemitted);
   const unmark = useRemittance((s) => s.unmark);
-  const employees = useEmployees((s) => s.employees);
 
   const service = useMemo(
     () => new RemittanceService(runs, remittedMap),
@@ -116,30 +103,6 @@ export function CRAView() {
         </Section>
       )}
 
-      {/* ─── Year-end T4 section ─── */}
-      <Section title={`Year-end · ${TAX_YEAR}`}>
-        <div className="space-y-3 px-5 py-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 place-items-center rounded-2xl bg-muted">
-              <FileText className="h-4 w-4 text-foreground/80" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[13.5px] font-medium tracking-tight">
-                T4 slips · {TAX_YEAR}
-              </p>
-              <p className="text-[11.5px] text-muted-foreground">
-                {employees.length} employee{employees.length === 1 ? "" : "s"} · download from the Employees tab
-              </p>
-            </div>
-            <Link href="/dashboard/employees">
-              <Button variant="outline" size="sm">
-                <Users className="h-3.5 w-3.5" />
-                Open Employees
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </Section>
     </div>
   );
 }

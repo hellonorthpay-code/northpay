@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { Landmark, Play, Settings, Users } from "lucide-react";
+import { FileText, Landmark, Play, Settings, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/dashboard/employees", label: "Employees", icon: Users },
   { href: "/dashboard/payroll", label: "Payroll", icon: Play },
   { href: "/dashboard/cra", label: "CRA", icon: Landmark },
+  { href: "/dashboard/reports", label: "Reports", icon: FileText },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 

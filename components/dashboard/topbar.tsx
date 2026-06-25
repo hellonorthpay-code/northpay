@@ -14,7 +14,11 @@ const titles: Record<string, { title: string; sub: string }> = {
   },
   "/dashboard/cra": {
     title: "CRA",
-    sub: "Monthly remittances, T4s, and year-end filings.",
+    sub: "Monthly remittances and your PD7A obligations.",
+  },
+  "/dashboard/reports": {
+    title: "Reports",
+    sub: "T4s, T4As, ROEs, and year-end filings.",
   },
   "/dashboard/settings": {
     title: "Settings",
