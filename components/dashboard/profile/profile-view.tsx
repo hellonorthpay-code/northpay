@@ -18,8 +18,6 @@ import {
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
 import { cn, formatDate } from "@/lib/utils";
-import { PingPongVideo } from "@/components/ui/ping-pong-video";
-import { LoginView } from "./login-view";
 
 const TIMEZONES = [
   { value: "America/Toronto",    label: "Eastern Time — Toronto" },
@@ -47,8 +45,10 @@ export function ProfileView() {
     hydrate();
   }, [hydrate]);
 
+  // Logged-out is handled upstream by the route (LoginScreen); ProfileView is
+  // only mounted once authenticated. These guards are a safety net.
   if (!hydrated) return null;
-  if (!user) return <LoginWithVideo />;
+  if (!user) return null;
 
   const initials =
     (profile.firstName[0] ?? "").toUpperCase() +
@@ -278,47 +278,6 @@ export function ProfileView() {
 // ─────────────────────────────────────────────────────────────────────────
 // Login page with blended looping video background
 // ─────────────────────────────────────────────────────────────────────────
-function LoginWithVideo() {
-  // The background video is a ~multi-MB 1440p stream for a barely-visible
-  // (opacity 0.22) effect. On mobile that download stalled the first-visit
-  // navigation, so we only mount it on larger screens. Default false (also the
-  // SSR value) so phones never start the download; a desktop client enables it
-  // just after mount. The gradient + orbs carry the look on mobile.
-  const [showVideo, setShowVideo] = useState(false);
-  useEffect(() => {
-    if (window.matchMedia("(min-width: 768px)").matches) setShowVideo(true);
-  }, []);
-
-  return (
-    <>
-      {/* ── Full-viewport video layer (fixed, behind everything) ── */}
-      <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        {showVideo && (
-          <PingPongVideo
-            src="https://videos.pexels.com/video-files/37014189/15682104_2560_1440_30fps.mp4"
-            className="absolute inset-0 h-full w-full object-cover"
-            style={{ opacity: 0.22, mixBlendMode: "luminosity" }}
-          />
-        )}
-
-        {/* Gradient overlays */}
-        <div className="absolute inset-0 bg-gradient-to-br from-background/70 via-transparent to-background/70" />
-        <div className="absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background" />
-        <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-background" />
-
-        {/* Colour tint orbs */}
-        <div className="absolute -left-40 top-20 h-[500px] w-[500px] rounded-full bg-rose-400/10 blur-[100px]" />
-        <div className="absolute -right-40 bottom-20 h-[500px] w-[500px] rounded-full bg-sky-400/10 blur-[100px]" />
-      </div>
-
-      {/* ── Login card — fixed, centred over the video ── */}
-      <div className="fixed inset-0 z-10 flex items-center justify-center overflow-y-auto px-4 py-20">
-        <LoginView />
-      </div>
-    </>
-  );
-}
-
 // ─────────────────────────────────────────────────────────────────────────
 // Card primitive
 // ─────────────────────────────────────────────────────────────────────────
