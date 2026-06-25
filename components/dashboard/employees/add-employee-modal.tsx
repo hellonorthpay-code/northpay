@@ -28,7 +28,6 @@ import {
 } from "@/components/ui/select";
 import {
   PROVINCE_NAMES,
-  ROE_REASON_CODES,
   SUPPORTED_PROVINCES,
   type Employee,
   type EmploymentType,
@@ -500,45 +499,6 @@ function StepOne({ form, setForm }: StepProps) {
           />
         </Field>
       </div>
-
-      <Section title="End of employment (optional)">
-        <Field label="End date">
-          <DatePicker
-            value={form.endDate}
-            onChange={(v) => setForm({ ...form, endDate: v })}
-          />
-        </Field>
-        <Field label="ROE reason (Block 16)">
-          <Select
-            value={form.roeReasonCode}
-            onValueChange={(v) =>
-              setForm({ ...form, roeReasonCode: v })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select reason" />
-            </SelectTrigger>
-            <SelectContent>
-              {ROE_REASON_CODES.map((c) => (
-                <SelectItem key={c.code} value={c.code}>
-                  {c.code} — {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </Field>
-        {form.roeReasonCode === "K" && (
-          <Field label="Describe reason" wide>
-            <Input
-              value={form.roeReasonOther}
-              onChange={(e) =>
-                setForm({ ...form, roeReasonOther: e.target.value })
-              }
-              placeholder="Reason for departure"
-            />
-          </Field>
-        )}
-      </Section>
     </>
   );
 }
@@ -691,23 +651,6 @@ function StepTwo({ form, setForm }: StepProps) {
         </Field>
       </div>
     </>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground sm:mb-3">
-        {title}
-      </p>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">{children}</div>
-    </div>
   );
 }
 
