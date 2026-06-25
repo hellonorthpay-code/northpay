@@ -185,6 +185,21 @@ function UserRow({
             ? `active ${formatDate(user.lastSignInAt)}`
             : "never signed in"}
         </p>
+        <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px]">
+          <span className="font-medium text-foreground">
+            {user.employeeCount} employee{user.employeeCount === 1 ? "" : "s"}
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="font-medium text-foreground">
+            {user.payrollRunCount} payroll run{user.payrollRunCount === 1 ? "" : "s"}
+          </span>
+          <span className="text-muted-foreground">·</span>
+          <span className="text-muted-foreground">
+            {user.lastRunAt
+              ? `last run ${formatDate(user.lastRunAt)}`
+              : "no runs yet"}
+          </span>
+        </p>
         {rowError && (
           <p className="mt-1 text-[11px] text-destructive">{rowError}</p>
         )}

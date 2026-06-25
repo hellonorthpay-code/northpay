@@ -39,6 +39,48 @@ export async function GET(request: Request) {
     if (created && now - created <= 30 * DAY) newUsers30++;
   }
 
+  // ── Per-user usage: tally employees + payroll runs by owner_id ──
+  // Pull just the owner column (and run timestamps) in pages so the counts
+  // stay accurate past Supabase's default 1000-row response cap.
+  async function gatherRows(
+    table: string,
+    columns: string
+  ): Promise<Array<{ owner_id: string; created_at?: string }>> {
+    const out: Array<{ owner_id: string; created_at?: string }> = [];
+    for (let from = 0; from < 50_000; from += 1000) {
+      const { data, error } = await admin
+        .from(table)
+        .select(columns)
+        .range(from, from + 999);
+      if (error || !data) break;
+      out.push(...(data as unknown as Array<{ owner_id: string; created_at?: string }>));
+      if (data.length < 1000) break;
+    }
+    return out;
+  }
+
+  const [empRows, runRows] = await Promise.all([
+    gatherRows("employees", "owner_id"),
+    gatherRows("payroll_runs", "owner_id, created_at"),
+  ]);
+
+  const empByOwner = new Map<string, number>();
+  for (const r of empRows) {
+    if (r.owner_id) empByOwner.set(r.owner_id, (empByOwner.get(r.owner_id) ?? 0) + 1);
+  }
+  const runByOwner = new Map<string, number>();
+  const lastRunByOwner = new Map<string, string>();
+  for (const r of runRows) {
+    if (!r.owner_id) continue;
+    runByOwner.set(r.owner_id, (runByOwner.get(r.owner_id) ?? 0) + 1);
+    if (r.created_at) {
+      const prev = lastRunByOwner.get(r.owner_id);
+      if (!prev || new Date(r.created_at) > new Date(prev)) {
+        lastRunByOwner.set(r.owner_id, r.created_at);
+      }
+    }
+  }
+
   // Most-recent signups first, capped to a readable table.
   const users: AdminUserRow[] = [...collected]
     .sort(
@@ -62,10 +104,13 @@ export async function GET(request: Request) {
         lastSignInAt: u.last_sign_in_at ?? null,
         provider: u.app_metadata?.provider ?? "email",
         suspended: !!bannedUntil && new Date(bannedUntil).getTime() > now,
+        employeeCount: empByOwner.get(u.id) ?? 0,
+        payrollRunCount: runByOwner.get(u.id) ?? 0,
+        lastRunAt: lastRunByOwner.get(u.id) ?? null,
       };
     });
 
-  // ── Platform usage (admin client bypasses RLS) ──
+  // ── Platform totals (exact counts, independent of the row cap above) ──
   const [{ count: empCount }, { count: runCount }] = await Promise.all([
     admin.from("employees").select("*", { count: "exact", head: true }),
     admin.from("payroll_runs").select("*", { count: "exact", head: true }),
