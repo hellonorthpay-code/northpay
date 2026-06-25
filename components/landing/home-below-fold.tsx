@@ -9,35 +9,40 @@ import dynamic from "next/dynamic";
  * just after. Previously they were part of the initial hydration tree, which on
  * mobile kept the main thread busy long enough that taps on the bottom-nav
  * (e.g. Profile) were dropped until hydration finally caught up.
+ *
+ * NOTE: next/dynamic requires the options to be an inline object literal —
+ * a shared `opts` variable fails the build ("options must be an object literal").
  */
-const opts = { ssr: false } as const;
-
-const About = dynamic(() => import("./about").then((m) => m.About), opts);
+const About = dynamic(() => import("./about").then((m) => m.About), {
+  ssr: false,
+});
 const EmployeesScene = dynamic(
   () => import("./cinematic-sections").then((m) => m.EmployeesScene),
-  opts
+  { ssr: false }
 );
 const ProvinceSection = dynamic(
   () => import("./province").then((m) => m.ProvinceSection),
-  opts
+  { ssr: false }
 );
 const PaystubSection = dynamic(
   () => import("./paystub").then((m) => m.PaystubSection),
-  opts
+  { ssr: false }
 );
 const Automation = dynamic(
   () => import("./automation").then((m) => m.Automation),
-  opts
+  { ssr: false }
 );
 const AutomationScene = dynamic(
   () => import("./cinematic-sections").then((m) => m.AutomationScene),
-  opts
+  { ssr: false }
 );
 const SuccessScene = dynamic(
   () => import("./cinematic-sections").then((m) => m.SuccessScene),
-  opts
+  { ssr: false }
 );
-const Footer = dynamic(() => import("./footer").then((m) => m.Footer), opts);
+const Footer = dynamic(() => import("./footer").then((m) => m.Footer), {
+  ssr: false,
+});
 
 export function HomeBelowFold() {
   return (
