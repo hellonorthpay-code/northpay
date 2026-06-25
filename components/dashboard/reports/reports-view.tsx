@@ -1,6 +1,5 @@
 "use client";
 
-import { motion } from "framer-motion";
 import {
   FileBadge,
   FileClock,
@@ -13,12 +12,10 @@ import { Button } from "@/components/ui/button";
 import { useEmployees } from "@/lib/store/employees";
 import { TAX_YEAR } from "@/lib/payroll/constants";
 
-const ease = [0.22, 1, 0.36, 1] as const;
-
 /**
- * Reports hub — the home for year-end and employee documents (T4, T4 Summary,
- * T4A, ROE). Pulled out of the CRA/remittance screen so that tab stays focused
- * on remittances while this one grows into the full set of payroll filings.
+ * Year-end & employee documents (T4, T4 Summary, T4A, ROE). Rendered inside the
+ * CRA tab beneath the remittance summary so filings and remittances live
+ * together.
  */
 export function ReportsView() {
   const employees = useEmployees((s) => s.employees);
@@ -27,21 +24,6 @@ export function ReportsView() {
 
   return (
     <div className="space-y-5">
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.35, ease }}
-        className="rounded-3xl border border-border/70 bg-card/70 p-5 shadow-soft backdrop-blur-xl"
-      >
-        <p className="text-[14px] font-semibold tracking-tight">
-          Payroll reports & filings
-        </p>
-        <p className="mt-1 text-[12.5px] leading-relaxed text-muted-foreground">
-          Year-end slips and employee records, all in one place. Remittances
-          (PD7A) live on the CRA tab.
-        </p>
-      </motion.div>
-
       {/* ─── Year-end slips ─── */}
       <Section title={`Year-end · ${TAX_YEAR}`}>
         <ul className="divide-y divide-border/40">

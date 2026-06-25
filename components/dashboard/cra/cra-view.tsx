@@ -31,6 +31,7 @@ import {
 } from "@/lib/services/remittance";
 import { cn, formatCAD, formatDate, round2 } from "@/lib/utils";
 import { TAX_YEAR } from "@/lib/payroll/constants";
+import { ReportsView } from "@/components/dashboard/reports/reports-view";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -137,6 +138,9 @@ export function CRAView() {
 
       {/* ─── PD7A year-to-date summary ─── */}
       {summary.hasData && <Pd7aSummary summary={summary} />}
+
+      {/* ─── Year-end slips & employment records (merged from Reports) ─── */}
+      <ReportsView />
     </div>
   );
 }

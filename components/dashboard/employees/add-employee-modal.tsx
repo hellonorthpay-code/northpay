@@ -405,7 +405,6 @@ function StepOne({ form, setForm }: StepProps) {
           <Input
             value={form.firstName}
             onChange={(e) => setForm({ ...form, firstName: e.target.value })}
-            autoFocus
           />
         </Field>
         <Field label="Last name">

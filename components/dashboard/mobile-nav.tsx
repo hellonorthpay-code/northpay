@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { FileText, Home, Play, PlayCircle, Receipt, Settings, User } from "lucide-react";
+import { Home, Play, PlayCircle, Receipt, Settings, User } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
@@ -23,7 +23,6 @@ const tabs: Tab[] = [
   { href: "/dashboard/employees", label: "Tracking", icon: Play, requiresAuth: true },
   { href: "/dashboard/payroll", label: "Payroll", icon: PlayCircle, requiresAuth: true },
   { href: "/dashboard/cra", label: "CRA", icon: Receipt, requiresAuth: true },
-  { href: "/dashboard/reports", label: "Reports", icon: FileText, requiresAuth: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true },
   // Signed-out only: the login entry. Once signed in, Profile lives inside
   // Settings (ProfileLinkCard), so it's dropped here to declutter the bar.

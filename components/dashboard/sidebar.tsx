@@ -3,15 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { LayoutGroup, motion } from "framer-motion";
-import { FileText, Landmark, Play, Settings, ShieldCheck, Users } from "lucide-react";
+import { Landmark, Play, Settings, ShieldCheck, Users } from "lucide-react";
 import { useIsAdmin } from "@/lib/admin/client";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/dashboard/employees", label: "Employees", icon: Users },
   { href: "/dashboard/payroll", label: "Payroll", icon: Play },
+  // CRA now also holds year-end reports (T4/T4A/ROE).
   { href: "/dashboard/cra", label: "CRA", icon: Landmark },
-  { href: "/dashboard/reports", label: "Reports", icon: FileText },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
