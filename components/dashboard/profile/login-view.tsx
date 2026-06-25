@@ -18,7 +18,6 @@ export function LoginView() {
   const router = useRouter();
   const login = useAuth((s) => s.login);
   const signup = useAuth((s) => s.signup);
-  const loginWithGoogle = useAuth((s) => s.loginWithGoogle);
   const requestPasswordReset = useAuth((s) => s.requestPasswordReset);
 
   const [mode, setMode] = useState<Mode>("login");
@@ -27,6 +26,7 @@ export function LoginView() {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
@@ -41,6 +41,7 @@ export function LoginView() {
       setSignupSuccess(false);
       switchMode("login");
       setPassword("");
+      setConfirmPassword("");
     }, 2400);
     return () => window.clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -90,6 +91,14 @@ export function LoginView() {
       }
 
       if (mode === "signup") {
+        if (password.length < 6) {
+          setError("Password must be at least 6 characters.");
+          return;
+        }
+        if (password !== confirmPassword) {
+          setError("Passwords don't match.");
+          return;
+        }
         const result = await signup({ firstName, lastName, email, password, phone });
         if (!result.ok) {
           setError(result.error);
@@ -235,25 +244,6 @@ export function LoginView() {
                   </div>
                 )}
 
-                {/* Google */}
-                {mode !== "forgot" && (
-                  <>
-                    <button
-                      type="button"
-                      onClick={() => void loginWithGoogle()}
-                      className="mt-5 flex w-full items-center justify-center gap-2.5 rounded-2xl border border-border/70 bg-background px-4 py-2.5 text-[13.5px] font-medium tracking-tight text-foreground transition-colors hover:bg-muted/40"
-                    >
-                      <GoogleIcon className="h-4 w-4" />
-                      Continue with Google
-                    </button>
-                    <div className="mt-5 flex items-center gap-3 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                      <span className="h-px flex-1 bg-border/60" />
-                      <span>or</span>
-                      <span className="h-px flex-1 bg-border/60" />
-                    </div>
-                  </>
-                )}
-
                 {/* Form */}
                 <form onSubmit={submit} className="mt-5 space-y-3">
                   <AnimatePresence initial={false}>
@@ -311,6 +301,36 @@ export function LoginView() {
                       >
                         <IconField icon={Lock} label="Password">
                           <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder="••••••••" />
+                        </IconField>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Confirm password — sign-up only, so the password is entered twice. */}
+                  <AnimatePresence initial={false}>
+                    {mode === "signup" && (
+                      <motion.div
+                        key="confirm-password-field"
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{
+                          height: { duration: 0.28, ease },
+                          opacity: { duration: 0.2, ease },
+                        }}
+                        style={{ overflow: "hidden" }}
+                      >
+                        <IconField icon={Lock} label="Confirm password">
+                          <Input
+                            type="password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            autoComplete="new-password"
+                            placeholder="••••••••"
+                            aria-invalid={
+                              confirmPassword.length > 0 && confirmPassword !== password
+                            }
+                          />
                         </IconField>
                       </motion.div>
                     )}
@@ -405,17 +425,6 @@ function IconField({ icon: Icon, label, children }: { icon: React.ComponentType<
       </Label>
       {children}
     </div>
-  );
-}
-
-function GoogleIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
-      <path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3c-1.6 4.7-6 8-11.3 8a12 12 0 1 1 7.9-21.1l5.7-5.7A20 20 0 1 0 44 24c0-1.2-.1-2.3-.4-3.5z"/>
-      <path fill="#FF3D00" d="m6.3 14.7 6.6 4.8C14.7 16 19 13 24 13c3 0 5.8 1.1 7.9 3l5.7-5.7A20 20 0 0 0 6.3 14.7z"/>
-      <path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2A12 12 0 0 1 12.8 28L6.2 33A20 20 0 0 0 24 44z"/>
-      <path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3a12 12 0 0 1-4.1 5.6l6.2 5.2C41 35.3 44 30.2 44 24c0-1.2-.1-2.3-.4-3.5z"/>
-    </svg>
   );
 }
 
