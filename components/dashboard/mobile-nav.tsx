@@ -14,6 +14,8 @@ type Tab = {
   icon: typeof Home;
   exact?: boolean;
   requiresAuth?: boolean;
+  /** Show ONLY when signed out (e.g. the login entry point). */
+  guestOnly?: boolean;
 };
 
 const tabs: Tab[] = [
@@ -23,8 +25,9 @@ const tabs: Tab[] = [
   { href: "/dashboard/cra", label: "CRA", icon: Receipt, requiresAuth: true },
   { href: "/dashboard/reports", label: "Reports", icon: FileText, requiresAuth: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true },
-  // No requiresAuth — signed-out users tap this to reach the login/profile card.
-  { href: "/dashboard/profile", label: "Profile", icon: User },
+  // Signed-out only: the login entry. Once signed in, Profile lives inside
+  // Settings (ProfileLinkCard), so it's dropped here to declutter the bar.
+  { href: "/dashboard/profile", label: "Profile", icon: User, guestOnly: true },
 ];
 
 export function MobileNav() {
@@ -38,14 +41,22 @@ export function MobileNav() {
   }, [hydrateAuth]);
 
   const isAuthed = !!user;
-  const visibleTabs = tabs.filter((t) => isAuthed || !t.requiresAuth);
+  const visibleTabs = tabs.filter((t) => {
+    if (t.requiresAuth) return isAuthed; // dashboard tabs: signed-in only
+    if (t.guestOnly) return !isAuthed; // login entry: signed-out only
+    return true; // Home: always
+  });
 
   function isActive(tab: Tab) {
     if (tab.exact) return pathname === tab.href;
     if (tab.href === "/dashboard/employees")
       return pathname.startsWith("/dashboard/employees");
     if (tab.href === "/dashboard/settings")
-      return pathname.startsWith("/dashboard/settings");
+      // Profile lives under Settings now, so Settings owns that highlight too.
+      return (
+        pathname.startsWith("/dashboard/settings") ||
+        pathname.startsWith("/dashboard/profile")
+      );
     if (tab.href === "/dashboard/profile")
       return pathname.startsWith("/dashboard/profile");
     return pathname === tab.href || pathname.startsWith(tab.href + "/");
