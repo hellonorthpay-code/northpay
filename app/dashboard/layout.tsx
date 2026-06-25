@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
+import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
 import { useHydrateStores } from "@/lib/store/hydrate";
 import { useAuth } from "@/lib/store/auth";
 
@@ -63,6 +64,10 @@ export default function DashboardLayout({
       transition={{ duration: 0.55, ease }}
       className="relative min-h-screen"
     >
+      {/* Post-auth welcome — rendered here (not in the login view) so it
+          survives the route change from /profile to /employees. */}
+      <WelcomeOverlay />
+
       <div className="pointer-events-none fixed inset-0 -z-10">
         <div className="absolute -left-32 top-10 h-[420px] w-[420px] rounded-full bg-rose-200/25 blur-3xl dark:bg-rose-500/10" />
         <div className="absolute -right-32 top-40 h-[480px] w-[480px] rounded-full bg-sky-200/25 blur-3xl dark:bg-sky-500/10" />

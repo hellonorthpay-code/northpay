@@ -111,11 +111,14 @@ export const useAuth = create<AuthStore>((set, get) => ({
     });
     if (error) return { ok: false, error: error.message };
 
+    // Email confirmation is ON → no session yet; the user must confirm first.
     if (data.user && !data.session) {
       return { ok: true, needsConfirmation: true };
     }
 
-    // Save phone + full profile immediately (trigger only gets name/email)
+    // Email confirmation is OFF → Supabase returned a live session, so the
+    // user is signed in. Save their phone + full profile, then KEEP them
+    // logged in (no sign-out) so we can take them straight into the app.
     if (data.user) {
       await supabase.from("profiles").upsert({
         id: data.user.id,
@@ -124,8 +127,7 @@ export const useAuth = create<AuthStore>((set, get) => ({
         email: email.trim().toLowerCase(),
         phone: (phone ?? "").trim(),
       });
-      // Sign out so the user must explicitly log in — cleaner UX
-      await supabase.auth.signOut();
+      set({ user: sessionToUser(data.session) });
     }
 
     return { ok: true };

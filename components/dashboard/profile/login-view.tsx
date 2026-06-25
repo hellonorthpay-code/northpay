@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import { AlertCircle, CheckCircle2, Lock, Mail, Phone, User } from "lucide-react";
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/store/auth";
+import { useWelcome } from "@/lib/store/welcome";
 import { cn } from "@/lib/utils";
 
 type Mode = "login" | "signup" | "forgot";
@@ -19,6 +20,7 @@ export function LoginView() {
   const login = useAuth((s) => s.login);
   const signup = useAuth((s) => s.signup);
   const requestPasswordReset = useAuth((s) => s.requestPasswordReset);
+  const triggerWelcome = useWelcome((s) => s.trigger);
 
   const [mode, setMode] = useState<Mode>("login");
   const [firstName, setFirstName] = useState("");
@@ -30,22 +32,9 @@ export function LoginView() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [resetSent, setResetSent] = useState(false);
-  const [signupSuccess, setSignupSuccess] = useState(false);
-  const [premiumReveal, setPremiumReveal] = useState(false);
-
-  // After successful signup, auto-flip to login (with email prefilled) after a
-  // beat — the success screen plays, then the form slides back in.
-  useEffect(() => {
-    if (!signupSuccess) return;
-    const t = window.setTimeout(() => {
-      setSignupSuccess(false);
-      switchMode("login");
-      setPassword("");
-      setConfirmPassword("");
-    }, 2400);
-    return () => window.clearTimeout(t);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signupSuccess]);
+  // Only shown when the Supabase project has email confirmation enabled — then
+  // sign-up returns no session and the user must confirm before logging in.
+  const [awaitingConfirmation, setAwaitingConfirmation] = useState(false);
 
   function switchMode(next: Mode) {
     setMode(next);
@@ -53,15 +42,19 @@ export function LoginView() {
     setResetSent(false);
   }
 
-  function isFirstLogin(): boolean {
-    if (typeof window === "undefined") return false;
-    return !window.localStorage.getItem("northpay:hasLoggedIn");
-  }
-
   function markLoggedIn() {
     try {
       window.localStorage.setItem("northpay:hasLoggedIn", "1");
     } catch {}
+  }
+
+  // Shared post-auth handoff → into the app at Employees. On sign-up we also
+  // play the welcome overlay (it lives in the dashboard layout, so it survives
+  // this navigation); regular login goes straight through.
+  function enterApp(withWelcome: boolean) {
+    markLoggedIn();
+    if (withWelcome) triggerWelcome();
+    router.replace("/dashboard/employees");
   }
 
   async function submit(e: React.FormEvent) {
@@ -72,21 +65,8 @@ export function LoginView() {
     try {
       if (mode === "login") {
         const result = await login(email, password);
-        if (!result.ok) {
-          setError(result.error);
-        } else {
-          // First-time login → play the premium reveal before routing.
-          if (isFirstLogin()) {
-            markLoggedIn();
-            setPremiumReveal(true);
-            window.setTimeout(() => {
-              router.replace("/dashboard/employees");
-            }, 2200);
-          } else {
-            markLoggedIn();
-            router.replace("/dashboard/employees");
-          }
-        }
+        if (!result.ok) setError(result.error);
+        else enterApp(false);
         return;
       }
 
@@ -102,8 +82,12 @@ export function LoginView() {
         const result = await signup({ firstName, lastName, email, password, phone });
         if (!result.ok) {
           setError(result.error);
+        } else if (result.needsConfirmation) {
+          // Email confirmation required — can't sign them in yet.
+          setAwaitingConfirmation(true);
         } else {
-          setSignupSuccess(true);
+          // Signed in straight away → welcome overlay, then into the app.
+          enterApp(true);
         }
         return;
       }
@@ -119,8 +103,6 @@ export function LoginView() {
 
   return (
     <>
-      <PremiumReveal show={premiumReveal} />
-
       <div className="mx-auto flex w-full max-w-md flex-col gap-5">
         {/* The card owns the ONE entrance animation for the home→login
             transition — a calm rise + settle + fade. The dashboard layout
@@ -144,9 +126,9 @@ export function LoginView() {
           <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
 
           <AnimatePresence mode="wait" initial={false}>
-            {signupSuccess ? (
+            {awaitingConfirmation ? (
               <motion.div
-                key="signup-success"
+                key="confirm-email"
                 initial={{ opacity: 0, scale: 0.96 }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.98, y: -8 }}
@@ -162,35 +144,28 @@ export function LoginView() {
                   <CheckCircle2 className="h-8 w-8 text-success" />
                 </motion.div>
 
-                <motion.div
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.35, ease, delay: 0.2 }}
-                >
-                  <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-                    Welcome to NorthPay
-                  </p>
-                  <p className="mt-2 text-[22px] font-semibold leading-tight tracking-tightest">
-                    Account created!
-                  </p>
-                  <p className="mx-auto mt-2 max-w-[260px] text-[13.5px] leading-relaxed text-muted-foreground">
-                    Taking you to log in…
-                  </p>
-                </motion.div>
+                <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                  Almost there
+                </p>
+                <p className="mt-2 text-[22px] font-semibold leading-tight tracking-tightest">
+                  Check your email
+                </p>
+                <p className="mx-auto mt-2 max-w-[280px] text-[13.5px] leading-relaxed text-muted-foreground">
+                  We sent a confirmation link to{" "}
+                  <span className="font-medium text-foreground">{email}</span>.
+                  Click it, then log in.
+                </p>
 
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.35 }}
-                  className="mx-auto mt-6 h-1 w-32 overflow-hidden rounded-full bg-muted"
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAwaitingConfirmation(false);
+                    switchMode("login");
+                  }}
+                  className="mt-6 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                 >
-                  <motion.div
-                    initial={{ x: "-100%" }}
-                    animate={{ x: "100%" }}
-                    transition={{ duration: 1.8, ease: "easeInOut", delay: 0.35 }}
-                    className="h-full w-full rounded-full bg-gradient-to-r from-transparent via-foreground to-transparent dark:via-white"
-                  />
-                </motion.div>
+                  ← Back to log in
+                </button>
               </motion.div>
             ) : (
               <motion.div
@@ -428,85 +403,3 @@ function IconField({ icon: Icon, label, children }: { icon: React.ComponentType<
   );
 }
 
-/**
- * Apple-style premium reveal shown the very first time a user logs in.
- * A full-bleed dark overlay fades up with the logo, an aurora glow, the
- * brand wordmark, and a thin shimmer bar — held ~2.2s before the router
- * navigates into the dashboard.
- */
-function PremiumReveal({ show }: { show: boolean }) {
-  return (
-    <AnimatePresence>
-      {show && (
-        <motion.div
-          key="premium-reveal"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.5, ease }}
-          className="fixed inset-0 z-[80] flex items-center justify-center overflow-hidden bg-[#0a0a0c]"
-        >
-          {/* Aurora glows */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: 0.7, scale: 1 }}
-            transition={{ duration: 1.6, ease }}
-            className="pointer-events-none absolute -top-1/4 left-1/2 h-[60vh] w-[60vh] -translate-x-1/2 rounded-full bg-rose-500/30 blur-[120px]"
-          />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.6 }}
-            animate={{ opacity: 0.6, scale: 1 }}
-            transition={{ duration: 1.8, ease, delay: 0.1 }}
-            className="pointer-events-none absolute -bottom-1/4 right-1/4 h-[55vh] w-[55vh] rounded-full bg-sky-500/25 blur-[120px]"
-          />
-
-          <div className="relative flex flex-col items-center">
-            {/* Logo with gentle spring-in + breath */}
-            <motion.div
-              initial={{ scale: 0.4, opacity: 0, filter: "blur(12px)" }}
-              animate={{ scale: 1, opacity: 1, filter: "blur(0px)" }}
-              transition={{ duration: 0.9, ease }}
-              className="grid h-20 w-20 place-items-center rounded-3xl bg-white text-black shadow-[0_20px_80px_-10px_rgba(255,255,255,0.35)]"
-            >
-              <svg width="34" height="34" viewBox="0 0 16 16" fill="none">
-                <path d="M3 13V3l10 10V3" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </motion.div>
-
-            <motion.p
-              initial={{ opacity: 0, y: 14, letterSpacing: "0.4em" }}
-              animate={{ opacity: 1, y: 0, letterSpacing: "0.02em" }}
-              transition={{ duration: 1.0, ease, delay: 0.45 }}
-              className="mt-8 text-[28px] font-semibold tracking-tightest text-white md:text-[34px]"
-            >
-              Welcome to NorthPay
-            </motion.p>
-            <motion.p
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6, ease, delay: 0.95 }}
-              className="mt-2 text-[12.5px] uppercase tracking-[0.28em] text-white/55"
-            >
-              Canadian payroll, finally beautiful
-            </motion.p>
-
-            {/* Shimmer bar */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 1.25 }}
-              className="relative mt-10 h-[2px] w-48 overflow-hidden rounded-full bg-white/10"
-            >
-              <motion.div
-                initial={{ x: "-100%" }}
-                animate={{ x: "100%" }}
-                transition={{ duration: 1.4, ease: "easeInOut", delay: 1.25 }}
-                className="h-full w-full bg-gradient-to-r from-transparent via-white to-transparent"
-              />
-            </motion.div>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
