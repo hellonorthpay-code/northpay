@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Calendar, Check, Clock, History, X } from "lucide-react";
+import { Calendar, Check, Clock, FileText, History, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -17,7 +17,8 @@ import {
   RemittanceService,
   type MonthlyRemittance,
 } from "@/lib/services/remittance";
-import { cn, formatCAD, formatDate } from "@/lib/utils";
+import { cn, formatCAD, formatDate, round2 } from "@/lib/utils";
+import { TAX_YEAR } from "@/lib/payroll/constants";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -46,6 +47,24 @@ export function CRAView() {
     () => history.find((m) => m.monthKey === viewingKey) ?? null,
     [history, viewingKey]
   );
+
+  // Year-to-date PD7A summary — the source deductions reported across every
+  // month, split into what's been remitted vs. still outstanding.
+  const summary = useMemo(() => {
+    const sum = (arr: MonthlyRemittance[], key: keyof MonthlyRemittance) =>
+      round2(arr.reduce((acc, m) => acc + (m[key] as number), 0));
+    const outstanding = months.filter((m) => !m.remitted && m.total > 0);
+    return {
+      hasData: months.length > 0,
+      remittedTotal: sum(history, "total"),
+      outstandingTotal: sum(outstanding, "total"),
+      total: sum(months, "total"),
+      federalTax: sum(months, "federalTax"),
+      provincialTax: sum(months, "provincialTax"),
+      cpp: sum(months, "cpp"),
+      ei: sum(months, "ei"),
+    };
+  }, [months, history]);
 
   return (
     <div className="space-y-5">
@@ -103,6 +122,94 @@ export function CRAView() {
         </Section>
       )}
 
+      {/* ─── PD7A year-to-date summary ─── */}
+      {summary.hasData && <Pd7aSummary summary={summary} />}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// PD7A year-to-date summary — the remittance "statement of account"
+// ─────────────────────────────────────────────────────────────────────────
+function Pd7aSummary({
+  summary,
+}: {
+  summary: {
+    remittedTotal: number;
+    outstandingTotal: number;
+    total: number;
+    federalTax: number;
+    provincialTax: number;
+    cpp: number;
+    ei: number;
+  };
+}) {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-5 py-3">
+        <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <FileText className="h-3.5 w-3.5" />
+          PD7A summary · {TAX_YEAR}
+        </span>
+        <span className="text-[11px] text-muted-foreground">
+          Statement of account
+        </span>
+      </div>
+
+      <div className="space-y-5 p-5">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <BigStat
+            label="Remitted to date"
+            value={formatCAD(summary.remittedTotal)}
+            tone="success"
+          />
+          <BigStat
+            label="Outstanding"
+            value={formatCAD(summary.outstandingTotal)}
+            tone={summary.outstandingTotal > 0 ? "amber" : "default"}
+          />
+          <BigStat label="Total source deductions" value={formatCAD(summary.total)} />
+        </div>
+
+        <div className="grid grid-cols-2 divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center sm:grid-cols-4 sm:divide-x">
+          <Stat label="Federal tax" value={formatCAD(summary.federalTax)} />
+          <Stat label="Provincial tax" value={formatCAD(summary.provincialTax)} />
+          <Stat label="CPP (×2)" value={formatCAD(summary.cpp)} />
+          <Stat label="EI (×2.4)" value={formatCAD(summary.ei)} />
+        </div>
+
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          Source deductions reported across {TAX_YEAR}, as they appear on each
+          monthly PD7A. Downloadable PD7A statements are coming soon.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function BigStat({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "success" | "amber" | "default";
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3.5">
+      <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1.5 text-[20px] font-semibold tabular-nums tracking-tight",
+          tone === "success" && "text-success",
+          tone === "amber" && "text-amber-600 dark:text-amber-400"
+        )}
+      >
+        {value}
+      </p>
     </div>
   );
 }
