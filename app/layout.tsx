@@ -3,6 +3,7 @@ import "./globals.css";
 import { ThemeScript } from "@/components/theme-script";
 import { LandingNav } from "@/components/landing/nav";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
+import { MobileLoginButton } from "@/components/landing/mobile-login-button";
 import { RouteProgressBar } from "@/components/page-transition";
 
 export const metadata: Metadata = {
@@ -35,6 +36,7 @@ export default function RootLayout({
             scroll measurement on soft navigation (blank until refresh). */}
         <RouteProgressBar />
         <LandingNav />
+        <MobileLoginButton />
         {children}
         <MobileNav />
       </body>

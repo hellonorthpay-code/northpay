@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Play, PlayCircle, Receipt, Settings, User } from "lucide-react";
+import { Home, Play, PlayCircle, Receipt, Settings } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
@@ -23,9 +23,8 @@ const tabs: Tab[] = [
   { href: "/dashboard/payroll", label: "Payroll", icon: PlayCircle, requiresAuth: true },
   { href: "/dashboard/cra", label: "CRA", icon: Receipt, requiresAuth: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true },
-  // Signed-out only: the login entry. Once signed in, Profile lives inside
-  // Settings (ProfileLinkCard), so it's dropped here to declutter the bar.
-  { href: "/dashboard/profile", label: "Profile", icon: User, guestOnly: true },
+  // Profile is NOT in the bottom bar: signed-out users get a top-right login
+  // button (MobileLoginButton); signed-in users reach it from Settings.
 ];
 
 export function MobileNav() {
