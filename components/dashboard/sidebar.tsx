@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutGroup, motion } from "framer-motion";
 import { Landmark, Play, Settings, ShieldCheck, Users } from "lucide-react";
 import { useIsAdmin } from "@/lib/admin/client";
 import { cn } from "@/lib/utils";
@@ -45,58 +44,38 @@ export function Sidebar() {
           NorthPay
         </Link>
 
-        {/* `LayoutGroup` scopes the shared `layoutId` to just this nav,
-            so the spring animation is always one continuous morph between
-            sibling tabs — no remount can split it. */}
-        <LayoutGroup id="sidebar-nav">
-          <nav className="mt-4 flex flex-col gap-1">
-            {navTabs.map((tab) => {
-              const active =
-                pathname === tab.href || pathname.startsWith(tab.href + "/");
-              return (
-                <Link
-                  key={tab.href}
-                  href={tab.href}
+        {/* Static CSS active pill (no framer) so the dashboard layout — and
+            therefore the login route it wraps — stays framer-free. */}
+        <nav className="mt-4 flex flex-col gap-1">
+          {navTabs.map((tab) => {
+            const active =
+              pathname === tab.href || pathname.startsWith(tab.href + "/");
+            return (
+              <Link
+                key={tab.href}
+                href={tab.href}
+                className={cn(
+                  "group relative isolate flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[14px] font-medium",
+                  "transition-colors duration-300 ease-out",
+                  active
+                    ? "text-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {active && (
+                  <span className="absolute inset-0 -z-10 rounded-2xl bg-muted/80 dark:bg-white/[0.08]" />
+                )}
+                <tab.icon
                   className={cn(
-                    // `isolate` + the pill rendered above `relative z-0`
-                    // content stops the pill flashing over the icon mid-
-                    // morph (the previous `-z-10` would briefly disappear
-                    // when the parent stacking context changed).
-                    "group relative isolate flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[14px] font-medium",
-                    "transition-colors duration-300 ease-out",
-                    active
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:text-foreground",
+                    "h-[18px] w-[18px] transition-transform duration-200",
+                    active ? "" : "group-hover:scale-105",
                   )}
-                >
-                  {active && (
-                    <motion.span
-                      layoutId="sidebar-active-pill"
-                      // Smooth, near-critically-damped spring — no
-                      // overshoot, no bounce-back, just a calm glide
-                      // from the old tab to the new one. Eliminates the
-                      // perceived "flicker" of the previous bouncy curve.
-                      transition={{
-                        type: "spring",
-                        stiffness: 320,
-                        damping: 34,
-                        mass: 0.9,
-                      }}
-                      className="absolute inset-0 -z-10 rounded-2xl bg-muted/80 dark:bg-white/[0.08]"
-                    />
-                  )}
-                  <tab.icon
-                    className={cn(
-                      "h-[18px] w-[18px] transition-transform duration-200",
-                      active ? "" : "group-hover:scale-105",
-                    )}
-                  />
-                  {tab.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </LayoutGroup>
+                />
+                {tab.label}
+              </Link>
+            );
+          })}
+        </nav>
 
         <div className="mt-auto rounded-2xl border border-border/60 bg-background/40 p-4">
           <p className="text-[12px] font-medium tracking-tight">
