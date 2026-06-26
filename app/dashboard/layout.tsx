@@ -19,37 +19,26 @@ export default function DashboardLayout({
   useHydrateStores();
   const { user, hydrated: authHydrated } = useAuth();
 
-  // Route guard: only the unauthenticated-friendly routes (profile +
-  // reset-password) are accessible without a session. Everything else
-  // bounces to /dashboard/profile (which renders the login card).
-  const isPublicAuthRoute =
-    pathname.startsWith("/dashboard/profile") ||
-    pathname.startsWith("/dashboard/reset-password");
-
-  // Welcome/onboarding is authed but should render chrome-free (no sidebar,
-  // no topbar) so it feels like a dedicated moment.
+  // Login now lives at the standalone /login route (outside this layout) so it
+  // opens instantly. The only dashboard route reachable without a session is
+  // reset-password (opened from an email link). Everything else — including the
+  // profile settings page — bounces signed-out visitors to /login.
+  const isResetPassword = pathname.startsWith("/dashboard/reset-password");
+  const isProfile = pathname.startsWith("/dashboard/profile");
   const isWelcome = pathname.startsWith("/dashboard/welcome");
 
-  // Sidebar (Employees/Payroll/CRA/Settings) is the payroll workflow nav —
-  // it doesn't belong on personal-account pages. Hide it on profile,
-  // reset-password, and welcome regardless of auth state.
-  const hideSidebar = isPublicAuthRoute || isWelcome;
-  // Topbar is hidden only on full-canvas moments (welcome, and the login
-  // card shown to signed-out users). The signed-in profile keeps its title.
-  const hideTopbar = isWelcome || (isPublicAuthRoute && !user);
-
-  // The signed-out login card should materialise with a calm opacity-only
-  // fade. The richer scale/slide entrance below is tuned for the authenticated
-  // dashboard reveal; on the login card it stacks under the route crossfade
-  // and reads as a heavy, late "swoop" — i.e. not smooth.
-  const isLoginCard = (isPublicAuthRoute || isWelcome) && !user;
+  // Sidebar (Employees/Payroll/CRA/Settings) is the payroll workflow nav — it
+  // doesn't belong on personal-account / full-canvas pages.
+  const hideSidebar = isProfile || isResetPassword || isWelcome;
+  const hideTopbar = isWelcome || (isResetPassword && !user);
+  const isLoginCard = (isResetPassword || isWelcome) && !user;
 
   useEffect(() => {
     if (!authHydrated) return;
     if (user) return;
-    if (isPublicAuthRoute) return;
-    router.replace("/dashboard/profile");
-  }, [authHydrated, user, isPublicAuthRoute, router]);
+    if (isResetPassword) return;
+    router.replace("/login");
+  }, [authHydrated, user, isResetPassword, router]);
 
   return (
     <div

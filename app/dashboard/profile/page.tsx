@@ -2,12 +2,10 @@
 
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/store/auth";
-import { LoginScreen } from "@/components/dashboard/profile/login-screen";
 
-// The logged-in profile UI (settings, delete-account flow, desktop video) is
-// heavy and only needed once authenticated. Lazy-load it so a first-time
-// visitor's login page downloads a small bundle and switches in fast on mobile.
+// Profile settings are heavy and only relevant once signed in — lazy-load.
 const ProfileView = dynamic(
   () =>
     import("@/components/dashboard/profile/profile-view").then(
@@ -17,6 +15,7 @@ const ProfileView = dynamic(
 );
 
 export default function ProfilePage() {
+  const router = useRouter();
   const hydrated = useAuth((s) => s.hydrated);
   const user = useAuth((s) => s.user);
   const hydrate = useAuth((s) => s.hydrate);
@@ -25,8 +24,11 @@ export default function ProfilePage() {
     hydrate();
   }, [hydrate]);
 
-  // Until the session resolves, render nothing — the dashboard loading.tsx
-  // covers the cold-load case with the NorthPay spinner.
-  if (!hydrated) return null;
-  return user ? <ProfileView /> : <LoginScreen />;
+  // Signed-out visitors belong on the standalone /login route, not here.
+  useEffect(() => {
+    if (hydrated && !user) router.replace("/login");
+  }, [hydrated, user, router]);
+
+  if (!hydrated || !user) return null;
+  return <ProfileView />;
 }

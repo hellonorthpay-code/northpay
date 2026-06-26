@@ -58,10 +58,10 @@ export function LandingNav() {
           </NavItem>
         )}
         <NavItem
-          href="/dashboard/profile"
+          href={isAuthed ? "/dashboard/profile" : "/login"}
           isActive={active === "profile"}
           className="ml-0.5 h-8 w-8 justify-center p-0 text-[12px] font-semibold text-foreground dark:text-white"
-          aria-label="My profile"
+          aria-label={isAuthed ? "My profile" : "Log in"}
         >
           {initials ? (
             <span className="grid h-7 w-7 place-items-center rounded-full bg-gradient-to-br from-slate-700 to-slate-400 text-white shadow-soft dark:from-rose-300 dark:to-amber-200 dark:text-black">
