@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { useEffect, useState } from "react";
 
 /**
  * Everything below the hero, loaded lazily (client-only, ssr:false) so it does
@@ -45,6 +46,30 @@ const Footer = dynamic(() => import("./footer").then((m) => m.Footer), {
 });
 
 export function HomeBelowFold() {
+  // Don't even START loading/mounting the heavy sections until the page is
+  // settled — on first scroll, or after a short idle gap if the user never
+  // scrolls. This keeps the hero + bottom nav fully interactive immediately
+  // (no second wave of scroll-scene init blocking taps right after load).
+  const [ready, setReady] = useState(false);
+  useEffect(() => {
+    let done = false;
+    const go = () => {
+      if (done) return;
+      done = true;
+      setReady(true);
+      window.removeEventListener("scroll", go);
+      window.clearTimeout(timer);
+    };
+    window.addEventListener("scroll", go, { passive: true });
+    const timer = window.setTimeout(go, 1200);
+    return () => {
+      window.removeEventListener("scroll", go);
+      window.clearTimeout(timer);
+    };
+  }, []);
+
+  if (!ready) return null;
+
   return (
     <>
       <About />
