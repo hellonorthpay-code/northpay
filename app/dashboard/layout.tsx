@@ -1,15 +1,13 @@
 "use client";
 
 import { useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
 import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
 import { useHydrateStores } from "@/lib/store/hydrate";
 import { useAuth } from "@/lib/store/auth";
-
-const ease = [0.22, 1, 0.36, 1] as const;
+import { cn } from "@/lib/utils";
 
 export default function DashboardLayout({
   children,
@@ -54,15 +52,14 @@ export default function DashboardLayout({
   }, [authHydrated, user, isPublicAuthRoute, router]);
 
   return (
-    <motion.div
-      // Login card: no wrapper entrance (initial={false}) so the page chrome
-      // is painted instantly and the card itself owns the single, smooth
-      // entrance — no stacked fades to flicker against. Authenticated
-      // dashboard keeps its richer scale/slide reveal.
-      initial={isLoginCard ? false : { opacity: 0, scale: 0.97, y: 12 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.55, ease }}
-      className="relative min-h-screen"
+    <div
+      // Pure CSS entrance (no framer) so the login route stays framer-free and
+      // opens fast. The login card paints instantly; the authed dashboard gets
+      // a light fade-in.
+      className={cn(
+        "relative min-h-screen",
+        !isLoginCard && "duration-500 animate-in fade-in"
+      )}
     >
       {/* Post-auth welcome — rendered here (not in the login view) so it
           survives the route change from /profile to /employees. */}
@@ -82,30 +79,9 @@ export default function DashboardLayout({
           {/* Hide topbar on login/welcome — those are full-canvas moments
               where the title label would be noise. */}
           {!hideTopbar && <Topbar />}
-          {/* Page transition — kept short (180ms in / 120ms out) so it
-              runs in parallel with the sidebar pill morph instead of
-              outlasting it. The previous 350ms × 2 made tab switches
-              feel like two staggered fades, which read as flicker. */}
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={pathname}
-              // No inner-page fade on the login card — the card owns the entrance.
-              initial={isLoginCard ? false : { opacity: 0, y: 4 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-              transition={{
-                opacity: { duration: 0.18, ease },
-                y: { duration: 0.22, ease },
-                exit: { duration: 0.12 },
-              }}
-              className="min-h-0 flex-1"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          <div className="min-h-0 flex-1">{children}</div>
         </div>
       </div>
-
-    </motion.div>
+    </div>
   );
 }
