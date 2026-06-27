@@ -267,6 +267,10 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
       <DialogContent
         className="max-w-[88vw] p-4 gap-2.5 max-h-[72vh] overflow-y-auto scrollbar-none sm:max-w-xl sm:p-7 sm:gap-6 sm:max-h-[85vh]"
         style={originStyle}
+        // Don't auto-focus the first field when the modal opens — on mobile
+        // that pops the keyboard up immediately, which is jarring. The user
+        // taps into a field when they're ready.
+        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle>
