@@ -7,6 +7,8 @@ import {
   Calendar,
   Check,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   ExternalLink,
   FileText,
@@ -49,6 +51,10 @@ export function CRAView() {
   const months = useMemo(() => service.getMonthly(), [service]);
   const nextDue = useMemo(() => service.getNextDue(), [service]);
 
+  // Year-end records (T4/T4A/ROE) live behind a button so the CRA tab stays
+  // focused on remittances; opening it swaps to a sub-view with a Back button.
+  const [showReports, setShowReports] = useState(false);
+
   // Partition: anything not yet remitted = upcoming/current; rest = history
   const upcoming = months.filter((m) => !m.remitted);
   const history = months.filter((m) => m.remitted);
@@ -79,6 +85,23 @@ export function CRAView() {
       ei: sum(months, "ei"),
     };
   }, [months, history]);
+
+  // ─── Year-end records sub-view (T4/T4A/ROE) with a Back button ───
+  if (showReports) {
+    return (
+      <div className="space-y-5">
+        <button
+          type="button"
+          onClick={() => setShowReports(false)}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-[13px] font-medium text-foreground shadow-soft transition-colors hover:bg-muted/40"
+        >
+          <ChevronLeft className="h-4 w-4" />
+          Back to remittances
+        </button>
+        <ReportsView />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -139,8 +162,27 @@ export function CRAView() {
       {/* ─── PD7A year-to-date summary ─── */}
       {summary.hasData && <Pd7aSummary summary={summary} />}
 
-      {/* ─── Year-end slips & employment records (merged from Reports) ─── */}
-      <ReportsView />
+      {/* ─── Year-end records & filings — behind a button ─── */}
+      <button
+        type="button"
+        onClick={() => setShowReports(true)}
+        className="flex w-full items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/70 p-5 text-left shadow-soft backdrop-blur-xl transition-colors hover:bg-muted/30"
+      >
+        <span className="flex items-center gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-muted">
+            <FileText className="h-4 w-4 text-foreground/80" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-[13.5px] font-medium tracking-tight">
+              Year-end records & filings
+            </span>
+            <span className="block text-[11.5px] text-muted-foreground">
+              T4 slips, T4 Summary, T4A, and ROE
+            </span>
+          </span>
+        </span>
+        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
+      </button>
     </div>
   );
 }
