@@ -46,30 +46,30 @@ const Footer = dynamic(() => import("./footer").then((m) => m.Footer), {
 });
 
 export function HomeBelowFold() {
-  // Defer everything until the page is settled (first scroll, or a short idle
-  // gap) so the hero + nav are interactive immediately.
+  // All sections render on mobile now — but they only MOUNT once the user
+  // scrolls. While you're at the top (where the Log in button lives), nothing
+  // heavy is mounted, so the main thread is free and Log in stays instant. The
+  // moment you scroll down to look at the content, the sections come in.
+  //
+  // Desktop additionally mounts after a brief idle even without scrolling, so
+  // the full experience is ready immediately on larger screens.
   const [ready, setReady] = useState(false);
-  // The cinematic scroll scenes (framer useScroll loops) run continuous
-  // main-thread work that made taps laggy on phones — those stay DESKTOP ONLY.
-  // The light, static sections (About, Paystub, Automation, Footer) are safe
-  // and DO render on mobile so the homepage isn't bare.
-  const [isMobile, setIsMobile] = useState(false);
 
   useEffect(() => {
-    setIsMobile(window.matchMedia("(max-width: 767px)").matches);
+    const isMobile = window.matchMedia("(max-width: 767px)").matches;
     let done = false;
     const go = () => {
       if (done) return;
       done = true;
       setReady(true);
       window.removeEventListener("scroll", go);
-      window.clearTimeout(timer);
+      if (timer) window.clearTimeout(timer);
     };
     window.addEventListener("scroll", go, { passive: true });
-    const timer = window.setTimeout(go, 1200);
+    const timer = isMobile ? undefined : window.setTimeout(go, 1200);
     return () => {
       window.removeEventListener("scroll", go);
-      window.clearTimeout(timer);
+      if (timer) window.clearTimeout(timer);
     };
   }, []);
 
@@ -78,12 +78,12 @@ export function HomeBelowFold() {
   return (
     <>
       <About />
-      {!isMobile && <EmployeesScene />}
-      {!isMobile && <ProvinceSection />}
+      <EmployeesScene />
+      <ProvinceSection />
       <PaystubSection />
       <Automation />
-      {!isMobile && <AutomationScene />}
-      {!isMobile && <SuccessScene />}
+      <AutomationScene />
+      <SuccessScene />
       <Footer />
     </>
   );
