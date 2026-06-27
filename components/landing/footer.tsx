@@ -27,26 +27,10 @@ export function Footer() {
           </div>
 
           <div className="flex flex-wrap gap-x-10 gap-y-3 text-[13px]">
-            <Col title="Product">
-              <Link href="/dashboard" className="text-muted-foreground hover:text-foreground">
-                Open app
-              </Link>
-              <a href="#features" className="text-muted-foreground hover:text-foreground">
-                Features
-              </a>
-              <a href="#provinces" className="text-muted-foreground hover:text-foreground">
-                Provinces
-              </a>
-            </Col>
             <Col title="Company">
-              <span className="text-muted-foreground">About</span>
-              <span className="text-muted-foreground">Pricing</span>
-              <span className="text-muted-foreground">Press</span>
-            </Col>
-            <Col title="Legal">
-              <span className="text-muted-foreground">Terms</span>
-              <span className="text-muted-foreground">Privacy</span>
-              <span className="text-muted-foreground">Security</span>
+              <Link href="/about" className="text-muted-foreground hover:text-foreground">
+                About
+              </Link>
             </Col>
           </div>
         </div>
