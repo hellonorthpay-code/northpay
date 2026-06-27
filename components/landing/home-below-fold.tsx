@@ -52,6 +52,11 @@ export function HomeBelowFold() {
   // (no second wave of scroll-scene init blocking taps right after load).
   const [ready, setReady] = useState(false);
   useEffect(() => {
+    // On phones these stay UNMOUNTED. The cinematic scroll sections run
+    // continuous main-thread work (framer useScroll loops) that blocks
+    // navigation — tapping a nav link couldn't render for seconds while they
+    // ran. Desktop keeps the full experience.
+    if (window.matchMedia("(max-width: 767px)").matches) return;
     let done = false;
     const go = () => {
       if (done) return;

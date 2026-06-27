@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
@@ -22,6 +22,13 @@ const HowItWorksModal = dynamic(
 // hero hydrates without pulling framer onto the homepage's critical path.
 export function Hero() {
   const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  // The mockup cards animate (framer) continuously — skip them on phones so the
+  // main thread stays free and nav taps render instantly. Default false (also
+  // the SSR value) so they never mount on mobile.
+  const [showCards, setShowCards] = useState(false);
+  useEffect(() => {
+    if (window.matchMedia("(min-width: 768px)").matches) setShowCards(true);
+  }, []);
   return (
     <section className="relative pt-20 pb-24 md:pt-40">
       {/* Floating gradient background */}
@@ -75,9 +82,11 @@ export function Hero() {
           )}
         </div>
 
-        <div className="relative mx-auto mt-20 max-w-5xl duration-1000 animate-in fade-in slide-in-from-bottom-6">
-          <HeroPayrollCards />
-        </div>
+        {showCards && (
+          <div className="relative mx-auto mt-20 max-w-5xl duration-1000 animate-in fade-in slide-in-from-bottom-6">
+            <HeroPayrollCards />
+          </div>
+        )}
       </div>
     </section>
   );
