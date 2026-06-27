@@ -403,7 +403,7 @@ function StepOne({ form, setForm }: StepProps) {
     COUNTRY_CODES.find((c) => c.code === form.countryCode) ?? COUNTRY_CODES[0];
   return (
     <>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Field label="First name">
           <Input
             value={form.firstName}
@@ -418,6 +418,7 @@ function StepOne({ form, setForm }: StepProps) {
         </Field>
         <Field
           label="Email"
+          wide
           hint={
             form.email.trim() && !isValidEmail(form.email)
               ? "This doesn’t look like a valid email address."
@@ -431,7 +432,7 @@ function StepOne({ form, setForm }: StepProps) {
             aria-invalid={!!form.email.trim() && !isValidEmail(form.email)}
           />
         </Field>
-        <Field label="Phone">
+        <Field label="Phone" wide>
           <div className="flex gap-2">
             <Select
               value={form.countryCode}
