@@ -8,6 +8,7 @@ import {
   Check,
   CheckCircle2,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Info,
   Clock,
@@ -217,6 +218,10 @@ export function PayrollView() {
   const company = useSettings((s) => s.company);
   const [emailedCount, setEmailedCount] = useState(0);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  // Mobile only: when true the page swaps to a full-screen payroll-history
+  // view (with a Back button). Desktop ignores this and keeps the inline
+  // expandable history card.
+  const [showHistory, setShowHistory] = useState(false);
 
   const activeEmployees = useMemo(
     () => employees.filter((e) => !excludedIds.has(e.id)),
@@ -367,7 +372,17 @@ export function PayrollView() {
     excludedIds.size === employees.length && employees.length > 0;
 
   return (
-    <div className="space-y-5">
+    <>
+      {/* Mobile-only: full-screen payroll history with a Back button. */}
+      {showHistory && (
+        <PayrollHistoryScreen
+          runs={runs}
+          company={company}
+          onBack={() => setShowHistory(false)}
+        />
+      )}
+
+      <div className={cn("space-y-5", showHistory && "hidden md:block")}>
       <SummaryCard
         netPay={preview.totals.net}
         gross={preview.totals.gross}
@@ -456,7 +471,12 @@ export function PayrollView() {
         allExcluded={allExcluded}
       />
 
-      <PayrollHistory runs={runs} company={company} />
+      {/* Desktop: inline expandable history card. */}
+      <div className="hidden md:block">
+        <PayrollHistory runs={runs} company={company} />
+      </div>
+      {/* Mobile: a button that opens the full-screen history view above. */}
+      <PayrollHistoryButton runs={runs} onOpen={() => setShowHistory(true)} />
 
       <ConfirmPayrollModal
         open={confirmOpen}
@@ -472,7 +492,8 @@ export function PayrollView() {
         emailAfter={emailAfter}
         onToggleEmail={setEmailAfter}
       />
-    </div>
+      </div>
+    </>
   );
 }
 
@@ -1993,6 +2014,103 @@ function BreakdownRow({
 // ─────────────────────────────────────────────────────────────────────────
 // Payroll history — past finalized runs with per-paystub downloads
 // ─────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────
+// Mobile payroll history — a button (instead of the inline dropdown) that
+// swaps the page for a dedicated history screen with a Back button.
+// ─────────────────────────────────────────────────────────────────────────
+function PayrollHistoryButton({
+  runs,
+  onOpen,
+}: {
+  runs: PayrollRun[];
+  onOpen: () => void;
+}) {
+  const finalized = useMemo(
+    () => runs.filter((r) => r.status === "finalized"),
+    [runs]
+  );
+  if (finalized.length === 0) return null;
+
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="flex w-full items-center justify-between gap-3 overflow-hidden rounded-3xl border border-border/70 bg-card/70 px-5 py-4 text-left shadow-soft backdrop-blur-xl transition-colors duration-200 active:bg-muted/40 md:hidden"
+    >
+      <div className="flex items-center gap-2.5">
+        <Clock className="h-[15px] w-[15px] text-muted-foreground" />
+        <p className="text-[13px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Payroll history · {finalized.length}
+        </p>
+      </div>
+      <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground/60" />
+    </button>
+  );
+}
+
+function PayrollHistoryScreen({
+  runs,
+  company,
+  onBack,
+}: {
+  runs: PayrollRun[];
+  company: ReturnType<typeof useSettings.getState>["company"];
+  onBack: () => void;
+}) {
+  const finalized = useMemo(
+    () =>
+      runs
+        .filter((r) => r.status === "finalized")
+        .sort((a, b) => (a.payDate < b.payDate ? 1 : -1)),
+    [runs]
+  );
+  const [activeRunId, setActiveRunId] = useState<string | null>(null);
+
+  return (
+    <div className="space-y-4 md:hidden">
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={onBack}
+          aria-label="Back to payroll"
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-full border border-border/60 bg-background text-foreground transition-colors duration-200 active:bg-muted"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+            Payroll
+          </p>
+          <h2 className="text-[20px] font-semibold tracking-tight">History</h2>
+        </div>
+      </div>
+
+      {finalized.length === 0 ? (
+        <div className="rounded-3xl border border-dashed border-border bg-card/40 p-10 text-center text-[13px] text-muted-foreground">
+          No payroll runs yet.
+        </div>
+      ) : (
+        <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
+          <div className="divide-y divide-border/30">
+            {finalized.map((run) => (
+              <PastRunRow
+                key={run.id}
+                run={run}
+                expanded={activeRunId === run.id}
+                onToggle={() =>
+                  setActiveRunId(activeRunId === run.id ? null : run.id)
+                }
+                company={company}
+                allRuns={runs}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PayrollHistory({
   runs,
   company,
