@@ -394,7 +394,9 @@ function Section({
   defaultOpen?: boolean;
 }) {
   const isDesktop = useIsDesktop();
-  const [open, setOpen] = useState(!!defaultOpen);
+  // Default to OPEN on mobile too (was collapsed) — the user wants the
+  // sections already expanded. The chevron can still collapse them.
+  const [open, setOpen] = useState(defaultOpen ?? true);
 
   // Desktop always shows content; mobile respects the toggle.
   const expanded = isDesktop || open;
