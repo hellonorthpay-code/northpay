@@ -62,8 +62,9 @@ function Header() {
       </h1>
       <p className="mx-auto mt-6 max-w-xl text-balance text-[17px] leading-relaxed text-muted-foreground">
         Built by two people who got tired of payroll software designed in 2008.
-        Every CPP cent, every provincial bracket, every CRA remittance —
-        calculated correctly, presented quietly.
+        We work hard to keep the numbers clear and the experience calm — but the
+        final call always stays with you. Run your own checks before you rely on
+        anything here.
       </p>
     </motion.div>
   );
@@ -73,12 +74,12 @@ function Header() {
 function Story() {
   const points = [
     {
-      title: "Built for 2026",
-      copy: "CRA-compliant for the 2026 tax year — federal 14% lowest bracket, updated CPP YMPE/YAMPE caps, 1.63% EI premium, every non-Quebec provincial table.",
+      title: "Updated for 2026",
+      copy: "We keep our calculations aligned with the latest federal and provincial figures for the 2026 tax year. Rules change often, so treat every update as a helpful starting point — not the final word.",
     },
     {
       title: "End to end",
-      copy: "Run payroll, generate paystub PDFs, file your monthly PD7A, ship T4s. No spreadsheet exports. No console.log debugging.",
+      copy: "Run payroll, generate paystub PDFs, prepare your remittance summaries, and produce year-end slips — all in one calm place, with your numbers always exportable.",
     },
     {
       title: "Quiet by default",
@@ -416,17 +417,16 @@ function LegalSection() {
           </span>
           <div className="min-w-0">
             <h3 className="text-[16px] font-semibold tracking-tight text-amber-950 dark:text-amber-100">
-              Always double-check before you file or pay.
+              Always do your own checks before you file or pay.
             </h3>
             <p className="mt-2 text-[14px] leading-relaxed text-amber-900/80 dark:text-amber-100/80">
-              NorthPay does its best to apply the right federal and provincial
-              rules for the 2026 tax year, but software can be wrong. Calculation
-              tables change, edge cases exist, and bugs happen. <strong>You are
-              ultimately responsible</strong> for the accuracy of paystubs,
-              remittances, T4s, and any payment sent to the CRA or to an
-              employee. Treat every NorthPay number as a draft until you&rsquo;ve
-              reviewed it — and consult a CPA, bookkeeper, or payroll professional
-              for anything you&rsquo;re not certain about.
+              NorthPay is built to help you work faster — not to replace your own
+              judgment. Tax rules shift, edge cases exist, and no software is
+              flawless. <strong>Please don&rsquo;t rely on this website on its
+              own.</strong> Verify every figure against your own records, and
+              confirm anything important with a qualified payroll professional or
+              accountant before you file or pay. You remain fully responsible for
+              the accuracy of everything that leaves your hands.
             </p>
           </div>
         </div>
@@ -439,40 +439,36 @@ function LegalSection() {
           title="Accuracy &amp; limitation of liability"
         >
           NorthPay is provided <em>as is</em>, without warranty of any kind. We
-          make no guarantee that calculations, deductions, or generated
-          documents are free of error. To the maximum extent permitted by law,
-          NorthPay, its founders, and its affiliates are not liable for any
-          loss, penalty, interest charge, missed remittance, or other damage
-          arising from your use of the platform — including reliance on any
-          paystub, T4, PD7A, or report we produce.
+          can&rsquo;t guarantee that any calculation, deduction, or generated
+          document is free of error. To the fullest extent the law allows,
+          NorthPay and its founders are not liable for any loss, penalty,
+          charge, or other damage arising from your use of the platform —
+          including reliance on any number, paystub, slip, or report it
+          produces. Always confirm the details yourself first.
         </LegalCard>
 
         <LegalCard icon={FileText} title="Not professional advice">
           Nothing on NorthPay is tax, accounting, or legal advice. Our
           calculators and templates are convenience tools, not a substitute
-          for a qualified Canadian payroll professional or chartered
-          accountant. If you operate in Quebec, NorthPay does not currently
-          support Revenu Québec — please use a Quebec-licensed payroll
-          service for those filings.
+          for a qualified professional who knows your situation. We don&rsquo;t
+          currently support payroll in Quebec — if you operate there, please
+          use a service set up for it.
         </LegalCard>
 
         <LegalCard icon={Lock} title="What we collect &amp; why">
-          To run payroll we collect company details (legal name, business
-          number, address), employee profiles (name, SIN, province, pay rate,
-          banking info if you enter it), and the pay-period inputs you record.
-          Form submissions on this About page collect your name, email, phone,
-          company, and message so we can reply to you. We do not sell, rent,
-          or trade personal data, and we never use payroll inputs for
+          To run payroll we collect company details, employee profiles
+          (including the pay and tax details you enter), and the pay-period
+          inputs you record. The form on this page collects your name, email,
+          phone, company, and message so we can reply to you. We do not sell,
+          rent, or trade your data, and we never use payroll inputs for
           marketing.
         </LegalCard>
 
         <LegalCard icon={Scale} title="How long we keep your data">
-          Operational records (paystubs, T4s, audit logs) are retained for the
-          statutory minimum required by the CRA — currently six years from
-          the end of the tax year they relate to — and then deleted on
-          request. You can export everything at any time, and you can ask us
-          to delete your account and associated data by emailing the address
-          below.
+          We keep operational records for as long as applicable record-keeping
+          rules require, and then remove them on request. You can export your
+          data at any time, and you can ask us to delete your account and its
+          data by emailing the address below.
         </LegalCard>
       </div>
 
@@ -489,16 +485,12 @@ function LegalSection() {
           >
             privacy@northpay.ca
           </a>{" "}
-          and we&rsquo;ll respond within 30 days, in keeping with{" "}
-          <span className="whitespace-nowrap">
-            PIPEDA — Canada&rsquo;s
-          </span>{" "}
-          federal privacy law. By using NorthPay you agree to these terms;
-          we&rsquo;ll post a notice on this page if any of it materially
-          changes.
+          and we&rsquo;ll do our best to respond promptly. By using NorthPay you
+          agree to these terms; if anything here changes materially, we&rsquo;ll
+          post a notice on this page.
         </p>
         <p className="mt-3 text-[12px] text-muted-foreground/80">
-          Last updated: May 2026 · NorthPay is a Canadian product built in
+          Last updated: June 2026 · NorthPay is a Canadian product built in
           Toronto, Ontario. © {new Date().getFullYear()} NorthPay. All rights
           reserved.
         </p>
