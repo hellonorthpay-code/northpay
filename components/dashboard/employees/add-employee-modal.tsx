@@ -343,12 +343,15 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
 }
 
 // ─── Animation ───────────────────────────────────────────────────────────
-// Page slides 24px horizontally + fades — short enough not to wear out,
-// long enough to register as "navigation" rather than instant swap.
+// Opacity-only step transition. We deliberately do NOT animate `x` here:
+// any horizontal slide leaves framer-motion's inline `transform` on this
+// container, and a transformed ancestor makes mobile browsers (Android
+// Chrome / iOS) draw the text caret in the wrong place inside the child
+// inputs. A clean cross-fade keeps the caret exactly where it should be.
 const pageVariants = {
-  enter: (dir: 1 | -1) => ({ x: 24 * dir, opacity: 0 }),
-  center: { x: 0, opacity: 1 },
-  exit: (dir: 1 | -1) => ({ x: -24 * dir, opacity: 0 }),
+  enter: { opacity: 0 },
+  center: { opacity: 1 },
+  exit: { opacity: 0 },
 };
 
 // ─── Progress dots ───────────────────────────────────────────────────────
