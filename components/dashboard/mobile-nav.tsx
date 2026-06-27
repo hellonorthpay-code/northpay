@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Play, PlayCircle, Receipt, Settings } from "lucide-react";
+import { Home, Landmark, Play, Settings, Users } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
 
@@ -13,18 +13,18 @@ type Tab = {
   icon: typeof Home;
   exact?: boolean;
   requiresAuth?: boolean;
-  /** Show ONLY when signed out (e.g. the login entry point). */
-  guestOnly?: boolean;
+  /** Icon-only (no label) — used for Home (left) and Settings (right). */
+  iconOnly?: boolean;
 };
 
+// Order = layout: Home (left) · Employees · Payroll · CRA (middle, icon+text)
+// · Settings (right).
 const tabs: Tab[] = [
-  { href: "/", label: "Home", icon: Home, exact: true },
-  { href: "/dashboard/employees", label: "Tracking", icon: Play, requiresAuth: true },
-  { href: "/dashboard/payroll", label: "Payroll", icon: PlayCircle, requiresAuth: true },
-  { href: "/dashboard/cra", label: "CRA", icon: Receipt, requiresAuth: true },
-  { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true },
-  // Profile is NOT in the bottom bar: signed-out users get a top-right login
-  // button (MobileLoginButton); signed-in users reach it from Settings.
+  { href: "/", label: "Home", icon: Home, exact: true, iconOnly: true },
+  { href: "/dashboard/employees", label: "Employees", icon: Users, requiresAuth: true },
+  { href: "/dashboard/payroll", label: "Payroll", icon: Play, requiresAuth: true },
+  { href: "/dashboard/cra", label: "CRA", icon: Landmark, requiresAuth: true },
+  { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true, iconOnly: true },
 ];
 
 export function MobileNav() {
@@ -38,56 +38,56 @@ export function MobileNav() {
   }, [hydrateAuth]);
 
   const isAuthed = !!user;
-  const visibleTabs = tabs.filter((t) => {
-    if (t.requiresAuth) return isAuthed; // dashboard tabs: signed-in only
-    if (t.guestOnly) return !isAuthed; // login entry: signed-out only
-    return true; // Home: always
-  });
+  const visibleTabs = tabs.filter((t) => (t.requiresAuth ? isAuthed : true));
 
   function isActive(tab: Tab) {
     if (tab.exact) return pathname === tab.href;
     if (tab.href === "/dashboard/employees")
       return pathname.startsWith("/dashboard/employees");
     if (tab.href === "/dashboard/settings")
-      // Profile lives under Settings now, so Settings owns that highlight too.
+      // Profile lives under Settings, so Settings owns that highlight too.
       return (
         pathname.startsWith("/dashboard/settings") ||
         pathname.startsWith("/dashboard/profile")
       );
-    if (tab.href === "/dashboard/profile")
-      return pathname.startsWith("/dashboard/profile");
     return pathname === tab.href || pathname.startsWith(tab.href + "/");
   }
 
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
-      {/* No framer-motion or backdrop-blur here: this bar must hydrate fast and
-          stay cheap to paint on mobile. The active pill is a plain CSS span and
-          the background is near-opaque (blur over scrolling content is a
-          per-frame GPU cost on phones). */}
-      <div className="pointer-events-auto flex items-center gap-0.5 rounded-full border border-border/60 bg-background/95 p-1 shadow-pop">
+    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+      {/* Segmented pill — Home (icon) · Employees/Payroll/CRA (icon+text) ·
+          Settings (icon). No framer / no backdrop-blur: smooth via CSS only, so
+          it stays cheap to paint and never blocks taps. Active item carries the
+          existing muted highlight (colour scheme unchanged). */}
+      <div className="pointer-events-auto flex max-w-full items-center gap-0.5 rounded-full border border-border/60 bg-background/95 p-1 shadow-pop">
         {visibleTabs.map((tab) => {
           const active = isActive(tab);
           return (
             <Link
               key={tab.href}
               href={tab.href}
-              // Force full-route prefetch. Next skips automatic prefetch on
-              // slower mobile connections, which made the dashboard bundle
-              // download only on tap (a multi-second stall). The bottom bar is
-              // always on screen, so prefetching here loads the route in the
-              // background while the user is still on the homepage.
               prefetch
               aria-label={tab.label}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "relative grid h-11 w-11 place-items-center rounded-full transition-colors duration-200",
-                active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                "flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full transition-all duration-200",
+                tab.iconOnly ? "w-11" : "px-3",
+                active
+                  ? "bg-muted text-foreground dark:bg-white/[0.12]"
+                  : "text-muted-foreground hover:text-foreground",
               )}
             >
-              {active && (
-                <span className="absolute inset-0 -z-10 rounded-full bg-muted dark:bg-white/[0.12]" />
+              <tab.icon
+                className={cn(
+                  "h-[18px] w-[18px] shrink-0 transition-transform duration-200",
+                  active ? "scale-110" : "",
+                )}
+              />
+              {!tab.iconOnly && (
+                <span className="text-[11.5px] font-medium tracking-tight">
+                  {tab.label}
+                </span>
               )}
-              <tab.icon className={cn("h-5 w-5 transition-transform duration-200", active ? "scale-110" : "")} />
             </Link>
           );
         })}
