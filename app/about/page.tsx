@@ -114,15 +114,15 @@ function Founders() {
   const team = [
     {
       name: "Rajbir Bal",
-      role: "Co-founder · Product & Engineering",
-      bio: "Builds the calculation engine and the dashboard. Cares about millisecond paystub rendering more than most people care about anything.",
+      role: "Co-founder · Design & Product",
+      bio: "Leads the design, UI/UX, and the website itself — from the domain to the last pixel. A finance background from York University keeps the product grounded in how the numbers actually work.",
       initials: "RB",
       tint: "from-rose-200 to-amber-200 dark:from-rose-500/40 dark:to-amber-500/40",
     },
     {
       name: "Nandan Panchal",
-      role: "Co-founder · Design & Operations",
-      bio: "Designs every screen and the way it feels in your hand. Spent years inside spreadsheet payroll tools — that's the energy we're refusing.",
+      role: "Co-founder · Accounting & Finance",
+      bio: "An accountant with five years of accounting and finance experience, and a finance degree from York University. Makes sure every calculation and workflow reflects how payroll is really done.",
       initials: "NP",
       tint: "from-sky-200 to-indigo-200 dark:from-sky-500/40 dark:to-indigo-500/40",
     },
@@ -142,6 +142,10 @@ function Founders() {
         <h2 className="mt-5 text-balance text-[clamp(1.8rem,3.8vw,2.6rem)] font-semibold leading-[1.1] tracking-tightest">
           The two people behind NorthPay.
         </h2>
+        <p className="mx-auto mt-5 text-[15px] leading-relaxed text-muted-foreground">
+          Both originally from Mumbai, now based in Toronto, Canada — building
+          NorthPay for the way modern teams actually work.
+        </p>
       </div>
       <div className="mt-12 grid gap-5 md:grid-cols-2">
         {team.map((m) => (
