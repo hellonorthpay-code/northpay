@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, Building2, ChevronRight, ExternalLink, Info, Moon, Sparkles, User } from "lucide-react";
+import { Bell, Building2, CheckCircle2, ChevronRight, ExternalLink, Info, Moon, RotateCcw, Sparkles, User } from "lucide-react";
 import Link from "next/link";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
@@ -30,29 +31,101 @@ export function SettingsView() {
   const { company, setCompany, theme, setTheme, notifications, toggleNotification } =
     useSettings();
 
+  // Company details now use a draft + Save/Cancel (instead of saving on every
+  // keystroke), so the user can review changes before committing.
+  const companySubset = (c: typeof company) => ({
+    legalName: c.legalName ?? "",
+    operatingName: c.operatingName ?? "",
+    businessNumber: c.businessNumber ?? "",
+    craPayrollAccount: c.craPayrollAccount ?? "",
+    address: c.address ?? "",
+    city: c.city ?? "",
+    postalCode: c.postalCode ?? "",
+  });
+
+  const [draft, setDraft] = useState(() => companySubset(company));
+  const [saving, setSaving] = useState(false);
+  const [companyStatus, setCompanyStatus] = useState<null | "saved" | "cancelled">(null);
+
+  // Re-sync the draft when the stored company changes (e.g. after hydration or
+  // a successful save). It never changes mid-edit, so this won't clobber typing.
+  useEffect(() => {
+    setDraft(companySubset(company));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [company]);
+
+  const companyDirty =
+    JSON.stringify(draft) !== JSON.stringify(companySubset(company));
+
+  function flashStatus(next: "saved" | "cancelled") {
+    setCompanyStatus(next);
+    window.setTimeout(() => setCompanyStatus(null), 2600);
+  }
+
+  async function saveCompany() {
+    setSaving(true);
+    try {
+      await setCompany(draft);
+      flashStatus("saved");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function cancelCompany() {
+    setDraft(companySubset(company));
+    flashStatus("cancelled");
+  }
+
+  const setField = (key: keyof typeof draft) => (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => setDraft((d) => ({ ...d, [key]: e.target.value }));
+
   const companyFields = (
     <>
       <Field label="Legal name">
-        <Input value={company.legalName} onChange={(e) => setCompany({ legalName: e.target.value })} />
+        <Input value={draft.legalName} onChange={setField("legalName")} />
       </Field>
       <Field label="Operating name">
-        <Input value={company.operatingName} onChange={(e) => setCompany({ operatingName: e.target.value })} />
+        <Input value={draft.operatingName} onChange={setField("operatingName")} />
       </Field>
       <Field label="Business number">
-        <Input value={company.businessNumber} onChange={(e) => setCompany({ businessNumber: e.target.value })} />
+        <Input value={draft.businessNumber} onChange={setField("businessNumber")} />
       </Field>
       <Field label="CRA payroll account">
-        <Input value={company.craPayrollAccount ?? ""} onChange={(e) => setCompany({ craPayrollAccount: e.target.value })} placeholder="RP0001" />
+        <Input value={draft.craPayrollAccount} onChange={setField("craPayrollAccount")} placeholder="RP0001" />
       </Field>
       <Field label="Address">
-        <Input value={company.address} onChange={(e) => setCompany({ address: e.target.value })} />
+        <Input value={draft.address} onChange={setField("address")} />
       </Field>
       <Field label="City">
-        <Input value={company.city} onChange={(e) => setCompany({ city: e.target.value })} />
+        <Input value={draft.city} onChange={setField("city")} />
       </Field>
       <Field label="Postal code">
-        <Input value={company.postalCode} onChange={(e) => setCompany({ postalCode: e.target.value })} />
+        <Input value={draft.postalCode} onChange={setField("postalCode")} />
       </Field>
+
+      {/* Save / Cancel + feedback */}
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <Button size="sm" onClick={saveCompany} disabled={!companyDirty || saving}>
+          {saving ? "Saving…" : "Save"}
+        </Button>
+        <Button size="sm" variant="outline" onClick={cancelCompany} disabled={!companyDirty || saving}>
+          Cancel
+        </Button>
+        {companyStatus === "saved" && (
+          <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-success duration-300 animate-in fade-in slide-in-from-left-2">
+            <CheckCircle2 className="h-4 w-4" />
+            Details saved
+          </span>
+        )}
+        {companyStatus === "cancelled" && (
+          <span className="flex items-center gap-1.5 text-[12.5px] font-medium text-muted-foreground duration-300 animate-in fade-in slide-in-from-left-2">
+            <RotateCcw className="h-4 w-4" />
+            Details not saved
+          </span>
+        )}
+      </div>
     </>
   );
 
