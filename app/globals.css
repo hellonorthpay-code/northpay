@@ -152,3 +152,16 @@
   transform-origin: left;
   animation: route-progress 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
+
+/* iOS Safari auto-zooms the page whenever you focus a form field whose
+   font-size is under 16px. Our inputs are 15px, so tapping in to type zoomed
+   the screen. Force 16px on small screens to stop the zoom (the accessible
+   fix — pinch-zoom stays enabled). !important beats the Tailwind text-[15px]
+   utility on the shared Input/Select components. */
+@media (max-width: 767px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
