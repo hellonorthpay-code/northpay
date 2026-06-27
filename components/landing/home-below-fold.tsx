@@ -46,17 +46,17 @@ const Footer = dynamic(() => import("./footer").then((m) => m.Footer), {
 });
 
 export function HomeBelowFold() {
-  // Don't even START loading/mounting the heavy sections until the page is
-  // settled — on first scroll, or after a short idle gap if the user never
-  // scrolls. This keeps the hero + bottom nav fully interactive immediately
-  // (no second wave of scroll-scene init blocking taps right after load).
+  // Defer everything until the page is settled (first scroll, or a short idle
+  // gap) so the hero + nav are interactive immediately.
   const [ready, setReady] = useState(false);
+  // The cinematic scroll scenes (framer useScroll loops) run continuous
+  // main-thread work that made taps laggy on phones — those stay DESKTOP ONLY.
+  // The light, static sections (About, Paystub, Automation, Footer) are safe
+  // and DO render on mobile so the homepage isn't bare.
+  const [isMobile, setIsMobile] = useState(false);
+
   useEffect(() => {
-    // On phones these stay UNMOUNTED. The cinematic scroll sections run
-    // continuous main-thread work (framer useScroll loops) that blocks
-    // navigation — tapping a nav link couldn't render for seconds while they
-    // ran. Desktop keeps the full experience.
-    if (window.matchMedia("(max-width: 767px)").matches) return;
+    setIsMobile(window.matchMedia("(max-width: 767px)").matches);
     let done = false;
     const go = () => {
       if (done) return;
@@ -78,12 +78,12 @@ export function HomeBelowFold() {
   return (
     <>
       <About />
-      <EmployeesScene />
-      <ProvinceSection />
+      {!isMobile && <EmployeesScene />}
+      {!isMobile && <ProvinceSection />}
       <PaystubSection />
       <Automation />
-      <AutomationScene />
-      <SuccessScene />
+      {!isMobile && <AutomationScene />}
+      {!isMobile && <SuccessScene />}
       <Footer />
     </>
   );
