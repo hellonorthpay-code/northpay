@@ -512,30 +512,7 @@ function StepOne({ form, setForm }: StepProps) {
 function StepTwo({ form, setForm }: StepProps) {
   return (
     <>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
-        <Field label="Province">
-          <Select
-            value={form.province}
-            onValueChange={(v) =>
-              setForm({ ...form, province: v as ProvinceCode })
-            }
-          >
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SUPPORTED_PROVINCES.map((p) => (
-                <SelectItem key={p} value={p}>
-                  {PROVINCE_NAMES[p]}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <CraRefLink href="https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/set-up-new-employee/determine-province-employment.html">
-            Province of Employment information
-          </CraRefLink>
-        </Field>
-
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Field label="Type">
           <Select
             value={form.employmentType}
@@ -599,9 +576,32 @@ function StepTwo({ form, setForm }: StepProps) {
             </SelectContent>
           </Select>
         </Field>
+
+        <Field label="Province">
+          <Select
+            value={form.province}
+            onValueChange={(v) =>
+              setForm({ ...form, province: v as ProvinceCode })
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {SUPPORTED_PROVINCES.map((p) => (
+                <SelectItem key={p} value={p}>
+                  {PROVINCE_NAMES[p]}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <CraRefLink href="https://www.canada.ca/en/revenue-agency/services/tax/businesses/topics/payroll/set-up-new-employee/determine-province-employment.html">
+            Province of Employment information
+          </CraRefLink>
+        </Field>
       </div>
 
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <Field label="Standard weekly hours">
           <Input
             type="number"
