@@ -44,8 +44,14 @@ const SuccessScene = dynamic(
 const Footer = dynamic(() => import("./footer").then((m) => m.Footer), {
   ssr: false,
 });
+// Static mobile replacement for the desktop-only EmployeesScene scroll scene.
+const PayrollTreeMobile = dynamic(
+  () => import("./payroll-tree-mobile").then((m) => m.PayrollTreeMobile),
+  { ssr: false }
+);
 
 export function HomeBelowFold() {
+  const [isMobile, setIsMobile] = useState(false);
   // All sections render on mobile now — but they only MOUNT once the user
   // scrolls. While you're at the top (where the Log in button lives), nothing
   // heavy is mounted, so the main thread is free and Log in stays instant. The
@@ -56,7 +62,8 @@ export function HomeBelowFold() {
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    const isMobile = window.matchMedia("(max-width: 767px)").matches;
+    const mobile = window.matchMedia("(max-width: 767px)").matches;
+    setIsMobile(mobile);
     let done = false;
     const go = () => {
       if (done) return;
@@ -66,7 +73,7 @@ export function HomeBelowFold() {
       if (timer) window.clearTimeout(timer);
     };
     window.addEventListener("scroll", go, { passive: true });
-    const timer = isMobile ? undefined : window.setTimeout(go, 1200);
+    const timer = mobile ? undefined : window.setTimeout(go, 1200);
     return () => {
       window.removeEventListener("scroll", go);
       if (timer) window.clearTimeout(timer);
@@ -78,7 +85,8 @@ export function HomeBelowFold() {
   return (
     <>
       <About />
-      <EmployeesScene />
+      {/* Mobile gets the static tree; desktop gets the scroll-driven scene. */}
+      {isMobile ? <PayrollTreeMobile /> : <EmployeesScene />}
       <ProvinceSection />
       <PaystubSection />
       <Automation />
