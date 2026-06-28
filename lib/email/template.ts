@@ -22,6 +22,91 @@ function money(n: number): string {
   })}`;
 }
 
+export interface PayrollSummaryParams {
+  companyName: string;
+  /** Pre-formatted pay-period range. */
+  range: string;
+  rows: { name: string; net: number }[];
+  totalNet: number;
+  /** How many paystub emails were sent to employees in this run. */
+  emailedCount: number;
+}
+
+/**
+ * Apple-style payroll summary email for the EMPLOYER — one per run, listing
+ * every paid employee and their net. Gives the employer a record of what went
+ * out without BCC-ing them on every individual paystub (which would double
+ * email usage). No attachment.
+ */
+export function buildPayrollSummaryEmailHtml(p: PayrollSummaryParams): string {
+  const co = p.companyName;
+
+  const row = (name: string, value: string, last: boolean) => `
+    <tr>
+      <td style="padding:13px 0;font-size:14px;color:${INK};${last ? "" : `border-bottom:1px solid ${HAIR};`}">${name}</td>
+      <td style="padding:13px 0;font-size:14px;color:${INK};text-align:right;font-variant-numeric:tabular-nums;${last ? "" : `border-bottom:1px solid ${HAIR};`}">${value}</td>
+    </tr>`;
+
+  const rowsHtml = p.rows
+    .map((r, i) => row(r.name, money(r.net), i === p.rows.length - 1))
+    .join("");
+
+  return `
+<div style="margin:0;padding:32px 16px;background:#f5f5f7;font-family:${FONT};-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;">
+    <tr><td>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:22px;border:1px solid ${HAIR};">
+        <tr><td style="padding:32px 32px 0;">
+          <span style="display:inline-block;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:${INK};">NorthPay</span>
+        </td></tr>
+
+        <tr><td style="padding:26px 32px 0;">
+          <h1 style="margin:0;font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-0.02em;color:${INK};">Payroll summary</h1>
+          <p style="margin:6px 0 0;font-size:14px;color:${MUTED};">${p.range} · ${co}</p>
+        </td></tr>
+
+        <tr><td style="padding:26px 32px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;border-radius:16px;">
+            <tr><td style="padding:22px 24px;text-align:center;">
+              <p style="margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${MUTED};">Total net paid</p>
+              <p style="margin:8px 0 0;font-size:36px;line-height:1;font-weight:600;letter-spacing:-0.02em;color:${INK};font-variant-numeric:tabular-nums;">${money(p.totalNet)}</p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:24px 32px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${rowsHtml}
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:22px 32px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;border-radius:12px;">
+            <tr><td style="padding:14px 16px;font-size:13px;color:${MUTED};">
+              ${p.emailedCount} paystub${p.emailedCount === 1 ? "" : "s"} emailed to employees.
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:26px 32px 34px;">
+          <p style="margin:0;font-size:13px;color:${MUTED};">This is your record of the run. No action needed.</p>
+        </td></tr>
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="padding:20px 28px;text-align:center;">
+          <p style="margin:0;font-size:11px;line-height:1.6;color:#a1a1a6;">
+            Sent by NorthPay. Please verify all figures against your own records.
+          </p>
+        </td></tr>
+      </table>
+
+    </td></tr>
+  </table>
+</div>`;
+}
+
 export interface PaystubEmailParams {
   firstName: string;
   companyName: string;

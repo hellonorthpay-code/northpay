@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { sendBrevoEmail, emailConfigured } from "@/lib/email/brevo";
-import { buildPaystubEmailHtml } from "@/lib/email/template";
+import {
+  buildPaystubEmailHtml,
+  buildPayrollSummaryEmailHtml,
+} from "@/lib/email/template";
 
 // ─────────────────────────────────────────────────────────────────────────
 // One-off email test endpoint — protected by CRON_SECRET.
@@ -39,23 +42,45 @@ async function handle(request: Request) {
     );
   }
 
-  // Render the real Apple-style paystub template with sample numbers so the
-  // test send doubles as a design preview.
+  // Render a real Apple-style template with sample numbers so the test send
+  // doubles as a design preview. ?kind=summary previews the employer summary;
+  // anything else previews the employee paystub.
+  const kind = url.searchParams.get("kind");
+  const isSummary = kind === "summary";
+
+  const html = isSummary
+    ? buildPayrollSummaryEmailHtml({
+        companyName: "North Pay",
+        range: "Jun 13 – Jun 26, 2026",
+        rows: [
+          { name: "Rajbir Bal", net: 750.51 },
+          { name: "Pawan Bajwa", net: 2051.43 },
+          { name: "Aman Sidhu", net: 1820.0 },
+          { name: "Priya Kaur", net: 1340.75 },
+          { name: "Jas Gill", net: 980.2 },
+        ],
+        totalNet: 6942.89,
+        emailedCount: 5,
+      })
+    : buildPaystubEmailHtml({
+        firstName: "there",
+        companyName: "NorthPay",
+        range: "Jun 13 – Jun 26, 2026",
+        gross: 2884.62,
+        taxes: 512.18,
+        cpp: 178.42,
+        ei: 47.0,
+        net: 2147.02,
+        hasAttachment: false,
+      });
+
   const result = await sendBrevoEmail({
     toEmail: to,
     toName: to,
-    subject: "Your paystub — Jun 13 – Jun 26, 2026",
-    html: buildPaystubEmailHtml({
-      firstName: "there",
-      companyName: "NorthPay",
-      range: "Jun 13 – Jun 26, 2026",
-      gross: 2884.62,
-      taxes: 512.18,
-      cpp: 178.42,
-      ei: 47.0,
-      net: 2147.02,
-      hasAttachment: false,
-    }),
+    subject: isSummary
+      ? "Payroll summary — Jun 13 – Jun 26, 2026"
+      : "Your paystub — Jun 13 – Jun 26, 2026",
+    html,
   });
 
   return NextResponse.json({
