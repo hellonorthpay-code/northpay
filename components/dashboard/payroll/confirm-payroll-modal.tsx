@@ -21,6 +21,8 @@ export interface ConfirmResult {
   ok: boolean;
   netPaid?: number;
   emailedCount?: number;
+  /** True when paystubs were queued for sending (vs. mailto drafts). */
+  emailQueued?: boolean;
 }
 
 export interface ConfirmPayrollModalProps {
@@ -51,6 +53,7 @@ export function ConfirmPayrollModal({
   const [result, setResult] = useState<{
     netPaid: number;
     emailedCount: number;
+    emailQueued: boolean;
   } | null>(null);
 
   // Reset to confirm whenever modal opens
@@ -92,6 +95,7 @@ export function ConfirmPayrollModal({
         setResult({
           netPaid: r.netPaid ?? netPay,
           emailedCount: r.emailedCount ?? 0,
+          emailQueued: r.emailQueued ?? false,
         });
         setStage("success");
         setTimeout(onClose, 4000);
@@ -206,6 +210,7 @@ export function ConfirmPayrollModal({
                     <SuccessBody
                       netPaid={result.netPaid}
                       emailedCount={result.emailedCount}
+                      emailQueued={result.emailQueued}
                       count={lines.length}
                     />
                   </motion.div>
@@ -882,10 +887,12 @@ function SuccessConfetti() {
 function SuccessBody({
   netPaid,
   emailedCount,
+  emailQueued,
   count,
 }: {
   netPaid: number;
   emailedCount: number;
+  emailQueued: boolean;
   count: number;
 }) {
   return (
@@ -961,8 +968,9 @@ function SuccessBody({
           transition={{ delay: 1.3, duration: 0.55, ease }}
           className="mt-1 text-[11.5px] text-muted-foreground/80"
         >
-          {emailedCount} email draft{emailedCount === 1 ? "" : "s"} opened in
-          your mail app
+          {emailQueued
+            ? `${emailedCount} paystub${emailedCount === 1 ? "" : "s"} on the way — emailed within 24 hours`
+            : `${emailedCount} email draft${emailedCount === 1 ? "" : "s"} opened in your mail app`}
         </motion.p>
       )}
     </div>

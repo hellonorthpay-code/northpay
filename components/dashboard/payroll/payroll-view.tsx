@@ -34,6 +34,7 @@ import { getRepositories } from "@/lib/repositories";
 import { generatePaystubPDF } from "@/lib/pdf/paystub";
 import type { ValidationIssue } from "@/lib/services/validation";
 import { ConfirmPayrollModal } from "./confirm-payroll-modal";
+import { enqueuePaystubEmails } from "@/lib/email/enqueue-client";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -217,6 +218,8 @@ export function PayrollView() {
   const [emailAfter, setEmailAfter] = useState(false);
   const company = useSettings((s) => s.company);
   const [emailedCount, setEmailedCount] = useState(0);
+  /** True when paystubs went into the send-queue (vs. mailto drafts). */
+  const [emailQueued, setEmailQueued] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   // Mobile only: when true the page swaps to a full-screen payroll-history
   // view (with a Back button). Desktop ignores this and keeps the inline
@@ -294,6 +297,7 @@ export function PayrollView() {
     ok: boolean;
     netPaid?: number;
     emailedCount?: number;
+    emailQueued?: boolean;
   }> {
     setErrors([]);
     setWarnings([]);
@@ -320,20 +324,31 @@ export function PayrollView() {
       // Email dispatch is best-effort — failures here should NEVER block
       // the success path. The run is already persisted.
       let sentCount = 0;
+      let queued = false;
       if (emailAfter) {
         try {
           const allRuns = await getRepositories().payroll.getAll();
-          sentCount = dispatchEmails(result.run, allRuns, company);
+          // Prefer the server queue (Brevo). If it isn't configured yet, fall
+          // back to opening mailto drafts so emailing still works today.
+          const outcome = await enqueuePaystubEmails(result.run, company, allRuns);
+          if (outcome.configured) {
+            sentCount = outcome.queued;
+            queued = true;
+          } else {
+            sentCount = dispatchEmails(result.run, allRuns, company);
+          }
         } catch (e) {
           console.warn("[payroll] email dispatch failed (non-fatal):", e);
         }
       }
       setEmailedCount(sentCount);
+      setEmailQueued(queued);
 
       return {
         ok: true,
         netPaid: result.run.totals.net,
         emailedCount: sentCount,
+        emailQueued: queued,
       };
     } catch (err) {
       // Surface engine/persist errors as a top-level validation issue so

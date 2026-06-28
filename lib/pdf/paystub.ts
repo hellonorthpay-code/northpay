@@ -28,11 +28,36 @@ const RULE = [220, 220, 224] as [number, number, number];
 const SOFT = [247, 247, 250] as [number, number, number];
 const SUCCESS = [40, 130, 80] as [number, number, number];
 
+/** Build the paystub and trigger a browser download. */
 export function generatePaystubPDF(
   line: PayrollLineResult,
   company: CompanySettings,
   allRuns: PayrollRun[]
 ) {
+  const { doc, filename } = buildPaystubDoc(line, company, allRuns);
+  doc.save(filename);
+}
+
+/**
+ * Build the paystub and return it as base64 (no download) so it can be
+ * attached to a transactional email. Runs in the browser at enqueue time.
+ */
+export function paystubPDFBase64(
+  line: PayrollLineResult,
+  company: CompanySettings,
+  allRuns: PayrollRun[]
+): { base64: string; filename: string } {
+  const { doc, filename } = buildPaystubDoc(line, company, allRuns);
+  const uri = doc.output("datauristring");
+  const base64 = uri.substring(uri.indexOf(",") + 1);
+  return { base64, filename };
+}
+
+function buildPaystubDoc(
+  line: PayrollLineResult,
+  company: CompanySettings,
+  allRuns: PayrollRun[]
+): { doc: jsPDF; filename: string } {
   const doc = new jsPDF({ unit: "pt", format: "letter" });
   doc.setFont("helvetica", "normal");
   rgb(doc, "text", INK);
@@ -283,7 +308,7 @@ export function generatePaystubPDF(
   });
 
   const filename = `paystub-${emp.lastName}-${line.periodEnd}.pdf`;
-  doc.save(filename);
+  return { doc, filename };
 }
 
 function drawTable(
