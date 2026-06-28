@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { sendBrevoEmail, emailConfigured } from "@/lib/email/brevo";
+import { buildPaystubEmailHtml } from "@/lib/email/template";
 
 // ─────────────────────────────────────────────────────────────────────────
 // One-off email test endpoint — protected by CRON_SECRET.
@@ -38,23 +39,23 @@ async function handle(request: Request) {
     );
   }
 
+  // Render the real Apple-style paystub template with sample numbers so the
+  // test send doubles as a design preview.
   const result = await sendBrevoEmail({
     toEmail: to,
     toName: to,
-    subject: "NorthPay test email ✓",
-    html: `
-      <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:520px;margin:0 auto;color:#16161a;">
-        <h2 style="font-size:20px;margin:0 0 12px;">It works 🎉</h2>
-        <p style="font-size:14px;line-height:1.6;color:#3a3a40;">
-          This is a test email from <strong>NorthPay</strong>, sent through Brevo
-          from <strong>noreply@thenorthpay.com</strong>. If you're reading this in
-          your inbox (not spam), your domain authentication and sending pipeline
-          are configured correctly.
-        </p>
-        <p style="font-size:12px;color:#9a9aa2;margin-top:24px;">
-          Sent automatically as a configuration check. No action needed.
-        </p>
-      </div>`,
+    subject: "Your paystub — Jun 13 – Jun 26, 2026",
+    html: buildPaystubEmailHtml({
+      firstName: "there",
+      companyName: "NorthPay",
+      range: "Jun 13 – Jun 26, 2026",
+      gross: 2884.62,
+      taxes: 512.18,
+      cpp: 178.42,
+      ei: 47.0,
+      net: 2147.02,
+      hasAttachment: false,
+    }),
   });
 
   return NextResponse.json({

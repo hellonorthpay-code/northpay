@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase/client";
 import { paystubPDFBase64 } from "@/lib/pdf/paystub";
 import { formatDate } from "@/lib/utils";
+import { buildPaystubEmailHtml } from "./template";
 import type { CompanySettings, PayrollRun } from "@/lib/payroll/types";
 
 export interface EnqueueOutcome {
@@ -11,40 +12,23 @@ export interface EnqueueOutcome {
   queued: number;
 }
 
-/** Plain-text-ish HTML body for a single paystub email. */
+/** Apple-style HTML email for a single paystub (shared template). */
 function buildHtml(
   firstName: string,
   company: { operatingName: string },
   line: PayrollRun["lines"][number]
 ): string {
-  const range = `${formatDate(line.periodStart)} – ${formatDate(line.periodEnd)}`;
-  const money = (n: number) =>
-    `$${n.toLocaleString("en-CA", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
-  const taxes = line.federalTax + line.provincialTax;
-  const cpp = line.cppEmployee + line.cpp2Employee;
-
-  return `
-  <div style="font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;max-width:560px;margin:0 auto;color:#16161a;">
-    <p style="font-size:15px;">Hi ${firstName},</p>
-    <p style="font-size:14px;line-height:1.6;color:#3a3a40;">
-      Your paystub for <strong>${range}</strong> is attached as a PDF.
-    </p>
-    <table style="width:100%;border-collapse:collapse;font-size:13px;margin:18px 0;">
-      <tr><td style="padding:6px 0;color:#6e6e76;">Gross pay</td><td style="padding:6px 0;text-align:right;">${money(line.grossPay)}</td></tr>
-      <tr><td style="padding:6px 0;color:#6e6e76;">Income tax</td><td style="padding:6px 0;text-align:right;">${money(taxes)}</td></tr>
-      <tr><td style="padding:6px 0;color:#6e6e76;">CPP</td><td style="padding:6px 0;text-align:right;">${money(cpp)}</td></tr>
-      <tr><td style="padding:6px 0;color:#6e6e76;">EI</td><td style="padding:6px 0;text-align:right;">${money(line.eiEmployee)}</td></tr>
-      <tr><td style="padding:10px 0 0;border-top:1px solid #e6e6ea;font-weight:600;">Net deposit</td><td style="padding:10px 0 0;border-top:1px solid #e6e6ea;text-align:right;font-weight:600;">${money(line.netPay)}</td></tr>
-    </table>
-    <p style="font-size:13px;color:#3a3a40;">Best regards,<br/>${company.operatingName}</p>
-    <p style="font-size:11px;color:#9a9aa2;margin-top:24px;">
-      Sent via NorthPay on behalf of ${company.operatingName}. Please verify all
-      figures against your own records.
-    </p>
-  </div>`;
+  return buildPaystubEmailHtml({
+    firstName,
+    companyName: company.operatingName,
+    range: `${formatDate(line.periodStart)} – ${formatDate(line.periodEnd)}`,
+    gross: line.grossPay,
+    taxes: line.federalTax + line.provincialTax,
+    cpp: line.cppEmployee + line.cpp2Employee,
+    ei: line.eiEmployee,
+    net: line.netPay,
+    hasAttachment: true,
+  });
 }
 
 /**

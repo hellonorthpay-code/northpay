@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { emailConfigured } from "@/lib/email/brevo";
+import { drainQueue } from "@/lib/email/drain-core";
 
 // Accept a generous-but-bounded batch. A single payroll run for one employer
 // is a handful of paystubs; this cap just stops a malformed/abusive request
@@ -91,5 +92,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.json({ configured: true, queued: rows.length });
+  // Drain immediately so paystubs go out within seconds of clicking "send".
+  // Best-effort: if it throws or hits the daily cap, the rows stay pending
+  // and the cron backstop picks them up. Never fail the enqueue over this.
+  let sent = 0;
+  try {
+    const result = await drainQueue(admin);
+    sent = result.sent;
+  } catch (e) {
+    console.warn("[enqueue] immediate drain failed (non-fatal):", e);
+  }
+
+  return NextResponse.json({ configured: true, queued: rows.length, sent });
 }
