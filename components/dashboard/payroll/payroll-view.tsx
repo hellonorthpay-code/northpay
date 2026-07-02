@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -155,21 +156,10 @@ function dispatchEmails(
   return count;
 }
 
-function defaultRegularHours(emp: Employee): number {
-  if (emp.employmentType === "salary") return 0;
-  const std = emp.standardWeeklyHours || 40;
-  // Weeks per pay period (52 / periods-per-year) — mirrors WEEKS_PER_PERIOD
-  // in lib/payroll/engine.ts.
-  const WEEKS_PER_PERIOD: Record<typeof emp.payFrequency, number> = {
-    weekly: 1,
-    biweekly: 2,
-    semimonthly: 2.1667,
-    monthly: 4.3333,
-    semiannually: 26,
-    annually: 52,
-  };
-  const weeks = WEEKS_PER_PERIOD[emp.payFrequency];
-  return Math.round(std * weeks);
+function defaultRegularHours(): number {
+  // Hours are no longer auto-populated — every run starts at zero and the
+  // operator enters the actual hours worked. The input placeholder reads "0".
+  return 0;
 }
 
 // The overtime threshold for a whole pay period: the employee's weekly
@@ -386,6 +376,17 @@ export function PayrollView() {
   const allExcluded =
     excludedIds.size === employees.length && employees.length > 0;
 
+  // Payroll may not run until the company's CRA identity is on file — legal
+  // name, business number, and full address. Paystubs/remittances are invalid
+  // without them. A brand-new account has these empty until Settings is saved.
+  const companyReady = Boolean(
+    company.legalName?.trim() &&
+      company.businessNumber?.trim() &&
+      company.address?.trim() &&
+      company.city?.trim() &&
+      company.postalCode?.trim()
+  );
+
   return (
     <>
       {/* Mobile-only: full-screen payroll history with a Back button. */}
@@ -408,9 +409,32 @@ export function PayrollView() {
         onPeriodReset={() => setPeriod(computePeriod())}
         employeeCount={activeEmployees.length}
         totalCount={employees.length}
-        onOpen={() => setConfirmOpen(true)}
-        canRun={activeEmployees.length > 0}
+        onOpen={() => { if (companyReady) setConfirmOpen(true); }}
+        canRun={activeEmployees.length > 0 && companyReady}
       />
+
+      {!companyReady && (
+        <div className="flex flex-col gap-3 rounded-3xl border border-amber-300/50 bg-amber-50 p-5 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-start gap-2.5">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <p className="text-[14px] font-semibold tracking-tight">
+                Add your company details before running payroll
+              </p>
+              <p className="mt-1 text-[12.5px] opacity-90">
+                NorthPay needs your legal name, business number, and address to
+                produce valid paystubs and remittances.
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/dashboard/settings"
+            className="shrink-0 self-start rounded-full bg-amber-900 px-4 py-2 text-[12.5px] font-medium text-amber-50 transition-colors hover:bg-amber-800 dark:bg-amber-200 dark:text-amber-950 dark:hover:bg-amber-100 sm:self-center"
+          >
+            Go to Settings
+          </Link>
+        </div>
+      )}
 
       <AnimatePresence>
         {errors.length > 0 && (
@@ -863,7 +887,7 @@ function GridRow({
   const [otPromptOpen, setOtPromptOpen] = useState(false);
   const initials = `${employee.firstName[0] ?? ""}${employee.lastName[0] ?? ""}`;
   const isHourly = employee.employmentType === "hourly";
-  const defaultRegular = defaultRegularHours(employee);
+  const defaultRegular = defaultRegularHours();
   const otThreshold = periodOtThreshold(employee);
   const payingOt = input?.payOvertime === true;
 

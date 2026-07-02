@@ -79,7 +79,9 @@ function defaultHoursForPeriod(
     return { regular: hours, overtime: 0 };
   }
 
-  const regular = hours ?? Math.min(weeklyThreshold, 40) * weeksPerPeriod;
+  // No auto-populated default: hours start at zero and the operator enters
+  // the actual hours worked each run.
+  const regular = hours ?? 0;
   return { regular, overtime: overtimeHours ?? 0 };
 }
 
