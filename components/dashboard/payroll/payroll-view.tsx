@@ -1198,17 +1198,28 @@ function MobileEmployeeCard({
       </div>
       {line ? (
         <ul className="space-y-2 px-4 py-3 text-[13px]">
-          {/* Additions first, then deductions, then info rows. */}
-          <BreakdownRow label="Gross" value={formatCAD(line.grossPay)} />
+          {/* Earnings itemised so they SUM to gross — vacation is a component
+              of gross, not an addition on top of it (matches the paystub PDF). */}
+          <BreakdownRow label="Regular pay" value={formatCAD(line.regularPay)} />
+          {line.overtimePay > 0 && (
+            <BreakdownRow label="Overtime" value={`+${formatCAD(line.overtimePay)}`} />
+          )}
+          {line.bonusAmount > 0 && (
+            <BreakdownRow label="Bonus" value={`+${formatCAD(line.bonusAmount)}`} />
+          )}
           {line.statPay > 0 && (
             <BreakdownRow
-              label={line.statPayMethod === "premium" ? "Stat 1.5×" : line.statPayMethod === "average" ? "Stat avg" : "Stat custom"}
+              label={line.statPayMethod === "premium" ? "Stat 1.5×" : line.statPayMethod === "average" ? "Stat avg" : "Stat pay"}
               value={`+${formatCAD(line.statPay)}`}
             />
           )}
           {line.vacationAccrual > 0 && (
-            <BreakdownRow label="Vacation" value={`+${formatCAD(line.vacationAccrual)}`} />
+            <BreakdownRow label="Vacation pay" value={`+${formatCAD(line.vacationAccrual)}`} />
           )}
+          <li className="flex items-center justify-between border-t border-border/40 pt-2 font-medium">
+            <span>Gross pay</span>
+            <span className="tabular-nums">{formatCAD(line.grossPay)}</span>
+          </li>
           <BreakdownRow label="Federal tax" value={formatCAD(-line.federalTax)} />
           <BreakdownRow label="Provincial tax" value={formatCAD(-line.provincialTax)} />
           <BreakdownRow label="CPP" value={formatCAD(-(line.cppEmployee + line.cpp2Employee))} />
@@ -1941,11 +1952,25 @@ function NetPayInfo({
                   <p className="border-b border-border/60 px-4 py-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     Net pay breakdown
                   </p>
-                  {/* Order: additions first (Gross, Stat, Vacation),
-                      then deductions (Federal, Provincial, CPP, EI),
-                      then any informational rows, then Net pay. */}
+                  {/* Earnings itemised so they SUM to gross — vacation is a
+                      component of gross, not added on top (matches the PDF). */}
                   <ul className="space-y-1.5 px-4 py-3 text-[12px] tabular-nums">
-                    <BreakdownRow label="Gross" value={formatCAD(line.grossPay)} />
+                    <BreakdownRow
+                      label="Regular pay"
+                      value={formatCAD(line.regularPay)}
+                    />
+                    {line.overtimePay > 0 && (
+                      <BreakdownRow
+                        label="Overtime"
+                        value={`+${formatCAD(line.overtimePay)}`}
+                      />
+                    )}
+                    {line.bonusAmount > 0 && (
+                      <BreakdownRow
+                        label="Bonus"
+                        value={`+${formatCAD(line.bonusAmount)}`}
+                      />
+                    )}
                     {line.statPay > 0 && (
                       <BreakdownRow
                         label={
@@ -1953,17 +1978,23 @@ function NetPayInfo({
                             ? "Stat 1.5×"
                             : line.statPayMethod === "average"
                             ? "Stat avg"
-                            : "Stat custom"
+                            : "Stat pay"
                         }
                         value={`+${formatCAD(line.statPay)}`}
                       />
                     )}
                     {line.vacationAccrual > 0 && (
                       <BreakdownRow
-                        label="Vacation"
+                        label="Vacation pay"
                         value={`+${formatCAD(line.vacationAccrual)}`}
                       />
                     )}
+                    <li className="flex items-center justify-between border-t border-border/40 pt-1.5 font-medium">
+                      <span>Gross pay</span>
+                      <span className="tabular-nums">
+                        {formatCAD(line.grossPay)}
+                      </span>
+                    </li>
                     <BreakdownRow
                       label="Federal"
                       value={formatCAD(-line.federalTax)}
