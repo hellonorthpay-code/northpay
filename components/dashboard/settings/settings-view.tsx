@@ -20,7 +20,6 @@ import { useProfile } from "@/lib/store/profile";
 import {
   PROVINCE_NAMES,
   SUPPORTED_PROVINCES,
-  type PayFrequency,
   type ProvinceCode,
 } from "@/lib/payroll/types";
 import { cn } from "@/lib/utils";
@@ -175,19 +174,6 @@ export function SettingsView() {
             {SUPPORTED_PROVINCES.map((p) => (
               <SelectItem key={p} value={p}>{PROVINCE_NAMES[p]}</SelectItem>
             ))}
-          </SelectContent>
-        </Select>
-      </Field>
-      <Field label="Default pay frequency">
-        <Select value={company.defaultPayFrequency} onValueChange={(v) => setCompany({ defaultPayFrequency: v as PayFrequency })}>
-          <SelectTrigger><SelectValue /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="weekly">Weekly</SelectItem>
-            <SelectItem value="biweekly">Bi-weekly</SelectItem>
-            <SelectItem value="semimonthly">Semi-monthly</SelectItem>
-            <SelectItem value="monthly">Monthly</SelectItem>
-            <SelectItem value="semiannually">Semi-Annually</SelectItem>
-            <SelectItem value="annually">Annually</SelectItem>
           </SelectContent>
         </Select>
       </Field>
