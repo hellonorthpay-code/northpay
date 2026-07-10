@@ -81,6 +81,27 @@ export function SettingsView() {
     e: React.ChangeEvent<HTMLInputElement>
   ) => setDraft((d) => ({ ...d, [key]: e.target.value }));
 
+  // Business number — exactly the 9-digit BN, digits only.
+  const setBusinessNumber = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const digits = e.target.value.replace(/\D/g, "").slice(0, 9);
+    setDraft((d) => ({ ...d, businessNumber: digits }));
+  };
+
+  // CRA payroll account — always "RP" + up to 4 alphanumeric (e.g. RP0001).
+  // We store the full "RP…" value but only let the user edit the 4 chars.
+  const craSuffix = (draft.craPayrollAccount || "")
+    .replace(/^RP/i, "")
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .toUpperCase()
+    .slice(0, 4);
+  const setCraSuffix = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const clean = e.target.value
+      .replace(/[^a-zA-Z0-9]/g, "")
+      .toUpperCase()
+      .slice(0, 4);
+    setDraft((d) => ({ ...d, craPayrollAccount: clean ? `RP${clean}` : "" }));
+  };
+
   const companyFields = (
     <>
       <Field label="Legal name">
@@ -90,10 +111,26 @@ export function SettingsView() {
         <Input value={draft.operatingName} onChange={setField("operatingName")} />
       </Field>
       <Field label="Business number">
-        <Input value={draft.businessNumber} onChange={setField("businessNumber")} />
+        <Input
+          value={draft.businessNumber}
+          onChange={setBusinessNumber}
+          inputMode="numeric"
+          maxLength={9}
+          placeholder="123456789"
+        />
       </Field>
       <Field label="CRA payroll account">
-        <Input value={draft.craPayrollAccount} onChange={setField("craPayrollAccount")} placeholder="RP0001" />
+        <div className="flex h-11 w-full items-center rounded-xl border border-border bg-background px-4 text-[15px] text-foreground transition-all duration-200 focus-within:border-foreground/30 focus-within:shadow-soft">
+          <span className="select-none pr-1 font-medium text-muted-foreground">RP</span>
+          <input
+            value={craSuffix}
+            onChange={setCraSuffix}
+            inputMode="numeric"
+            maxLength={4}
+            placeholder="0001"
+            className="w-full bg-transparent tracking-wide outline-none placeholder:text-muted-foreground"
+          />
+        </div>
       </Field>
       <Field label="Address">
         <Input value={draft.address} onChange={setField("address")} />
