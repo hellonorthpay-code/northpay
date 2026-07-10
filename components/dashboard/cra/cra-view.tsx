@@ -1,7 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  motion,
+  AnimatePresence,
+  useMotionValue,
+  useTransform,
+  animate,
+} from "framer-motion";
 import {
   Banknote,
   Calendar,
@@ -9,7 +15,9 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronsRight,
   Clock,
+  Download,
   ExternalLink,
   FileText,
   History,
@@ -18,6 +26,8 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { useSettings } from "@/lib/store/settings";
+import { generateRemittancePDF } from "@/lib/pdf/remittance";
 import {
   Select,
   SelectContent,
@@ -42,6 +52,7 @@ export function CRAView() {
   const remittedMap = useRemittance((s) => s.remitted);
   const markRemitted = useRemittance((s) => s.markRemitted);
   const unmark = useRemittance((s) => s.unmark);
+  const company = useSettings((s) => s.company);
 
   const service = useMemo(
     () => new RemittanceService(runs, remittedMap),
@@ -86,6 +97,23 @@ export function CRAView() {
     };
   }, [months, history]);
 
+  function handleExport() {
+    generateRemittancePDF(
+      company,
+      months,
+      {
+        remittedTotal: summary.remittedTotal,
+        outstandingTotal: summary.outstandingTotal,
+        total: summary.total,
+        federalTax: summary.federalTax,
+        provincialTax: summary.provincialTax,
+        cpp: summary.cpp,
+        ei: summary.ei,
+      },
+      TAX_YEAR
+    );
+  }
+
   // ─── Year-end records sub-view (T4/T4A/ROE) with a Back button ───
   if (showReports) {
     return (
@@ -112,6 +140,7 @@ export function CRAView() {
           onMark={() => markRemitted(nextDue.monthKey)}
           months={months}
           onViewMonth={setViewingKey}
+          onExport={handleExport}
         />
       ) : (
         <NothingDueCard />
@@ -160,7 +189,7 @@ export function CRAView() {
       )}
 
       {/* ─── PD7A year-to-date summary ─── */}
-      {summary.hasData && <Pd7aSummary summary={summary} />}
+      {summary.hasData && <Pd7aSummary summary={summary} onExport={handleExport} />}
 
       {/* ─── Year-end records & filings — behind a button ─── */}
       <button
@@ -192,6 +221,7 @@ export function CRAView() {
 // ─────────────────────────────────────────────────────────────────────────
 function Pd7aSummary({
   summary,
+  onExport,
 }: {
   summary: {
     remittedTotal: number;
@@ -202,6 +232,7 @@ function Pd7aSummary({
     cpp: number;
     ei: number;
   };
+  onExport: () => void;
 }) {
   return (
     <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
@@ -210,9 +241,14 @@ function Pd7aSummary({
           <FileText className="h-3.5 w-3.5" />
           PD7A summary · {TAX_YEAR}
         </span>
-        <span className="text-[11px] text-muted-foreground">
-          Statement of account
-        </span>
+        <button
+          type="button"
+          onClick={onExport}
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-[11.5px] font-medium text-foreground transition-colors hover:bg-muted/60"
+        >
+          <Download className="h-3.5 w-3.5 text-muted-foreground" />
+          Export PDF
+        </button>
       </div>
 
       <div className="space-y-5 p-5">
@@ -239,7 +275,7 @@ function Pd7aSummary({
 
         <p className="text-[11px] leading-relaxed text-muted-foreground">
           Source deductions reported across {TAX_YEAR}, as they appear on each
-          monthly PD7A. Downloadable PD7A statements are coming soon.
+          monthly PD7A. Use Export PDF for a full remittance report to file with.
         </p>
       </div>
     </div>
@@ -281,11 +317,13 @@ function NextDueCard({
   onMark,
   months,
   onViewMonth,
+  onExport,
 }: {
   month: MonthlyRemittance;
   onMark: () => void;
   months: MonthlyRemittance[];
   onViewMonth: (key: string | null) => void;
+  onExport: () => void;
 }) {
   const daysToDue = useMemo(() => {
     const due = new Date(month.dueDate);
@@ -318,60 +356,68 @@ function NextDueCard({
         <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           Next remittance · for {month.monthLabel}
         </p>
-        {months.length > 0 && (
-          <Select value="" onValueChange={(v) => onViewMonth(v || null)}>
-            <SelectTrigger className="h-9 w-auto shrink-0 gap-2 rounded-full border-border/70 bg-background/70 px-3.5 text-[12.5px] font-medium">
-              <History className="h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue placeholder="View a month" />
-            </SelectTrigger>
-            <SelectContent className="min-w-[17rem]">
-              {months.map((m) => (
-                <SelectItem key={m.monthKey} value={m.monthKey}>
-                  <span className="flex w-full items-center justify-between gap-5">
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          m.remitted ? "bg-success" : "bg-amber-500"
-                        )}
-                      />
-                      {m.monthLabel}
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={onExport}
+            className="inline-flex h-9 items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3.5 text-[12.5px] font-medium text-foreground transition-colors hover:bg-muted/60"
+          >
+            <Download className="h-3.5 w-3.5 text-muted-foreground" />
+            Export PDF
+          </button>
+          {months.length > 0 && (
+            <Select value="" onValueChange={(v) => onViewMonth(v || null)}>
+              <SelectTrigger className="h-9 w-auto shrink-0 gap-2 rounded-full border-border/70 bg-background/70 px-3.5 text-[12.5px] font-medium">
+                <History className="h-3.5 w-3.5 text-muted-foreground" />
+                <SelectValue placeholder="View a month" />
+              </SelectTrigger>
+              <SelectContent className="min-w-[17rem]">
+                {months.map((m) => (
+                  <SelectItem key={m.monthKey} value={m.monthKey}>
+                    <span className="flex w-full items-center justify-between gap-5">
+                      <span className="flex items-center gap-2">
+                        <span
+                          className={cn(
+                            "h-1.5 w-1.5 rounded-full",
+                            m.remitted ? "bg-success" : "bg-amber-500"
+                          )}
+                        />
+                        {m.monthLabel}
+                      </span>
+                      <span className="tabular-nums text-muted-foreground">
+                        {formatCAD(m.total)}
+                      </span>
                     </span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {formatCAD(m.total)}
-                    </span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
       </div>
 
       {/* Q1 "How much?" + Q2 "When is it due?" */}
-      <div className="relative mt-3 grid gap-6 sm:grid-cols-[1.4fr_auto] sm:items-end">
-        <div>
-          <p className="text-[44px] font-semibold leading-none tracking-tightest tabular-nums">
-            {formatCAD(month.total)}
-          </p>
-          <div className="mt-4">
-            <DueBadge dueDate={month.dueDate} daysToDue={daysToDue} tone={tone} />
-          </div>
-        </div>
-        <div className="self-center sm:self-end">
-          <Button size="lg" onClick={onMark} className="w-full sm:w-auto">
-            <Check className="h-4 w-4" />
-            Mark as remitted
-          </Button>
+      <div className="relative mt-3">
+        <p className="text-[44px] font-semibold leading-none tracking-tightest tabular-nums">
+          {formatCAD(month.total)}
+        </p>
+        <div className="mt-4">
+          <DueBadge dueDate={month.dueDate} daysToDue={daysToDue} tone={tone} />
         </div>
       </div>
 
       {/* Breakdown strip */}
-      <div className="relative mt-7 grid grid-cols-2 divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center sm:grid-cols-4 sm:divide-x">
+      <div className="relative mt-6 grid grid-cols-2 divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center sm:grid-cols-4 sm:divide-x">
         <Stat label="Federal tax" value={formatCAD(month.federalTax)} />
         <Stat label="Provincial tax" value={formatCAD(month.provincialTax)} />
         <Stat label="CPP (×2)" value={formatCAD(month.cpp)} />
         <Stat label="EI (×2.4)" value={formatCAD(month.ei)} />
+      </div>
+
+      {/* Primary action — slide to confirm (mirrors slide-to-run-payroll).
+          Keyed by month so the slider resets when the next month rolls in. */}
+      <div className="relative mt-6">
+        <SlideToConfirm key={month.monthKey} onConfirm={onMark} />
       </div>
 
       {/* Q4 "Can I trust this number?" — provenance + method */}
@@ -380,6 +426,103 @@ function NextDueCard({
       {/* Q3 "How do I pay it?" */}
       <HowToPay />
     </motion.div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Slide-to-confirm — the delightful primary action, mirroring slide-to-run on
+// the Payroll tab. Drag the thumb to the end to mark the month remitted.
+// ─────────────────────────────────────────────────────────────────────────
+function SlideToConfirm({ onConfirm }: { onConfirm: () => void }) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const x = useMotionValue(0);
+  const [maxX, setMaxX] = useState(0);
+  const [done, setDone] = useState(false);
+
+  const PAD = 6;
+  const THUMB = 52;
+
+  useEffect(() => {
+    const measure = () => {
+      if (trackRef.current) {
+        setMaxX(Math.max(0, trackRef.current.offsetWidth - THUMB - PAD * 2));
+      }
+    };
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+  }, []);
+
+  const labelOpacity = useTransform(x, [0, Math.max(1, maxX * 0.55)], [1, 0]);
+  const fillWidth = useTransform(x, (v) => v + THUMB + PAD);
+
+  function settle() {
+    if (done) return;
+    if (maxX > 0 && x.get() >= maxX * 0.82) {
+      animate(x, maxX, { type: "spring", stiffness: 520, damping: 42 });
+      setDone(true);
+      window.setTimeout(onConfirm, 280);
+    } else {
+      animate(x, 0, { type: "spring", stiffness: 520, damping: 42 });
+    }
+  }
+
+  return (
+    <div
+      ref={trackRef}
+      className={cn(
+        "relative flex h-16 w-full select-none items-center overflow-hidden rounded-2xl border transition-colors duration-300",
+        done ? "border-success/40 bg-success/15" : "border-border/70 bg-muted/40"
+      )}
+    >
+      <motion.div
+        style={{ width: fillWidth }}
+        className={cn(
+          "absolute inset-y-0 left-0 rounded-2xl",
+          done ? "bg-success/20" : "bg-foreground/[0.05]"
+        )}
+      />
+      <motion.span
+        style={{ opacity: done ? 1 : labelOpacity }}
+        className={cn(
+          "pointer-events-none absolute inset-0 flex items-center justify-center gap-2 text-[14px] font-medium tracking-tight",
+          done ? "text-success" : "text-muted-foreground"
+        )}
+      >
+        {done ? (
+          <>
+            <Check className="h-4 w-4" strokeWidth={3} />
+            Marked as remitted
+          </>
+        ) : (
+          "Slide to mark remitted"
+        )}
+      </motion.span>
+
+      {!done ? (
+        <motion.div
+          drag="x"
+          dragConstraints={{ left: 0, right: maxX }}
+          dragElastic={0}
+          dragMomentum={false}
+          style={{ x }}
+          onDragEnd={settle}
+          whileTap={{ scale: 0.96 }}
+          className="absolute left-1.5 top-1.5 z-10 grid h-[52px] w-[52px] cursor-grab place-items-center rounded-xl bg-foreground text-background shadow-pop active:cursor-grabbing"
+        >
+          <ChevronsRight className="h-5 w-5" strokeWidth={2.5} />
+        </motion.div>
+      ) : (
+        <motion.div
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ type: "spring", stiffness: 500, damping: 30 }}
+          className="absolute right-1.5 top-1.5 z-10 grid h-[52px] w-[52px] place-items-center rounded-xl bg-success text-white shadow-pop"
+        >
+          <Check className="h-5 w-5" strokeWidth={3} />
+        </motion.div>
+      )}
+    </div>
   );
 }
 
