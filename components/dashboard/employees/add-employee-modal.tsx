@@ -955,22 +955,51 @@ function CalendarPanel({
 
   return (
     <div className="w-full">
-      {/* Header: tapping the month or year opens its switcher. */}
-      <div className="mb-2 flex items-center justify-center gap-1 px-1">
-        <button
-          type="button"
-          onClick={() => setMode(mode === "month" ? "day" : "month")}
-          className={`${headerBtn} ${mode === "month" ? "bg-muted" : ""}`}
-        >
-          {MONTH_FULL[month]}
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode(mode === "year" ? "day" : "year")}
-          className={`${headerBtn} tabular-nums ${mode === "year" ? "bg-muted" : ""}`}
-        >
-          {year}
-        </button>
+      {/* Header: ◀ / ▶ step one month; tapping the month or year opens its
+          switcher. Arrows only show on the day grid. */}
+      <div className="mb-2 flex items-center justify-between gap-1 px-1">
+        {mode === "day" ? (
+          <button
+            type="button"
+            aria-label="Previous month"
+            onClick={() => onViewMonth(new Date(year, month - 1, 1))}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.4} />
+          </button>
+        ) : (
+          <span className="h-8 w-8 shrink-0" />
+        )}
+
+        <div className="flex items-center gap-1">
+          <button
+            type="button"
+            onClick={() => setMode(mode === "month" ? "day" : "month")}
+            className={`${headerBtn} ${mode === "month" ? "bg-muted" : ""}`}
+          >
+            {MONTH_FULL[month]}
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode(mode === "year" ? "day" : "year")}
+            className={`${headerBtn} tabular-nums ${mode === "year" ? "bg-muted" : ""}`}
+          >
+            {year}
+          </button>
+        </div>
+
+        {mode === "day" ? (
+          <button
+            type="button"
+            aria-label="Next month"
+            onClick={() => onViewMonth(new Date(year, month + 1, 1))}
+            className="grid h-8 w-8 shrink-0 place-items-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ChevronRight className="h-4 w-4" strokeWidth={2.4} />
+          </button>
+        ) : (
+          <span className="h-8 w-8 shrink-0" />
+        )}
       </div>
 
       {mode === "month" ? (
