@@ -45,6 +45,19 @@ const SSR_PERIOD = {
   payDate: "2026-05-01",
 };
 
+function addDaysISO(iso: string, days: number): string {
+  const d = new Date(iso + "T00:00:00");
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+function diffDaysISO(a: string, b: string): number {
+  return Math.round(
+    (new Date(b + "T00:00:00").getTime() -
+      new Date(a + "T00:00:00").getTime()) /
+      86_400_000
+  );
+}
+
 function computePeriod() {
   const today = new Date();
   const start = new Date(today);
@@ -195,6 +208,33 @@ export function PayrollView() {
   useEffect(() => {
     setPeriod(computePeriod());
   }, []);
+
+  // Earliest employee start date — the pay period can't begin before anyone
+  // was employed (you can't pay staff for a period predating their hire).
+  const earliestStart = useMemo(() => {
+    const dates = employees
+      .map((e) => e.startDate)
+      .filter((d): d is string => !!d)
+      .sort();
+    return dates[0] ?? null;
+  }, [employees]);
+
+  // If the default period starts before the earliest hire date, shift the
+  // whole window forward so it begins on that date (preserving its length and
+  // pay-date gap). Runs only when the earliest start changes, so it never
+  // fights the user's manual edits.
+  useEffect(() => {
+    if (!earliestStart) return;
+    setPeriod((p) => {
+      if (p.periodStart >= earliestStart) return p;
+      const len = Math.max(0, diffDaysISO(p.periodStart, p.periodEnd));
+      const payGap = Math.max(0, diffDaysISO(p.periodEnd, p.payDate));
+      const periodStart = earliestStart;
+      const periodEnd = addDaysISO(periodStart, len);
+      const payDate = addDaysISO(periodEnd, payGap);
+      return { periodStart, periodEnd, payDate };
+    });
+  }, [earliestStart]);
 
   const [doneRunId, setDoneRunId] = useState<string | null>(null);
   const [errors, setErrors] = useState<ValidationIssue[]>([]);
@@ -407,6 +447,7 @@ export function PayrollView() {
         period={period}
         onPeriodChange={setPeriod}
         onPeriodReset={() => setPeriod(computePeriod())}
+        minStart={earliestStart}
         employeeCount={activeEmployees.length}
         totalCount={employees.length}
         onOpen={() => { if (companyReady) setConfirmOpen(true); }}
@@ -547,6 +588,7 @@ function SummaryCard({
   period,
   onPeriodChange,
   onPeriodReset,
+  minStart,
   employeeCount,
   totalCount,
   onOpen,
@@ -563,6 +605,8 @@ function SummaryCard({
     payDate: string;
   }) => void;
   onPeriodReset: () => void;
+  /** Earliest selectable period start (earliest employee hire date). */
+  minStart: string | null;
   employeeCount: number;
   totalCount: number;
   onOpen: () => void;
@@ -687,6 +731,7 @@ function SummaryCard({
                   <DateField
                     label="Period start"
                     value={period.periodStart}
+                    min={minStart ?? undefined}
                     max={period.periodEnd}
                     onChange={(v) =>
                       onPeriodChange({ ...period, periodStart: v })
@@ -695,7 +740,7 @@ function SummaryCard({
                   <DateField
                     label="Period end"
                     value={period.periodEnd}
-                    min={period.periodStart}
+                    min={minStart && minStart > period.periodStart ? minStart : period.periodStart}
                     onChange={(v) =>
                       onPeriodChange({ ...period, periodEnd: v })
                     }
