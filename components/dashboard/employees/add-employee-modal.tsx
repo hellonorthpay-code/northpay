@@ -125,9 +125,10 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
     phone: "",
     sin: "",
     province: company.defaultProvince as ProvinceCode,
-    employmentType: "salary" as EmploymentType,
+    employmentType: "hourly" as EmploymentType,
     annualSalary: "",
     hourlyRate: "",
+    payStartDate: "",
     payFrequency: company.defaultPayFrequency as PayFrequency,
     vacationPercent: String(DEFAULT_VACATION_PERCENT),
     vacationMode: "payout" as VacationMode,
@@ -148,10 +149,12 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
     phone: splitPhone(emp.phone ?? "").local,
     sin: emp.sin ?? "",
     province: emp.province,
-    employmentType: emp.employmentType,
+    // Hourly-only: every employee is treated as hourly in this form.
+    employmentType: "hourly" as EmploymentType,
     annualSalary:
       emp.annualSalary !== undefined ? String(emp.annualSalary) : "",
     hourlyRate: emp.hourlyRate !== undefined ? String(emp.hourlyRate) : "",
+    payStartDate: emp.payStartDate ?? "",
     payFrequency: emp.payFrequency,
     vacationPercent: String(emp.vacationPercent),
     vacationMode: emp.vacationMode,
@@ -197,15 +200,11 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
         : undefined,
       sin: form.sin.trim() || "*** *** ***",
       province: form.province,
-      employmentType: form.employmentType,
-      annualSalary:
-        form.employmentType === "salary"
-          ? Number(form.annualSalary) || 0
-          : undefined,
-      hourlyRate:
-        form.employmentType === "hourly"
-          ? Number(form.hourlyRate) || 0
-          : undefined,
+      // Hourly-only: no salary path.
+      employmentType: "hourly" as EmploymentType,
+      annualSalary: undefined,
+      hourlyRate: Number(form.hourlyRate) || 0,
+      payStartDate: form.payStartDate || undefined,
       payFrequency: form.payFrequency,
       vacationPercent: Number(form.vacationPercent) || DEFAULT_VACATION_PERCENT,
       vacationMode: form.vacationMode,
@@ -235,11 +234,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
   const canAdvance =
     form.firstName.trim().length > 0 && form.lastName.trim().length > 0;
 
-  const canSubmit =
-    canAdvance &&
-    (form.employmentType === "salary"
-      ? Number(form.annualSalary) > 0
-      : Number(form.hourlyRate) > 0);
+  const canSubmit = canAdvance && Number(form.hourlyRate) > 0;
 
   function goNext() {
     setDirection(1);
@@ -384,6 +379,7 @@ interface FormState {
   employmentType: EmploymentType;
   annualSalary: string;
   hourlyRate: string;
+  payStartDate: string;
   payFrequency: PayFrequency;
   vacationPercent: string;
   vacationMode: VacationMode;
@@ -511,52 +507,78 @@ function StepOne({ form, setForm }: StepProps) {
 }
 
 // ─── Step 2: Employment, Hours, Vacation ─────────────────────────────────
+// Build the next N bi-weekly pay cycles from a base date (the employee's
+// employment start date). Each cycle is 14 days; value = ISO start date.
+function nextBiweeklyCycles(baseIso: string, count = 4) {
+  const base = baseIso ? new Date(`${baseIso}T00:00:00`) : new Date();
+  const fmt = (d: Date) =>
+    d.toLocaleDateString("en-CA", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    });
+  const cycles: { value: string; label: string }[] = [];
+  for (let i = 0; i < count; i++) {
+    const start = new Date(base);
+    start.setDate(base.getDate() + i * 14);
+    const end = new Date(start);
+    end.setDate(start.getDate() + 13);
+    cycles.push({
+      value: start.toISOString().slice(0, 10),
+      label: `${fmt(start)} – ${fmt(end)}`,
+    });
+  }
+  return cycles;
+}
+
 function StepTwo({ form, setForm }: StepProps) {
+  // Offer the next four bi-weekly cycles from the employee's start date. If an
+  // already-saved pay-start date isn't among them (edit mode), keep it listed.
+  const payCycles = nextBiweeklyCycles(form.startDate);
+  const cycleOptions =
+    form.payStartDate && !payCycles.some((c) => c.value === form.payStartDate)
+      ? [
+          {
+            value: form.payStartDate,
+            label: new Date(`${form.payStartDate}T00:00:00`).toLocaleDateString(
+              "en-CA",
+              { month: "short", day: "numeric", year: "numeric" }
+            ),
+          },
+          ...payCycles,
+        ]
+      : payCycles;
+
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
-        <Field label="Type">
+        <Field label="Hourly rate">
+          <Input
+            type="number"
+            inputMode="decimal"
+            value={form.hourlyRate}
+            onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })}
+            placeholder="32.50"
+          />
+        </Field>
+
+        <Field label="First pay period">
           <Select
-            value={form.employmentType}
-            onValueChange={(v) =>
-              setForm({ ...form, employmentType: v as EmploymentType })
-            }
+            value={form.payStartDate}
+            onValueChange={(v) => setForm({ ...form, payStartDate: v })}
           >
             <SelectTrigger>
-              <SelectValue />
+              <SelectValue placeholder="Select a cycle" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="salary">Salary</SelectItem>
-              <SelectItem value="hourly">Hourly</SelectItem>
+              {cycleOptions.map((c) => (
+                <SelectItem key={c.value} value={c.value}>
+                  {c.label}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </Field>
-
-        {form.employmentType === "salary" ? (
-          <Field label="Annual salary">
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={form.annualSalary}
-              onChange={(e) =>
-                setForm({ ...form, annualSalary: e.target.value })
-              }
-              placeholder="92000"
-            />
-          </Field>
-        ) : (
-          <Field label="Hourly rate">
-            <Input
-              type="number"
-              inputMode="decimal"
-              value={form.hourlyRate}
-              onChange={(e) =>
-                setForm({ ...form, hourlyRate: e.target.value })
-              }
-              placeholder="32.50"
-            />
-          </Field>
-        )}
 
         <Field label="Pay frequency">
           <Select

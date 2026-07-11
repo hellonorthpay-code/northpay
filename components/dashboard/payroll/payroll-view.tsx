@@ -241,6 +241,20 @@ export function PayrollView() {
   const [warnings, setWarnings] = useState<ValidationIssue[]>([]);
 
   const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+
+  // Employees whose chosen first pay period is after this run's period are
+  // still SHOWN in the list, but not auto-selected — they start being paid on
+  // their pay-start cycle. Seeded once so it never overrides manual toggles.
+  const seededExcludes = useRef(false);
+  useEffect(() => {
+    if (seededExcludes.current || employees.length === 0) return;
+    const notYet = employees
+      .filter((e) => e.payStartDate && e.payStartDate > period.periodEnd)
+      .map((e) => e.id);
+    if (notYet.length > 0) setExcludedIds(new Set(notYet));
+    seededExcludes.current = true;
+  }, [employees, period.periodEnd]);
+
   const [lineInputs, setLineInputs] = useState<
     Map<string, PayrollLineInput>
   >(new Map());

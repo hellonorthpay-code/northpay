@@ -85,6 +85,12 @@ export interface Employee {
    */
   overtimeThresholdHours: number;
   startDate: string;
+  /**
+   * First pay period this employee should be paid in (ISO date of the chosen
+   * bi-weekly cycle's start). Recorded on add; in a payroll run whose period
+   * ends before this date, the employee is shown but NOT auto-selected.
+   */
+  payStartDate?: string;
   /** When the employee left. Drives ROE generation. */
   endDate?: string;
   /** Service Canada Block 16 reason code (A/B/D/E/F/G/H/J/K/M/N/P/Z). */
