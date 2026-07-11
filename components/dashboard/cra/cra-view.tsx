@@ -1,30 +1,22 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
+  ArrowUpRight,
   Banknote,
   Calendar,
   Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
   ExternalLink,
   FileText,
-  History,
   Info,
-  X,
+  PartyPopper,
+  RotateCcw,
 } from "lucide-react";
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { usePayrollRuns } from "@/lib/store/payroll";
 import { useRemittance } from "@/lib/store/remittance";
 import {
@@ -37,6 +29,16 @@ import { ReportsView } from "@/components/dashboard/reports/reports-view";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+// ─────────────────────────────────────────────────────────────────────────
+// CRA tab — rebuilt around one question: "Do I owe CRA anything right now?"
+//
+// Layout, top to bottom:
+//   1. Hero glass card → the selected month's amount, due date, one action.
+//   2. Month timeline → horizontal pills; tap a month, the hero updates.
+//   3. Year overview → remitted vs outstanding progress + expandable split.
+//   4. Year-end records & filings (T4 · T4A · ROE) — unchanged sub-view.
+// Everything secondary (breakdown, how-to-pay) is behind calm reveals.
+// ─────────────────────────────────────────────────────────────────────────
 export function CRAView() {
   const runs = usePayrollRuns((s) => s.runs);
   const remittedMap = useRemittance((s) => s.remitted);
@@ -47,245 +49,156 @@ export function CRAView() {
     () => new RemittanceService(runs, remittedMap),
     [runs, remittedMap]
   );
-
   const months = useMemo(() => service.getMonthly(), [service]);
   const nextDue = useMemo(() => service.getNextDue(), [service]);
 
-  // Year-end records (T4/T4A/ROE) live behind a button so the CRA tab stays
-  // focused on remittances; opening it swaps to a sub-view with a Back button.
   const [showReports, setShowReports] = useState(false);
 
-  // Partition: anything not yet remitted = upcoming/current; rest = history
-  const upcoming = months.filter((m) => !m.remitted);
-  const history = months.filter((m) => m.remitted);
+  // Selected month drives the hero. Defaults to the next-due month (or the
+  // most recent one when everything is settled) and follows nextDue as
+  // months get marked — unless the operator explicitly picked one.
+  const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const userPicked = useRef(false);
+  useEffect(() => {
+    if (userPicked.current && selectedKey) return;
+    const fallback =
+      nextDue?.monthKey ?? months[months.length - 1]?.monthKey ?? null;
+    setSelectedKey(fallback);
+  }, [nextDue?.monthKey, months, selectedKey]);
 
-  // Which month the operator is inspecting via the hero-card dropdown. ANY
-  // month can be selected (not just remitted ones) and its full breakdown
-  // pops up below — "select a month, the calculation shows for it".
-  const [viewingKey, setViewingKey] = useState<string | null>(null);
-  const viewing = useMemo(
-    () => months.find((m) => m.monthKey === viewingKey) ?? null,
-    [months, viewingKey]
+  const selected = useMemo(
+    () => months.find((m) => m.monthKey === selectedKey) ?? null,
+    [months, selectedKey]
   );
 
-  // Year-to-date PD7A summary — the source deductions reported across every
-  // month, split into what's been remitted vs. still outstanding.
-  const summary = useMemo(() => {
-    const sum = (arr: MonthlyRemittance[], key: keyof MonthlyRemittance) =>
-      round2(arr.reduce((acc, m) => acc + (m[key] as number), 0));
-    const outstanding = months.filter((m) => !m.remitted && m.total > 0);
+  const year = useMemo(() => {
+    const sum = (arr: MonthlyRemittance[], k: keyof MonthlyRemittance) =>
+      round2(arr.reduce((a, m) => a + (m[k] as number), 0));
+    const remitted = months.filter((m) => m.remitted);
     return {
-      hasData: months.length > 0,
-      remittedTotal: sum(history, "total"),
-      outstandingTotal: sum(outstanding, "total"),
+      remitted: sum(remitted, "total"),
       total: sum(months, "total"),
+      outstanding: round2(
+        sum(
+          months.filter((m) => !m.remitted && m.total > 0),
+          "total"
+        )
+      ),
       federalTax: sum(months, "federalTax"),
       provincialTax: sum(months, "provincialTax"),
       cpp: sum(months, "cpp"),
       ei: sum(months, "ei"),
     };
-  }, [months, history]);
+  }, [months]);
 
-  // ─── Year-end records sub-view (T4/T4A/ROE) with a Back button ───
+  // ─── Year-end records sub-view (kept) ───
   if (showReports) {
     return (
       <div className="space-y-5">
-        <button
+        <motion.button
+          initial={{ opacity: 0, x: -8 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.3, ease }}
           type="button"
           onClick={() => setShowReports(false)}
-          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-[13px] font-medium text-foreground shadow-soft transition-colors hover:bg-muted/40"
+          className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-card/70 px-3.5 py-2 text-[13px] font-medium text-foreground shadow-soft backdrop-blur-xl transition-all duration-200 hover:bg-muted/40 active:scale-95"
         >
           <ChevronLeft className="h-4 w-4" />
-          Back to remittances
-        </button>
+          Back to CRA
+        </motion.button>
         <ReportsView />
+      </div>
+    );
+  }
+
+  // ─── Empty state: no payroll yet ───
+  if (months.length === 0) {
+    return (
+      <div className="space-y-5">
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.45, ease }}
+          className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-10 text-center shadow-soft backdrop-blur-xl"
+        >
+          <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
+          <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
+          <div className="relative">
+            <div className="mx-auto grid h-14 w-14 place-items-center rounded-3xl bg-muted">
+              <Banknote className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <p className="mt-5 text-[18px] font-semibold tracking-tight">
+              Nothing to remit yet
+            </p>
+            <p className="mx-auto mt-2 max-w-sm text-[13px] leading-relaxed text-muted-foreground">
+              Run your first payroll and NorthPay will total up what you owe
+              CRA each month — taxes, CPP, and EI — and remind you when
+              it&rsquo;s due.
+            </p>
+            <Link
+              href="/dashboard/payroll"
+              className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-foreground px-6 text-[14px] font-semibold text-background transition-transform duration-200 hover:scale-[1.02] active:scale-95"
+            >
+              Go to payroll
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
+          </div>
+        </motion.div>
+        <YearEndButton onOpen={() => setShowReports(true)} delay={0.15} />
       </div>
     );
   }
 
   return (
     <div className="space-y-5">
-      {/* ─── This-month banner ─── */}
-      {nextDue ? (
-        <NextDueCard
-          month={nextDue}
-          onMark={() => markRemitted(nextDue.monthKey)}
-          months={months}
-          onViewMonth={setViewingKey}
-        />
-      ) : (
-        <NothingDueCard />
-      )}
-
-      {/* ─── Selected previous remittance breakdown ─── */}
-      <AnimatePresence initial={false}>
-        {viewing && (
-          <MonthBreakdownPanel
-            month={viewing}
-            onClose={() => setViewingKey(null)}
+      {/* ─── 1 · Hero ─── */}
+      <AnimatePresence mode="wait" initial={false}>
+        {selected && (
+          <HeroCard
+            key={selected.monthKey}
+            month={selected}
+            isNextDue={selected.monthKey === nextDue?.monthKey}
+            allSettled={!nextDue}
+            onMark={() => markRemitted(selected.monthKey)}
+            onUnmark={() => unmark(selected.monthKey)}
           />
         )}
       </AnimatePresence>
 
-      {/* ─── Upcoming list ─── */}
-      {upcoming.length > 1 && (
-        <Section title="Upcoming remittances" count={upcoming.length - 1}>
-          <ul className="divide-y divide-border/40">
-            {upcoming
-              .filter((m) => m.monthKey !== nextDue?.monthKey)
-              .map((m) => (
-                <UpcomingRow
-                  key={m.monthKey}
-                  month={m}
-                  onMark={() => markRemitted(m.monthKey)}
-                />
-              ))}
-          </ul>
-        </Section>
-      )}
+      {/* ─── 2 · Month timeline ─── */}
+      <MonthTimeline
+        months={months}
+        selectedKey={selectedKey}
+        onSelect={(k) => {
+          userPicked.current = true;
+          setSelectedKey(k);
+        }}
+      />
 
-      {/* ─── History list ─── */}
-      {history.length > 0 && (
-        <Section title="History" count={history.length}>
-          <ul className="divide-y divide-border/40">
-            {history.map((m) => (
-              <HistoryRow
-                key={m.monthKey}
-                month={m}
-                onUnmark={() => unmark(m.monthKey)}
-              />
-            ))}
-          </ul>
-        </Section>
-      )}
+      {/* ─── 3 · Year overview ─── */}
+      {year.total > 0 && <YearOverview year={year} />}
 
-      {/* ─── PD7A year-to-date summary ─── */}
-      {summary.hasData && <Pd7aSummary summary={summary} />}
-
-      {/* ─── Year-end records & filings — behind a button ─── */}
-      <button
-        type="button"
-        onClick={() => setShowReports(true)}
-        className="flex w-full items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/70 p-5 text-left shadow-soft backdrop-blur-xl transition-colors hover:bg-muted/30"
-      >
-        <span className="flex items-center gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-muted">
-            <FileText className="h-4 w-4 text-foreground/80" />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-[13.5px] font-medium tracking-tight">
-              Year-end records & filings
-            </span>
-            <span className="block text-[11.5px] text-muted-foreground">
-              T4 slips, T4 Summary, T4A, and ROE
-            </span>
-          </span>
-        </span>
-        <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground" />
-      </button>
+      {/* ─── 4 · Year-end records ─── */}
+      <YearEndButton onOpen={() => setShowReports(true)} delay={0.25} />
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// PD7A year-to-date summary — the remittance "statement of account"
+// 1 · Hero card — the one number that matters
 // ─────────────────────────────────────────────────────────────────────────
-function Pd7aSummary({
-  summary,
-}: {
-  summary: {
-    remittedTotal: number;
-    outstandingTotal: number;
-    total: number;
-    federalTax: number;
-    provincialTax: number;
-    cpp: number;
-    ei: number;
-  };
-}) {
-  return (
-    <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
-      <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-5 py-3">
-        <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-          <FileText className="h-3.5 w-3.5" />
-          PD7A summary · {TAX_YEAR}
-        </span>
-        <span className="text-[11px] text-muted-foreground">
-          Statement of account
-        </span>
-      </div>
-
-      <div className="space-y-5 p-5">
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-          <BigStat
-            label="Remitted to date"
-            value={formatCAD(summary.remittedTotal)}
-            tone="success"
-          />
-          <BigStat
-            label="Outstanding"
-            value={formatCAD(summary.outstandingTotal)}
-            tone={summary.outstandingTotal > 0 ? "amber" : "default"}
-          />
-          <BigStat label="Total source deductions" value={formatCAD(summary.total)} />
-        </div>
-
-        <div className="grid grid-cols-2 divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center sm:grid-cols-4 sm:divide-x">
-          <Stat label="Federal tax" value={formatCAD(summary.federalTax)} />
-          <Stat label="Provincial tax" value={formatCAD(summary.provincialTax)} />
-          <Stat label="CPP (×2)" value={formatCAD(summary.cpp)} />
-          <Stat label="EI (×2.4)" value={formatCAD(summary.ei)} />
-        </div>
-
-        <p className="text-[11px] leading-relaxed text-muted-foreground">
-          Source deductions reported across {TAX_YEAR}, as they appear on each
-          monthly PD7A. Downloadable PD7A statements are coming soon.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-function BigStat({
-  label,
-  value,
-  tone = "default",
-}: {
-  label: string;
-  value: string;
-  tone?: "success" | "amber" | "default";
-}) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-background/40 px-4 py-3.5">
-      <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </p>
-      <p
-        className={cn(
-          "mt-1.5 text-[20px] font-semibold tabular-nums tracking-tight",
-          tone === "success" && "text-success",
-          tone === "amber" && "text-amber-600 dark:text-amber-400"
-        )}
-      >
-        {value}
-      </p>
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Next-due hero card
-// ─────────────────────────────────────────────────────────────────────────
-function NextDueCard({
+function HeroCard({
   month,
+  isNextDue,
+  allSettled,
   onMark,
-  months,
-  onViewMonth,
+  onUnmark,
 }: {
   month: MonthlyRemittance;
+  isNextDue: boolean;
+  allSettled: boolean;
   onMark: () => void;
-  months: MonthlyRemittance[];
-  onViewMonth: (key: string | null) => void;
+  onUnmark: () => void;
 }) {
   const daysToDue = useMemo(() => {
     const due = new Date(month.dueDate);
@@ -295,131 +208,305 @@ function NextDueCard({
     return Math.round((due.getTime() - today.getTime()) / 86_400_000);
   }, [month.dueDate]);
 
-  const tone =
-    daysToDue < 0
-      ? "destructive"
-      : daysToDue <= 7
-      ? "amber"
-      : "default";
+  const urgency =
+    daysToDue < 0 ? "late" : daysToDue <= 7 ? "soon" : "calm";
+
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, ease }}
-      className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-7 shadow-soft backdrop-blur-xl"
+      initial={{ opacity: 0, y: 14, scale: 0.985 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      exit={{ opacity: 0, y: -10, scale: 0.99 }}
+      transition={{ duration: 0.4, ease }}
+      className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl"
     >
-      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
-      <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
+      {/* Liquid-glass ambience */}
+      <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-rose-200/35 blur-3xl dark:bg-rose-500/10" />
+      <div className="pointer-events-none absolute -bottom-20 -left-20 h-56 w-56 rounded-full bg-sky-200/35 blur-3xl dark:bg-sky-500/10" />
+      <div className="pointer-events-none absolute left-1/3 top-0 h-40 w-40 rounded-full bg-emerald-100/40 blur-3xl dark:bg-emerald-500/5" />
 
-      {/* Top row: context label + a dropdown to inspect ANY month — picking
-          one pops its calculation up in a panel below. */}
-      <div className="relative flex items-start justify-between gap-3">
-        <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-          Next remittance · for {month.monthLabel}
-        </p>
-        {months.length > 0 && (
-          <Select value="" onValueChange={(v) => onViewMonth(v || null)}>
-            <SelectTrigger className="h-9 w-auto shrink-0 gap-2 rounded-full border-border/70 bg-background/70 px-3.5 text-[12.5px] font-medium">
-              <History className="h-3.5 w-3.5 text-muted-foreground" />
-              <SelectValue placeholder="View a month" />
-            </SelectTrigger>
-            <SelectContent className="min-w-[17rem]">
-              {months.map((m) => (
-                <SelectItem key={m.monthKey} value={m.monthKey}>
-                  <span className="flex w-full items-center justify-between gap-5">
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={cn(
-                          "h-1.5 w-1.5 rounded-full",
-                          m.remitted ? "bg-success" : "bg-amber-500"
-                        )}
-                      />
-                      {m.monthLabel}
-                    </span>
-                    <span className="tabular-nums text-muted-foreground">
-                      {formatCAD(m.total)}
-                    </span>
-                  </span>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      <div className="relative p-6 md:p-8">
+        {/* Context line */}
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05, duration: 0.4, ease }}
+          className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground"
+        >
+          {month.remitted
+            ? `${month.monthLabel} · sent to CRA`
+            : isNextDue
+            ? `You owe CRA · for ${month.monthLabel}`
+            : `Coming up · ${month.monthLabel}`}
+        </motion.p>
+
+        {/* The number */}
+        <motion.p
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12, duration: 0.45, ease }}
+          className={cn(
+            "mt-3 text-[52px] font-semibold leading-none tracking-tightest tabular-nums md:text-[64px]",
+            month.remitted &&
+              "text-muted-foreground/70 line-through decoration-2 decoration-success/60"
+          )}
+        >
+          {formatCAD(month.total)}
+        </motion.p>
+
+        {/* Status line */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2, duration: 0.4, ease }}
+          className="mt-4"
+        >
+          {month.remitted ? (
+            <span className="inline-flex items-center gap-2 rounded-full border border-success/30 bg-success/10 px-4 py-2 text-[13px] font-medium text-success">
+              <Check className="h-4 w-4" strokeWidth={3} />
+              Remitted
+              {month.remittedAt ? ` on ${formatDate(month.remittedAt)}` : ""}
+            </span>
+          ) : (
+            <span
+              className={cn(
+                "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[13px] font-medium shadow-soft",
+                urgency === "late" &&
+                  "border-destructive/30 bg-destructive/10 text-destructive",
+                urgency === "soon" &&
+                  "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
+                urgency === "calm" && "border-border/70 bg-background/70"
+              )}
+            >
+              <Calendar className="h-4 w-4" />
+              Due {formatDate(month.dueDate)}
+              <span className="opacity-40">·</span>
+              {daysToDue < 0
+                ? `${Math.abs(daysToDue)} day${
+                    Math.abs(daysToDue) === 1 ? "" : "s"
+                  } late`
+                : daysToDue === 0
+                ? "today"
+                : `in ${daysToDue} days`}
+            </span>
+          )}
+        </motion.div>
+
+        {/* Primary action */}
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.28, duration: 0.4, ease }}
+          className="mt-7"
+        >
+          {month.remitted ? (
+            <button
+              type="button"
+              onClick={onUnmark}
+              className="inline-flex h-11 items-center gap-2 rounded-full border border-border/70 bg-background/70 px-5 text-[13px] font-medium text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground active:scale-95"
+            >
+              <RotateCcw className="h-3.5 w-3.5" />
+              Undo — not sent yet
+            </button>
+          ) : (
+            <MarkButton onMark={onMark} amount={month.total} />
+          )}
+        </motion.div>
+
+        {/* What's in this number — progressive disclosure */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.36, duration: 0.4 }}
+          className="mt-7 border-t border-border/60 pt-4"
+        >
+          <button
+            type="button"
+            onClick={() => setShowBreakdown((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 text-left"
+          >
+            <span className="flex items-center gap-2 text-[13.5px] font-medium tracking-tight">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              What&rsquo;s in this number?
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 text-muted-foreground transition-transform duration-300",
+                showBreakdown && "rotate-180"
+              )}
+            />
+          </button>
+
+          <AnimatePresence initial={false}>
+            {showBreakdown && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: "auto", opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.32, ease }}
+                style={{ overflow: "hidden" }}
+              >
+                <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                  {[
+                    { label: "Federal tax", value: month.federalTax },
+                    { label: "Provincial tax", value: month.provincialTax },
+                    { label: "CPP · both halves", value: month.cpp },
+                    { label: "EI · with employer", value: month.ei },
+                  ].map((t, i) => (
+                    <motion.div
+                      key={t.label}
+                      initial={{ opacity: 0, y: 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.05 * i, duration: 0.3, ease }}
+                      className="rounded-2xl border border-border/60 bg-background/50 px-4 py-3"
+                    >
+                      <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                        {t.label}
+                      </p>
+                      <p className="mt-1 text-[15px] font-semibold tabular-nums tracking-tight">
+                        {formatCAD(t.value)}
+                      </p>
+                    </motion.div>
+                  ))}
+                </div>
+                <p className="mt-3 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[11.5px] leading-relaxed text-muted-foreground">
+                  Totalled from {month.runCount} payroll run
+                  {month.runCount === 1 ? "" : "s"} in {month.monthLabel}. CPP
+                  includes your half as the employer; EI includes 1.4× employer
+                  premium.
+                  <Link
+                    href="/dashboard/payroll"
+                    className="font-medium text-foreground underline-offset-2 hover:underline"
+                  >
+                    View runs
+                  </Link>
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
+
+        {/* How do I pay */}
+        {!month.remitted && <HowToPay />}
+
+        {/* All-clear note when everything is settled */}
+        {allSettled && month.remitted && (
+          <motion.p
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4, duration: 0.4, ease }}
+            className="mt-5 inline-flex items-center gap-2 text-[12.5px] text-muted-foreground"
+          >
+            <PartyPopper className="h-4 w-4 text-success" />
+            You&rsquo;re all caught up with CRA.
+          </motion.p>
         )}
       </div>
-
-      {/* Q1 "How much?" + Q2 "When is it due?" */}
-      <div className="relative mt-3 grid gap-6 sm:grid-cols-[1.4fr_auto] sm:items-end">
-        <div>
-          <p className="text-[44px] font-semibold leading-none tracking-tightest tabular-nums">
-            {formatCAD(month.total)}
-          </p>
-          <div className="mt-4">
-            <DueBadge dueDate={month.dueDate} daysToDue={daysToDue} tone={tone} />
-          </div>
-        </div>
-        <div className="self-center sm:self-end">
-          <Button size="lg" onClick={onMark} className="w-full sm:w-auto">
-            <Check className="h-4 w-4" />
-            Mark as remitted
-          </Button>
-        </div>
-      </div>
-
-      {/* Breakdown strip */}
-      <div className="relative mt-7 grid grid-cols-2 divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center sm:grid-cols-4 sm:divide-x">
-        <Stat label="Federal tax" value={formatCAD(month.federalTax)} />
-        <Stat label="Provincial tax" value={formatCAD(month.provincialTax)} />
-        <Stat label="CPP (×2)" value={formatCAD(month.cpp)} />
-        <Stat label="EI (×2.4)" value={formatCAD(month.ei)} />
-      </div>
-
-      {/* Q4 "Can I trust this number?" — provenance + method */}
-      <TrustLine runCount={month.runCount} />
-
-      {/* Q3 "How do I pay it?" */}
-      <HowToPay />
     </motion.div>
   );
 }
 
-// Provenance line so the number is auditable: where it came from (which runs)
-// and how it's built (employer side included). Answers "can I trust this?".
-function TrustLine({ runCount }: { runCount: number }) {
+// Big, satisfying primary button with a two-stage confirm → success morph so
+// marking feels deliberate (same spirit as slide-to-run on Payroll).
+function MarkButton({
+  onMark,
+  amount,
+}: {
+  onMark: () => void;
+  amount: number;
+}) {
+  const [stage, setStage] = useState<"idle" | "confirm" | "done">("idle");
+
+  useEffect(() => {
+    if (stage !== "confirm") return;
+    const t = setTimeout(() => setStage("idle"), 3500);
+    return () => clearTimeout(t);
+  }, [stage]);
+
+  function handleClick() {
+    if (stage === "idle") {
+      setStage("confirm");
+      return;
+    }
+    if (stage === "confirm") {
+      setStage("done");
+      setTimeout(onMark, 650);
+    }
+  }
+
   return (
-    <div className="relative mt-4 flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] text-muted-foreground">
-      <Info className="h-3.5 w-3.5 shrink-0" />
-      <span>
-        From {runCount} finalized payroll run{runCount === 1 ? "" : "s"} this
-        month. CPP counts both halves (×2); EI is employee + 1.4× employer.
-      </span>
-      <Link
-        href="/dashboard/payroll"
-        className="font-medium text-foreground underline-offset-2 hover:underline"
-      >
-        View runs
-      </Link>
-    </div>
+    <motion.button
+      type="button"
+      onClick={handleClick}
+      whileTap={{ scale: 0.96 }}
+      className={cn(
+        "relative inline-flex h-14 w-full items-center justify-center gap-2.5 overflow-hidden rounded-full px-7 text-[15px] font-semibold transition-colors duration-300 sm:w-auto",
+        stage === "done"
+          ? "bg-success text-success-foreground"
+          : "bg-foreground text-background"
+      )}
+    >
+      <AnimatePresence mode="wait" initial={false}>
+        {stage === "idle" && (
+          <motion.span
+            key="idle"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="inline-flex items-center gap-2.5"
+          >
+            <Check className="h-5 w-5" strokeWidth={2.6} />
+            I&rsquo;ve paid this to CRA
+          </motion.span>
+        )}
+        {stage === "confirm" && (
+          <motion.span
+            key="confirm"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.18 }}
+            className="inline-flex items-center gap-2.5"
+          >
+            Tap again to confirm · {formatCAD(amount)}
+          </motion.span>
+        )}
+        {stage === "done" && (
+          <motion.span
+            key="done"
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 420, damping: 22 }}
+            className="inline-flex items-center gap-2.5"
+          >
+            <Check className="h-5 w-5" strokeWidth={3} />
+            Marked as remitted
+          </motion.span>
+        )}
+      </AnimatePresence>
+    </motion.button>
   );
 }
 
-// Answers "how do I pay it?" — collapsible CRA payment options.
+// Collapsible payment instructions — calm, three options, official link.
 function HowToPay() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="relative mt-5 border-t border-border/60 pt-4">
+    <div className="mt-4 border-t border-border/60 pt-4">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-3 text-left"
       >
-        <span className="flex items-center gap-2 text-[13px] font-medium tracking-tight">
+        <span className="flex items-center gap-2 text-[13.5px] font-medium tracking-tight">
           <Banknote className="h-4 w-4 text-muted-foreground" />
           How do I pay this?
         </span>
         <ChevronDown
           className={cn(
-            "h-4 w-4 text-muted-foreground transition-transform duration-200",
+            "h-4 w-4 text-muted-foreground transition-transform duration-300",
             open && "rotate-180"
           )}
         />
@@ -430,26 +517,40 @@ function HowToPay() {
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.26, ease }}
+            transition={{ duration: 0.3, ease }}
             style={{ overflow: "hidden" }}
           >
-            <ul className="mt-3 space-y-2.5 text-[12.5px] leading-relaxed text-muted-foreground">
-              <li>
-                <span className="font-medium text-foreground">Online banking</span>{" "}
-                — add the payee “Federal – Payroll Deductions” and use your
-                15-character payroll (RP) account number.
-              </li>
-              <li>
-                <span className="font-medium text-foreground">
-                  CRA My Business Account
-                </span>{" "}
-                — “Pay now” by Interac or set up pre-authorized debit.
-              </li>
-              <li>
-                <span className="font-medium text-foreground">In person</span> —
-                at your bank with a remittance voucher, or by mailed cheque.
-              </li>
-            </ul>
+            <div className="mt-4 space-y-2.5">
+              {[
+                {
+                  title: "Online banking",
+                  copy: "Add the payee “Federal – Payroll Deductions” and pay with your 15-character RP account number.",
+                },
+                {
+                  title: "CRA My Business Account",
+                  copy: "Use “Pay now” by Interac, or set up pre-authorized debit.",
+                },
+                {
+                  title: "At your bank",
+                  copy: "In person with a remittance voucher, or by mailed cheque.",
+                },
+              ].map((o, i) => (
+                <motion.div
+                  key={o.title}
+                  initial={{ opacity: 0, x: -8 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.06 * i, duration: 0.3, ease }}
+                  className="rounded-2xl border border-border/60 bg-background/50 px-4 py-3"
+                >
+                  <p className="text-[13px] font-medium tracking-tight">
+                    {o.title}
+                  </p>
+                  <p className="mt-0.5 text-[12px] leading-relaxed text-muted-foreground">
+                    {o.copy}
+                  </p>
+                </motion.div>
+              ))}
+            </div>
             <a
               href="https://www.canada.ca/en/revenue-agency/services/make-a-payment-canada-revenue-agency.html"
               target="_blank"
@@ -459,9 +560,6 @@ function HowToPay() {
               CRA — Make a payment
               <ExternalLink className="h-3 w-3" />
             </a>
-            <p className="mt-2 text-[11px] text-muted-foreground">
-              Pay on or before the due date to avoid penalties and interest.
-            </p>
           </motion.div>
         )}
       </AnimatePresence>
@@ -469,219 +567,240 @@ function HowToPay() {
   );
 }
 
-// Breakdown panel for any month opened from the hero dropdown. Shows the same
-// stat strip, with a status line that adapts to remitted vs. still-due.
-function MonthBreakdownPanel({
-  month,
-  onClose,
+// ─────────────────────────────────────────────────────────────────────────
+// 2 · Month timeline — horizontal pills, one per month
+// ─────────────────────────────────────────────────────────────────────────
+function MonthTimeline({
+  months,
+  selectedKey,
+  onSelect,
 }: {
-  month: MonthlyRemittance;
-  onClose: () => void;
+  months: MonthlyRemittance[];
+  selectedKey: string | null;
+  onSelect: (key: string) => void;
 }) {
+  if (months.length <= 1) return null;
   return (
     <motion.div
-      initial={{ opacity: 0, height: 0 }}
-      animate={{ opacity: 1, height: "auto" }}
-      exit={{ opacity: 0, height: 0 }}
-      transition={{ duration: 0.28, ease }}
-      style={{ overflow: "hidden" }}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1, duration: 0.4, ease }}
+      className="overflow-x-auto scrollbar-none"
     >
-      <div className="rounded-3xl border border-border/70 bg-card/70 p-5 shadow-soft backdrop-blur-xl">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-              Remittance · {month.monthLabel}
-            </p>
-            <p className="mt-2 text-[28px] font-semibold leading-none tracking-tightest tabular-nums">
-              {formatCAD(month.total)}
-            </p>
-            {month.remitted ? (
-              <p className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-success">
-                <Check className="h-3.5 w-3.5" strokeWidth={3} />
-                Remitted{month.remittedAt ? ` ${formatDate(month.remittedAt)}` : ""}{" "}
-                · {month.runCount} run{month.runCount === 1 ? "" : "s"}
-              </p>
-            ) : (
-              <p className="mt-2 inline-flex items-center gap-2 text-[12.5px] text-muted-foreground">
-                <Clock className="h-3.5 w-3.5" />
-                Not yet remitted · due {formatDate(month.dueDate)} ·{" "}
-                {month.runCount} run{month.runCount === 1 ? "" : "s"}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="grid h-8 w-8 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        <div className="mt-5 grid grid-cols-2 divide-border/60 rounded-2xl border border-border/60 bg-background/40 text-center sm:grid-cols-4 sm:divide-x">
-          <Stat label="Federal tax" value={formatCAD(month.federalTax)} />
-          <Stat label="Provincial tax" value={formatCAD(month.provincialTax)} />
-          <Stat label="CPP (×2)" value={formatCAD(month.cpp)} />
-          <Stat label="EI (×2.4)" value={formatCAD(month.ei)} />
-        </div>
+      <div className="flex w-max items-center gap-2 rounded-full border border-border/60 bg-card/70 p-1.5 shadow-soft backdrop-blur-xl">
+        {months.map((m) => {
+          const active = m.monthKey === selectedKey;
+          return (
+            <button
+              key={m.monthKey}
+              type="button"
+              onClick={() => onSelect(m.monthKey)}
+              className={cn(
+                "relative flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-[13px] font-medium transition-colors duration-200",
+                active
+                  ? "text-background"
+                  : "text-muted-foreground hover:text-foreground"
+              )}
+            >
+              {active && (
+                <motion.span
+                  layoutId="cra-active-month"
+                  transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                  className="absolute inset-0 rounded-full bg-foreground"
+                />
+              )}
+              <span
+                className={cn(
+                  "relative z-10 grid h-4 w-4 place-items-center rounded-full",
+                  m.remitted
+                    ? "bg-success text-success-foreground"
+                    : active
+                    ? "bg-background/25"
+                    : "bg-amber-500/15"
+                )}
+              >
+                {m.remitted ? (
+                  <Check className="h-2.5 w-2.5" strokeWidth={3.5} />
+                ) : (
+                  <span
+                    className={cn(
+                      "h-1.5 w-1.5 rounded-full",
+                      active ? "bg-background" : "bg-amber-500"
+                    )}
+                  />
+                )}
+              </span>
+              <span className="relative z-10 whitespace-nowrap">
+                {m.monthLabel.split(" ")[0]}
+              </span>
+              <span className="relative z-10 whitespace-nowrap tabular-nums opacity-60">
+                {formatCAD(m.total)}
+              </span>
+            </button>
+          );
+        })}
       </div>
     </motion.div>
   );
 }
 
-// Prominent, colour-coded due-date pill. Dates matter most on this screen, so
-// the due date gets its own badge (calendar icon + relative countdown) instead
-// of the small grey line it used to be.
-function DueBadge({
-  dueDate,
-  daysToDue,
-  tone,
+// ─────────────────────────────────────────────────────────────────────────
+// 3 · Year overview — one calm card with a progress bar
+// ─────────────────────────────────────────────────────────────────────────
+function YearOverview({
+  year,
 }: {
-  dueDate: string;
-  daysToDue: number;
-  tone: "destructive" | "amber" | "default";
+  year: {
+    remitted: number;
+    outstanding: number;
+    total: number;
+    federalTax: number;
+    provincialTax: number;
+    cpp: number;
+    ei: number;
+  };
 }) {
-  const relative =
-    daysToDue < 0
-      ? `${Math.abs(daysToDue)} day${Math.abs(daysToDue) === 1 ? "" : "s"} late`
-      : daysToDue === 0
-      ? "Due today"
-      : `in ${daysToDue} day${daysToDue === 1 ? "" : "s"}`;
+  const [open, setOpen] = useState(false);
+  const pct =
+    year.total > 0 ? Math.min(100, (year.remitted / year.total) * 100) : 0;
 
   return (
-    <span
-      className={cn(
-        "inline-flex items-center gap-2 rounded-full border px-3.5 py-2 text-[13px] font-medium shadow-soft",
-        tone === "destructive" &&
-          "border-destructive/30 bg-destructive/10 text-destructive",
-        tone === "amber" &&
-          "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
-        tone === "default" &&
-          "border-border/70 bg-background/70 text-foreground"
-      )}
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.18, duration: 0.45, ease }}
+      className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl"
     >
-      <Calendar className="h-4 w-4 shrink-0" />
-      <span className="tabular-nums">Due {formatDate(dueDate)}</span>
-      <span className="opacity-40">·</span>
-      <span>{relative}</span>
-    </span>
-  );
-}
+      <div className="p-6">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            {TAX_YEAR} so far
+          </p>
+          <p className="text-[11.5px] text-muted-foreground">
+            Your PD7A statement of account
+          </p>
+        </div>
 
-function NothingDueCard() {
-  return (
-    <div className="rounded-3xl border border-success/30 bg-success/10 p-5 text-success">
-      <p className="flex items-center gap-2 text-[14px] font-semibold tracking-tight">
-        <Check className="h-4 w-4" />
-        Nothing due to CRA
-      </p>
-      <p className="mt-1 text-[12.5px] opacity-80">
-        Every monthly remittance has been marked as sent.
-      </p>
-    </div>
+        <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
+          <p className="text-[26px] font-semibold leading-none tracking-tightest tabular-nums">
+            {formatCAD(year.remitted)}
+            <span className="text-[15px] font-medium text-muted-foreground">
+              {" "}
+              of {formatCAD(year.total)} sent
+            </span>
+          </p>
+          {year.outstanding > 0 ? (
+            <p className="text-[13px] font-medium text-amber-600 dark:text-amber-400">
+              {formatCAD(year.outstanding)} still to send
+            </p>
+          ) : (
+            <p className="inline-flex items-center gap-1.5 text-[13px] font-medium text-success">
+              <Check className="h-3.5 w-3.5" strokeWidth={3} />
+              All caught up
+            </p>
+          )}
+        </div>
+
+        {/* Progress bar */}
+        <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-muted/70">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${pct}%` }}
+            transition={{ delay: 0.35, duration: 0.9, ease }}
+            className="h-full rounded-full bg-success"
+          />
+        </div>
+
+        {/* Expandable split */}
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="mt-4 flex w-full items-center justify-between gap-3 text-left"
+        >
+          <span className="text-[12.5px] font-medium text-muted-foreground">
+            See where it goes
+          </span>
+          <ChevronDown
+            className={cn(
+              "h-4 w-4 text-muted-foreground transition-transform duration-300",
+              open && "rotate-180"
+            )}
+          />
+        </button>
+        <AnimatePresence initial={false}>
+          {open && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3, ease }}
+              style={{ overflow: "hidden" }}
+            >
+              <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+                {[
+                  { label: "Federal tax", value: year.federalTax },
+                  { label: "Provincial tax", value: year.provincialTax },
+                  { label: "CPP · both halves", value: year.cpp },
+                  { label: "EI · with employer", value: year.ei },
+                ].map((t, i) => (
+                  <motion.div
+                    key={t.label}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.05 * i, duration: 0.3, ease }}
+                    className="rounded-2xl border border-border/60 bg-background/50 px-4 py-3"
+                  >
+                    <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
+                      {t.label}
+                    </p>
+                    <p className="mt-1 text-[15px] font-semibold tabular-nums tracking-tight">
+                      {formatCAD(t.value)}
+                    </p>
+                  </motion.div>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </motion.div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Section wrapper + rows
+// 4 · Year-end records & filings — kept, same sub-view as before
 // ─────────────────────────────────────────────────────────────────────────
-function Section({
-  title,
-  count,
-  children,
+function YearEndButton({
+  onOpen,
+  delay = 0,
 }: {
-  title: string;
-  count?: number;
-  children: React.ReactNode;
+  onOpen: () => void;
+  delay?: number;
 }) {
   return (
-    <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
-      <div className="flex items-center justify-between border-b border-border/60 bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        <span>{title}</span>
-        {count !== undefined && <span>· {count}</span>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function UpcomingRow({
-  month,
-  onMark,
-}: {
-  month: MonthlyRemittance;
-  onMark: () => void;
-}) {
-  return (
-    <li className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-5 py-3.5">
-      <div className="grid h-9 w-9 place-items-center rounded-2xl bg-muted text-muted-foreground">
-        <Clock className="h-4 w-4" />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[13.5px] font-medium tracking-tight">
-          {month.monthLabel} remittance
-        </p>
-        <p className="text-[11.5px] text-muted-foreground">
-          Due {formatDate(month.dueDate)} · {month.runCount} run
-          {month.runCount === 1 ? "" : "s"}
-        </p>
-      </div>
-      <p className="text-[13.5px] font-semibold tabular-nums tracking-tight">
-        {formatCAD(month.total)}
-      </p>
-      <Button size="sm" variant="ghost" onClick={onMark}>
-        <Check className="h-3.5 w-3.5" />
-        Mark
-      </Button>
-    </li>
-  );
-}
-
-function HistoryRow({
-  month,
-  onUnmark,
-}: {
-  month: MonthlyRemittance;
-  onUnmark: () => void;
-}) {
-  return (
-    <li className="grid grid-cols-[auto_1fr_auto_auto] items-center gap-4 px-5 py-3.5">
-      <div className="grid h-9 w-9 place-items-center rounded-2xl bg-success/15 text-success">
-        <Check className="h-4 w-4" strokeWidth={3} />
-      </div>
-      <div className="min-w-0">
-        <p className="text-[13.5px] font-medium tracking-tight">
-          {month.monthLabel}
-        </p>
-        <p className="text-[11.5px] text-muted-foreground">
-          Remitted {month.remittedAt ? formatDate(month.remittedAt) : ""} ·{" "}
-          {month.runCount} run{month.runCount === 1 ? "" : "s"}
-        </p>
-      </div>
-      <p className="text-[13.5px] font-semibold tabular-nums tracking-tight">
-        {formatCAD(month.total)}
-      </p>
-      <Button
-        size="sm"
-        variant="ghost"
-        onClick={onUnmark}
-        title="Undo — mark as not remitted"
-      >
-        Undo
-      </Button>
-    </li>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="px-4 py-3">
-      <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-        {label}
-      </p>
-      <p className="mt-1 text-[13px] font-semibold tabular-nums tracking-tight">
-        {value}
-      </p>
-    </div>
+    <motion.button
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay, duration: 0.45, ease }}
+      whileTap={{ scale: 0.985 }}
+      type="button"
+      onClick={onOpen}
+      className="group flex w-full items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/70 p-5 text-left shadow-soft backdrop-blur-xl transition-colors duration-200 hover:bg-muted/30"
+    >
+      <span className="flex items-center gap-3.5">
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-muted transition-transform duration-200 group-hover:scale-105">
+          <FileText className="h-[18px] w-[18px] text-foreground/80" />
+        </span>
+        <span className="min-w-0">
+          <span className="block text-[14px] font-semibold tracking-tight">
+            Year-end records &amp; filings
+          </span>
+          <span className="block text-[12px] text-muted-foreground">
+            T4 slips, T4 Summary, T4A, and ROE
+          </span>
+        </span>
+      </span>
+      <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
+    </motion.button>
   );
 }
