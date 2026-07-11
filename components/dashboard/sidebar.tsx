@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Landmark, Play, Settings, ShieldCheck, Users } from "lucide-react";
@@ -14,6 +15,8 @@ const tabs = [
   { href: "/dashboard/settings", label: "Settings", icon: Settings },
 ];
 
+const IOS_EASE = "cubic-bezier(0.22, 1, 0.36, 1)";
+
 export function Sidebar() {
   const pathname = usePathname();
   const isAdmin = useIsAdmin();
@@ -23,14 +26,55 @@ export function Sidebar() {
     ? [...tabs, { href: "/dashboard/admin", label: "Admin", icon: ShieldCheck }]
     : tabs;
 
+  const activeHref =
+    navTabs.find(
+      (t) => pathname === t.href || pathname.startsWith(t.href + "/"),
+    )?.href ?? null;
+
+  // ── Sliding highlight (framer-free, same as the landing nav) ──
+  // One absolutely-positioned pill measures the active tab and glides
+  // vertically between tabs with a CSS transition. Keeps the dashboard
+  // layout — and the login route it wraps — off framer's eager path.
+  const navRef = useRef<HTMLElement>(null);
+  const itemRefs = useRef<Record<string, HTMLAnchorElement | null>>({});
+  const [pill, setPill] = useState({
+    top: 0,
+    height: 0,
+    visible: false,
+  });
+  const [ready, setReady] = useState(false);
+
+  useLayoutEffect(() => {
+    function measure() {
+      const nav = navRef.current;
+      const el = activeHref ? itemRefs.current[activeHref] : null;
+      if (!nav || !el) {
+        setPill((p) => ({ ...p, visible: false }));
+        return;
+      }
+      const navBox = nav.getBoundingClientRect();
+      const box = el.getBoundingClientRect();
+      setPill({
+        top: box.top - navBox.top,
+        height: box.height,
+        visible: true,
+      });
+      requestAnimationFrame(() => setReady(true));
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
+    // isAdmin changes the tab list (Admin appears), shifting positions.
+  }, [activeHref, isAdmin]);
+
   return (
     <aside className="sticky top-5 hidden h-[calc(100vh-40px)] w-[232px] shrink-0 md:block">
       <div className="glass-strong flex h-full flex-col rounded-3xl p-3 shadow-soft">
         <Link
           href="/"
-          className="flex items-center gap-2 px-3 py-3 text-[15px] font-semibold tracking-tight"
+          className="group flex items-center gap-2 px-3 py-3 text-[15px] font-semibold tracking-tight"
         >
-          <span className="grid h-7 w-7 place-items-center rounded-xl bg-foreground text-background">
+          <span className="grid h-7 w-7 place-items-center rounded-xl bg-foreground text-background transition-transform duration-300 ease-out group-hover:scale-105 group-active:scale-95">
             <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
               <path
                 d="M3 13V3l10 10V3"
@@ -44,34 +88,44 @@ export function Sidebar() {
           NorthPay
         </Link>
 
-        {/* Static CSS active pill (no framer) so the dashboard layout — and
-            therefore the login route it wraps — stays framer-free. */}
-        <nav className="mt-4 flex flex-col gap-1">
+        <nav ref={navRef} className="relative mt-4 flex flex-col gap-1">
+          {/* The one gliding highlight — slides vertically between tabs. */}
+          <span
+            aria-hidden
+            className="absolute inset-x-0 rounded-2xl bg-muted/80 dark:bg-white/[0.08]"
+            style={{
+              top: pill.top,
+              height: pill.height,
+              opacity: pill.visible ? 1 : 0,
+              transition: ready
+                ? `top 420ms ${IOS_EASE}, height 420ms ${IOS_EASE}, opacity 220ms ease`
+                : "none",
+            }}
+          />
           {navTabs.map((tab) => {
-            const active =
-              pathname === tab.href || pathname.startsWith(tab.href + "/");
+            const active = tab.href === activeHref;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
+                ref={(el) => {
+                  itemRefs.current[tab.href] = el;
+                }}
                 className={cn(
-                  "group relative isolate flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[14px] font-medium",
-                  "transition-colors duration-300 ease-out",
+                  "group relative flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[14px] font-medium",
+                  "transition-[color,background-color,transform] duration-300 ease-out active:scale-[0.97]",
                   active
                     ? "text-foreground"
-                    : "text-muted-foreground hover:text-foreground",
+                    : "text-muted-foreground hover:bg-muted/40 hover:text-foreground dark:hover:bg-white/[0.04]",
                 )}
               >
-                {active && (
-                  <span className="absolute inset-0 -z-10 rounded-2xl bg-muted/80 dark:bg-white/[0.08]" />
-                )}
                 <tab.icon
                   className={cn(
-                    "h-[18px] w-[18px] transition-transform duration-200",
-                    active ? "" : "group-hover:scale-105",
+                    "relative z-10 h-[18px] w-[18px] transition-transform duration-300 ease-out",
+                    active ? "scale-110" : "group-hover:scale-110 group-hover:-rotate-3",
                   )}
                 />
-                {tab.label}
+                <span className="relative z-10">{tab.label}</span>
               </Link>
             );
           })}
