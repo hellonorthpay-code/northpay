@@ -421,7 +421,6 @@ function StepOne({ form, setForm }: StepProps) {
         </Field>
         <Field
           label="Email"
-          wide
           hint={
             form.email.trim() && !isValidEmail(form.email)
               ? "This doesn’t look like a valid email address."
@@ -433,6 +432,27 @@ function StepOne({ form, setForm }: StepProps) {
             value={form.email}
             onChange={(e) => setForm({ ...form, email: e.target.value })}
             aria-invalid={!!form.email.trim() && !isValidEmail(form.email)}
+          />
+        </Field>
+        <Field
+          label="SIN"
+          hint={
+            form.sin.length > 0 && form.sin.length < 9
+              ? "SIN must be 9 digits."
+              : undefined
+          }
+        >
+          <Input
+            inputMode="numeric"
+            value={form.sin}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                sin: e.target.value.replace(/\D/g, "").slice(0, 9),
+              })
+            }
+            aria-invalid={form.sin.length > 0 && form.sin.length < 9}
+            placeholder="123456789"
           />
         </Field>
         <Field label="Phone" wide>
@@ -479,28 +499,7 @@ function StepOne({ form, setForm }: StepProps) {
             />
           </div>
         </Field>
-        <Field
-          label="SIN"
-          hint={
-            form.sin.length > 0 && form.sin.length < 9
-              ? "SIN must be 9 digits."
-              : undefined
-          }
-        >
-          <Input
-            inputMode="numeric"
-            value={form.sin}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                sin: e.target.value.replace(/\D/g, "").slice(0, 9),
-              })
-            }
-            aria-invalid={form.sin.length > 0 && form.sin.length < 9}
-            placeholder="123456789"
-          />
-        </Field>
-        <Field label="Start date">
+        <Field label="Start date" wide>
           <DatePicker
             value={form.startDate}
             onChange={(v) => setForm({ ...form, startDate: v })}
