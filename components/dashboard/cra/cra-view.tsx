@@ -10,6 +10,7 @@ import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
+  Download,
   ExternalLink,
   FileText,
   Info,
@@ -19,6 +20,8 @@ import {
 import Link from "next/link";
 import { usePayrollRuns } from "@/lib/store/payroll";
 import { useRemittance } from "@/lib/store/remittance";
+import { useSettings } from "@/lib/store/settings";
+import { generateRemittancePDF } from "@/lib/pdf/remittance";
 import {
   RemittanceService,
   type MonthlyRemittance,
@@ -44,6 +47,7 @@ export function CRAView() {
   const remittedMap = useRemittance((s) => s.remitted);
   const markRemitted = useRemittance((s) => s.markRemitted);
   const unmark = useRemittance((s) => s.unmark);
+  const company = useSettings((s) => s.company);
 
   const service = useMemo(
     () => new RemittanceService(runs, remittedMap),
@@ -176,7 +180,27 @@ export function CRAView() {
       />
 
       {/* ─── 3 · Year overview ─── */}
-      {year.total > 0 && <YearOverview year={year} />}
+      {year.total > 0 && (
+        <YearOverview
+          year={year}
+          onExport={() =>
+            generateRemittancePDF(
+              company,
+              months,
+              {
+                remittedTotal: year.remitted,
+                outstandingTotal: year.outstanding,
+                total: year.total,
+                federalTax: year.federalTax,
+                provincialTax: year.provincialTax,
+                cpp: year.cpp,
+                ei: year.ei,
+              },
+              TAX_YEAR
+            )
+          }
+        />
+      )}
 
       {/* ─── 4 · Year-end records ─── */}
       <YearEndButton onOpen={() => setShowReports(true)} delay={0.25} />
@@ -649,6 +673,7 @@ function MonthTimeline({
 // ─────────────────────────────────────────────────────────────────────────
 function YearOverview({
   year,
+  onExport,
 }: {
   year: {
     remitted: number;
@@ -659,10 +684,18 @@ function YearOverview({
     cpp: number;
     ei: number;
   };
+  onExport: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [exported, setExported] = useState(false);
   const pct =
     year.total > 0 ? Math.min(100, (year.remitted / year.total) * 100) : 0;
+
+  function handleExport() {
+    onExport();
+    setExported(true);
+    setTimeout(() => setExported(false), 2400);
+  }
 
   return (
     <motion.div
@@ -672,13 +705,54 @@ function YearOverview({
       className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl"
     >
       <div className="p-6">
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            {TAX_YEAR} so far
-          </p>
-          <p className="text-[11.5px] text-muted-foreground">
-            Your PD7A statement of account
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+              {TAX_YEAR} so far
+            </p>
+            <p className="mt-0.5 text-[11.5px] text-muted-foreground">
+              Your PD7A statement of account
+            </p>
+          </div>
+          <motion.button
+            type="button"
+            onClick={handleExport}
+            whileTap={{ scale: 0.94 }}
+            className={cn(
+              "inline-flex h-9 shrink-0 items-center gap-2 rounded-full border px-4 text-[12.5px] font-medium shadow-soft transition-colors duration-300",
+              exported
+                ? "border-success/30 bg-success/10 text-success"
+                : "border-border/70 bg-background/70 text-foreground hover:bg-muted/50"
+            )}
+          >
+            <AnimatePresence mode="wait" initial={false}>
+              {exported ? (
+                <motion.span
+                  key="done"
+                  initial={{ scale: 0.6, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 22 }}
+                  className="inline-flex items-center gap-2"
+                >
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  Saved
+                </motion.span>
+              ) : (
+                <motion.span
+                  key="idle"
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.15 }}
+                  className="inline-flex items-center gap-2"
+                >
+                  <Download className="h-3.5 w-3.5" />
+                  Export PDF
+                </motion.span>
+              )}
+            </AnimatePresence>
+          </motion.button>
         </div>
 
         <div className="mt-4 flex flex-wrap items-end justify-between gap-4">
