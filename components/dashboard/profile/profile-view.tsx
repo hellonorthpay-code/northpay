@@ -258,12 +258,14 @@ export function ProfileView() {
 
         {/* ── Right column ── */}
         <div className="space-y-5">
-      {/* ── Your details — one grouped card, iOS-settings rows ── */}
-      <motion.section
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-        className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl"
+      {/* ── Your details — one grouped card, iOS-settings rows ──
+          Enters with a soft slide-from-right via tailwindcss-animate (CSS
+          keyframes). We deliberately DON'T use a framer `x` transform here:
+          this card wraps text inputs, and a persistent transform on their
+          ancestor mis-places the caret on mobile. A CSS animation leaves no
+          residual transform once it settles. */}
+      <section
+        className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl duration-700 ease-out animate-in fade-in slide-in-from-right-12"
       >
         <header className="flex items-center justify-between px-6 pb-2 pt-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -338,7 +340,7 @@ export function ProfileView() {
             </Select>
           </Row>
         </div>
-      </motion.section>
+      </section>
 
       {/* ── About NorthPay ── */}
       <motion.div
