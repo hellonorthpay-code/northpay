@@ -82,7 +82,7 @@ export function ProfileView() {
     `${profile.firstName} ${profile.lastName}`.trim() || "Your name";
 
   return (
-    <div className="mx-auto w-full max-w-6xl">
+    <div className="w-full">
       {/* ── Back button (mobile only) ── */}
       <button
         onClick={() => router.back()}
