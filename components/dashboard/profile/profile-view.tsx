@@ -82,7 +82,7 @@ export function ProfileView() {
     `${profile.firstName} ${profile.lastName}`.trim() || "Your name";
 
   return (
-    <div className="mx-auto w-full max-w-4xl">
+    <div className="mx-auto w-full max-w-6xl">
       {/* ── Back button (mobile only) ── */}
       <button
         onClick={() => router.back()}
@@ -94,7 +94,7 @@ export function ProfileView() {
 
       {/* Two columns on desktop: left = identity + your details,
           right = about + account. Single stacked column on mobile. */}
-      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
         {/* ── Left column ── */}
         <div className="space-y-5">
       {/* ── Identity hero — centered, calm ── */}
