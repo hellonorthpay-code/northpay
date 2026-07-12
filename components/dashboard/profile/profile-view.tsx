@@ -82,16 +82,21 @@ export function ProfileView() {
     `${profile.firstName} ${profile.lastName}`.trim() || "Your name";
 
   return (
-    <div className="mx-auto w-full max-w-xl space-y-5">
+    <div className="mx-auto w-full max-w-4xl">
       {/* ── Back button (mobile only) ── */}
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground active:scale-95 md:hidden"
+        className="mb-4 flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground active:scale-95 md:hidden"
       >
         <ArrowLeft className="h-5 w-5" />
         <span className="text-[14px] font-medium">Back</span>
       </button>
 
+      {/* Two columns on desktop: left = identity + your details,
+          right = about + account. Single stacked column on mobile. */}
+      <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
+        {/* ── Left column ── */}
+        <div className="space-y-5">
       {/* ── Identity hero — centered, calm ── */}
       <motion.section
         initial={{ opacity: 0, y: 14, scale: 0.985 }}
@@ -209,7 +214,10 @@ export function ProfileView() {
           </Row>
         </div>
       </motion.section>
+        </div>
 
+        {/* ── Right column ── */}
+        <div className="space-y-5">
       {/* ── About NorthPay ── */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -353,6 +361,8 @@ export function ProfileView() {
           </div>
         </div>
       </motion.section>
+        </div>
+      </div>
     </div>
   );
 }
