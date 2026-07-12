@@ -102,7 +102,7 @@ export function ProfileView() {
         initial={{ opacity: 0, y: 14, scale: 0.985 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.45, ease }}
-        className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 px-6 py-9 text-center shadow-soft backdrop-blur-xl"
+        className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 px-8 py-14 text-center shadow-soft backdrop-blur-xl"
       >
         <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-52 w-52 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
@@ -111,15 +111,15 @@ export function ProfileView() {
           initial={{ scale: 0.7, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           transition={{ delay: 0.1, type: "spring", stiffness: 320, damping: 22 }}
-          className="relative mx-auto grid h-20 w-20 place-items-center rounded-[26px] bg-gradient-to-br from-slate-700 to-slate-400 text-[24px] font-semibold text-white shadow-soft dark:from-rose-300 dark:to-amber-200 dark:text-black"
+          className="relative mx-auto grid h-24 w-24 place-items-center rounded-[30px] bg-gradient-to-br from-slate-700 to-slate-400 text-[28px] font-semibold text-white shadow-soft dark:from-rose-300 dark:to-amber-200 dark:text-black"
         >
-          {initials || <User className="h-8 w-8" />}
+          {initials || <User className="h-10 w-10" />}
         </motion.div>
         <motion.p
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.18, duration: 0.4, ease }}
-          className="relative mt-4 truncate text-[24px] font-semibold leading-none tracking-tightest"
+          className="relative mt-5 truncate text-[30px] font-semibold leading-none tracking-tightest"
         >
           {displayName}
         </motion.p>
@@ -127,7 +127,7 @@ export function ProfileView() {
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.26, duration: 0.4, ease }}
-          className="relative mt-2 text-[12.5px] text-muted-foreground"
+          className="relative mt-2.5 text-[13.5px] text-muted-foreground"
         >
           {user.email} · joined {formatDate(profile.joinedAt)}
         </motion.p>
@@ -140,17 +140,17 @@ export function ProfileView() {
         transition={{ delay: 0.12, duration: 0.5 }}
         className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl"
       >
-        <header className="px-5 pb-1 pt-4">
+        <header className="px-6 pb-2 pt-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Account
           </p>
         </header>
 
-        <div className="p-3">
-          <div className="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5">
+        <div className="p-4">
+          <div className="flex items-center justify-between gap-3 rounded-2xl px-3 py-3.5">
             <div className="min-w-0">
-              <p className="text-[12px] text-muted-foreground">Signed in with</p>
-              <p className="mt-0.5 truncate text-[13.5px] font-medium tracking-tight">
+              <p className="text-[13px] text-muted-foreground">Signed in with</p>
+              <p className="mt-1 truncate text-[15px] font-medium tracking-tight">
                 {user.provider === "google" ? "Google" : "Email"} · {user.email}
               </p>
             </div>
@@ -163,9 +163,9 @@ export function ProfileView() {
           <button
             type="button"
             onClick={() => void logout()}
-            className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[13.5px] font-medium text-foreground transition-all duration-200 hover:bg-muted/50 active:scale-[0.98]"
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-4 text-[15px] font-medium text-foreground transition-all duration-200 hover:bg-muted/50 active:scale-[0.98]"
           >
-            <LogOut className="h-4 w-4" />
+            <LogOut className="h-[18px] w-[18px]" />
             Log out
           </button>
 
@@ -186,9 +186,9 @@ export function ProfileView() {
                       setConfirmDelete(true);
                       setDeleteError(null);
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground transition-all duration-200 hover:bg-destructive/10 hover:text-destructive active:scale-[0.98]"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-[14px] font-medium text-muted-foreground transition-all duration-200 hover:bg-destructive/10 hover:text-destructive active:scale-[0.98]"
                   >
-                    <Trash2 className="h-3.5 w-3.5" />
+                    <Trash2 className="h-4 w-4" />
                     Delete account
                   </button>
                 </motion.div>
@@ -265,7 +265,7 @@ export function ProfileView() {
         transition={{ delay: 0.2, duration: 0.5 }}
         className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl"
       >
-        <header className="flex items-center justify-between px-5 pb-1 pt-4">
+        <header className="flex items-center justify-between px-6 pb-2 pt-6">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Your details
           </p>
@@ -325,7 +325,7 @@ export function ProfileView() {
               }
               onValueChange={(v) => touch({ timezone: v })}
             >
-              <SelectTrigger className="h-auto w-auto justify-end gap-1.5 border-0 bg-transparent p-0 text-[14px] font-medium shadow-none focus:border-0 focus:bg-transparent focus:shadow-none">
+              <SelectTrigger className="h-auto w-auto justify-end gap-1.5 border-0 bg-transparent p-0 text-[15.5px] font-medium shadow-none focus:border-0 focus:bg-transparent focus:shadow-none">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent align="end">
@@ -348,17 +348,17 @@ export function ProfileView() {
       >
         <Link
           href="/about"
-          className="group flex items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/80 px-5 py-4 shadow-soft backdrop-blur-xl transition-colors duration-200 hover:bg-muted/30"
+          className="group flex items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/80 px-6 py-6 shadow-soft backdrop-blur-xl transition-colors duration-200 hover:bg-muted/30"
         >
           <div className="min-w-0">
-            <p className="text-[14px] font-semibold tracking-tight">
+            <p className="text-[15.5px] font-semibold tracking-tight">
               About NorthPay
             </p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <p className="mt-1 text-[13px] text-muted-foreground">
               Our story, the team, and what we&rsquo;re building.
             </p>
           </div>
-          <ChevronRight className="h-[18px] w-[18px] shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
+          <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
         </Link>
       </motion.div>
         </div>
@@ -386,13 +386,13 @@ function Row({
   return (
     <Tag
       className={cn(
-        "flex cursor-text items-center justify-between gap-6 px-5 py-3.5 transition-colors duration-200",
+        "flex cursor-text items-center justify-between gap-6 px-6 py-[18px] transition-colors duration-200",
         "hover:bg-muted/20 focus-within:bg-muted/30",
         !last && "border-b border-border/40",
         asDiv && "cursor-default"
       )}
     >
-      <span className="w-24 shrink-0 text-[13.5px] text-muted-foreground">
+      <span className="w-28 shrink-0 text-[14.5px] text-muted-foreground">
         {label}
       </span>
       {children}
@@ -417,7 +417,7 @@ function RowInput({
       value={value}
       placeholder={placeholder}
       onChange={(e) => onChange(e.target.value)}
-      className="min-w-0 flex-1 bg-transparent text-right text-[14px] font-medium tracking-tight text-foreground outline-none transition-colors duration-200 placeholder:text-muted-foreground/50"
+      className="min-w-0 flex-1 bg-transparent text-right text-[15.5px] font-medium tracking-tight text-foreground outline-none transition-colors duration-200 placeholder:text-muted-foreground/50"
     />
   );
 }
