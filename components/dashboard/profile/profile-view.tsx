@@ -133,11 +133,36 @@ export function ProfileView() {
         </motion.p>
       </motion.section>
 
+      {/* ── About NorthPay ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.12, duration: 0.5 }}
+      >
+        <Link
+          href="/about"
+          className="group flex items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/80 px-5 py-4 shadow-soft backdrop-blur-xl transition-colors duration-200 hover:bg-muted/30"
+        >
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold tracking-tight">
+              About NorthPay
+            </p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              Our story, the team, and what we&rsquo;re building.
+            </p>
+          </div>
+          <ChevronRight className="h-[18px] w-[18px] shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
+        </Link>
+      </motion.div>
+        </div>
+
+        {/* ── Right column ── */}
+        <div className="space-y-5">
       {/* ── Your details — one grouped card, iOS-settings rows ── */}
       <motion.section
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
-        transition={{ delay: 0.12, duration: 0.5 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
         className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl"
       >
         <header className="flex items-center justify-between px-5 pb-1 pt-4">
@@ -214,31 +239,6 @@ export function ProfileView() {
           </Row>
         </div>
       </motion.section>
-        </div>
-
-        {/* ── Right column ── */}
-        <div className="space-y-5">
-      {/* ── About NorthPay ── */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.2, duration: 0.5 }}
-      >
-        <Link
-          href="/about"
-          className="group flex items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/80 px-5 py-4 shadow-soft backdrop-blur-xl transition-colors duration-200 hover:bg-muted/30"
-        >
-          <div className="min-w-0">
-            <p className="text-[14px] font-semibold tracking-tight">
-              About NorthPay
-            </p>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
-              Our story, the team, and what we&rsquo;re building.
-            </p>
-          </div>
-          <ChevronRight className="h-[18px] w-[18px] shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
-        </Link>
-      </motion.div>
 
       {/* ── Account ── */}
       <motion.section
