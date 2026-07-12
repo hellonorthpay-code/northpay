@@ -4,10 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Briefcase, ExternalLink, Globe2, Info, LogOut, Mail, Trash2, User } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  Check,
+  ChevronRight,
+  LogOut,
+  Trash2,
+  User,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,20 +25,29 @@ import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
 import { cn, formatDate } from "@/lib/utils";
 
+const ease = [0.22, 1, 0.36, 1] as const;
+
 const TIMEZONES = [
-  { value: "America/Toronto",    label: "Eastern Time — Toronto" },
-  { value: "America/New_York",   label: "Eastern Time — New York" },
-  { value: "America/Chicago",    label: "Central Time — Chicago" },
-  { value: "America/Winnipeg",   label: "Central Time — Winnipeg" },
-  { value: "America/Denver",     label: "Mountain Time — Denver" },
-  { value: "America/Edmonton",   label: "Mountain Time — Edmonton" },
-  { value: "America/Los_Angeles",label: "Pacific Time — Los Angeles" },
-  { value: "America/Vancouver",  label: "Pacific Time — Vancouver" },
-  { value: "America/Halifax",    label: "Atlantic Time — Halifax" },
-  { value: "America/St_Johns",   label: "Newfoundland Time — St. John's" },
+  { value: "America/Toronto",    label: "Eastern — Toronto" },
+  { value: "America/New_York",   label: "Eastern — New York" },
+  { value: "America/Chicago",    label: "Central — Chicago" },
+  { value: "America/Winnipeg",   label: "Central — Winnipeg" },
+  { value: "America/Denver",     label: "Mountain — Denver" },
+  { value: "America/Edmonton",   label: "Mountain — Edmonton" },
+  { value: "America/Los_Angeles",label: "Pacific — Los Angeles" },
+  { value: "America/Vancouver",  label: "Pacific — Vancouver" },
+  { value: "America/Halifax",    label: "Atlantic — Halifax" },
+  { value: "America/St_Johns",   label: "Newfoundland — St. John's" },
   { value: "UTC",                label: "UTC" },
 ];
 
+// ─────────────────────────────────────────────────────────────────────────
+// Profile — rebuilt as a single centered column in the Apple-Settings idiom:
+// grouped cards of compact rows (label left · value right) instead of
+// full-width inputs. Changes auto-save; a "Saved" tick pulses in the card
+// header as feedback. Cards that contain text inputs animate with OPACITY
+// ONLY — a transformed ancestor mispositions the caret on mobile.
+// ─────────────────────────────────────────────────────────────────────────
 export function ProfileView() {
   const router = useRouter();
   const { profile, setProfile } = useProfile();
@@ -40,6 +55,16 @@ export function ProfileView() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+
+  // "Saved" pulse — shows briefly after any edit (changes persist as typed).
+  const [saved, setSaved] = useState(false);
+  const savedTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  function touch(patch: Parameters<typeof setProfile>[0]) {
+    void setProfile(patch);
+    setSaved(true);
+    if (savedTimer.current) clearTimeout(savedTimer.current);
+    savedTimer.current = setTimeout(() => setSaved(false), 1600);
+  }
 
   useEffect(() => {
     hydrate();
@@ -57,87 +82,123 @@ export function ProfileView() {
     `${profile.firstName} ${profile.lastName}`.trim() || "Your name";
 
   return (
-    <div className="space-y-5">
+    <div className="mx-auto w-full max-w-xl space-y-5">
       {/* ── Back button (mobile only) ── */}
       <button
         onClick={() => router.back()}
-        className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground md:hidden"
+        className="flex items-center gap-1.5 text-muted-foreground transition-colors hover:text-foreground active:scale-95 md:hidden"
       >
         <ArrowLeft className="h-5 w-5" />
         <span className="text-[14px] font-medium">Back</span>
       </button>
 
-      {/* ── Identity hero card ── */}
-      <section className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 p-5 shadow-soft backdrop-blur-xl md:p-7">
-        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
-        <div className="pointer-events-none absolute -bottom-16 -left-16 h-48 w-48 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
+      {/* ── Identity hero — centered, calm ── */}
+      <motion.section
+        initial={{ opacity: 0, y: 14, scale: 0.985 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.45, ease }}
+        className="relative overflow-hidden rounded-3xl border border-border/70 bg-card/80 px-6 py-9 text-center shadow-soft backdrop-blur-xl"
+      >
+        <div className="pointer-events-none absolute -right-20 -top-20 h-52 w-52 rounded-full bg-rose-200/30 blur-3xl dark:bg-rose-500/10" />
+        <div className="pointer-events-none absolute -bottom-20 -left-20 h-52 w-52 rounded-full bg-sky-200/30 blur-3xl dark:bg-sky-500/10" />
 
-        <div className="relative flex items-center gap-4">
-          <div className="grid h-16 w-16 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-slate-700 to-slate-400 text-[20px] font-semibold text-white shadow-soft dark:from-rose-300 dark:to-amber-200 dark:text-black">
-            {initials || <User className="h-7 w-7" />}
-          </div>
-          <div className="min-w-0">
-            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
-              Signed in as
-            </p>
-            <p className="mt-1 truncate text-[22px] font-semibold leading-none tracking-tightest md:text-[26px]">
-              {displayName}
-            </p>
-            <p className="mt-1.5 truncate text-[12.5px] text-muted-foreground">
-              Joined {formatDate(profile.joinedAt)}
-            </p>
-          </div>
-        </div>
-      </section>
+        <motion.div
+          initial={{ scale: 0.7, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          transition={{ delay: 0.1, type: "spring", stiffness: 320, damping: 22 }}
+          className="relative mx-auto grid h-20 w-20 place-items-center rounded-[26px] bg-gradient-to-br from-slate-700 to-slate-400 text-[24px] font-semibold text-white shadow-soft dark:from-rose-300 dark:to-amber-200 dark:text-black"
+        >
+          {initials || <User className="h-8 w-8" />}
+        </motion.div>
+        <motion.p
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.18, duration: 0.4, ease }}
+          className="relative mt-4 truncate text-[24px] font-semibold leading-none tracking-tightest"
+        >
+          {displayName}
+        </motion.p>
+        <motion.p
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.26, duration: 0.4, ease }}
+          className="relative mt-2 text-[12.5px] text-muted-foreground"
+        >
+          {user.email} · joined {formatDate(profile.joinedAt)}
+        </motion.p>
+      </motion.section>
 
-      {/* ── Two-column on desktop, single on mobile ── */}
-      <div className="grid gap-5 lg:grid-cols-2">
-        <ProfileGroup icon={User} title="About you">
-          <Field label="First name">
-            <Input
+      {/* ── Your details — one grouped card, iOS-settings rows ── */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.12, duration: 0.5 }}
+        className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl"
+      >
+        <header className="flex items-center justify-between px-5 pb-1 pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Your details
+          </p>
+          <AnimatePresence>
+            {saved && (
+              <motion.span
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-success"
+              >
+                <Check className="h-3 w-3" strokeWidth={3} />
+                Saved
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </header>
+
+        <div className="pb-2">
+          <Row label="First name">
+            <RowInput
               value={profile.firstName}
-              onChange={(e) => setProfile({ firstName: e.target.value })}
+              onChange={(v) => touch({ firstName: v })}
+              placeholder="First name"
             />
-          </Field>
-          <Field label="Last name">
-            <Input
+          </Row>
+          <Row label="Last name">
+            <RowInput
               value={profile.lastName}
-              onChange={(e) => setProfile({ lastName: e.target.value })}
+              onChange={(v) => touch({ lastName: v })}
+              placeholder="Last name"
             />
-          </Field>
-        </ProfileGroup>
-
-        <ProfileGroup icon={Mail} title="Contact">
-          <Field label="Email">
-            <Input
+          </Row>
+          <Row label="Email">
+            <RowInput
               type="email"
               value={profile.email}
-              onChange={(e) => setProfile({ email: e.target.value })}
-              placeholder="you@northwindcoffee.ca"
+              onChange={(v) => touch({ email: v })}
+              placeholder="you@company.ca"
             />
-          </Field>
-          <Field label="Phone">
-            <Input
+          </Row>
+          <Row label="Phone">
+            <RowInput
               type="tel"
               value={profile.phone}
-              onChange={(e) => setProfile({ phone: e.target.value })}
+              onChange={(v) => touch({ phone: v })}
               placeholder="(416) 555-0100"
             />
-          </Field>
-        </ProfileGroup>
-
-        <ProfileGroup icon={Globe2} title="Region">
-          <Field label="Timezone">
+          </Row>
+          <Row label="Timezone" last asDiv>
             <Select
-              value={TIMEZONES.some((t) => t.value === profile.timezone)
-                ? profile.timezone
-                : "America/Toronto"}
-              onValueChange={(v) => setProfile({ timezone: v })}
+              value={
+                TIMEZONES.some((t) => t.value === profile.timezone)
+                  ? profile.timezone
+                  : "America/Toronto"
+              }
+              onValueChange={(v) => touch({ timezone: v })}
             >
-              <SelectTrigger>
+              <SelectTrigger className="h-auto w-auto justify-end gap-1.5 border-0 bg-transparent p-0 text-[14px] font-medium shadow-none focus:border-0 focus:bg-transparent focus:shadow-none">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent align="end">
                 {TIMEZONES.map((tz) => (
                   <SelectItem key={tz.value} value={tz.value}>
                     {tz.label}
@@ -145,49 +206,70 @@ export function ProfileView() {
                 ))}
               </SelectContent>
             </Select>
-          </Field>
-        </ProfileGroup>
+          </Row>
+        </div>
+      </motion.section>
 
-        <ProfileGroup icon={Info} title="About">
-          <Link
-            href="/about"
-            className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/40 px-4 py-3 transition-colors hover:bg-muted/40"
-          >
-            <div className="min-w-0">
-              <p className="text-[13.5px] font-medium tracking-tight">
-                About NorthPay
-              </p>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
-                Our story, the team, and what we're building.
-              </p>
-            </div>
-            <ExternalLink className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </Link>
-        </ProfileGroup>
+      {/* ── About NorthPay ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.2, duration: 0.5 }}
+      >
+        <Link
+          href="/about"
+          className="group flex items-center justify-between gap-3 rounded-3xl border border-border/70 bg-card/80 px-5 py-4 shadow-soft backdrop-blur-xl transition-colors duration-200 hover:bg-muted/30"
+        >
+          <div className="min-w-0">
+            <p className="text-[14px] font-semibold tracking-tight">
+              About NorthPay
+            </p>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              Our story, the team, and what we&rsquo;re building.
+            </p>
+          </div>
+          <ChevronRight className="h-[18px] w-[18px] shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
+        </Link>
+      </motion.div>
 
-        <ProfileGroup icon={Briefcase} title="Account">
-          <div className="flex items-center justify-between rounded-2xl border border-border/60 bg-background/40 px-4 py-3 text-[12.5px]">
+      {/* ── Account ── */}
+      <motion.section
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.28, duration: 0.5 }}
+        className="overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl"
+      >
+        <header className="px-5 pb-1 pt-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Account
+          </p>
+        </header>
+
+        <div className="p-3">
+          <div className="flex items-center justify-between gap-3 rounded-2xl px-3 py-2.5">
             <div className="min-w-0">
-              <p className="text-muted-foreground">Signed in with</p>
-              <p className="mt-0.5 truncate font-medium tracking-tight text-foreground">
+              <p className="text-[12px] text-muted-foreground">Signed in with</p>
+              <p className="mt-0.5 truncate text-[13.5px] font-medium tracking-tight">
                 {user.provider === "google" ? "Google" : "Email"} · {user.email}
               </p>
             </div>
-            <span className="rounded-full bg-success/15 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-success">
+            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-success">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
               Active
             </span>
           </div>
-          <Button
-            variant="ghost"
+
+          <button
+            type="button"
             onClick={() => void logout()}
-            className="w-full justify-center"
+            className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-[13.5px] font-medium text-foreground transition-all duration-200 hover:bg-muted/50 active:scale-[0.98]"
           >
             <LogOut className="h-4 w-4" />
             Log out
-          </Button>
+          </button>
 
           {/* ── Danger zone ── */}
-          <div className="mt-1 border-t border-border/50 pt-3">
+          <div className="mt-1 border-t border-border/50 pt-2">
             <AnimatePresence mode="wait" initial={false}>
               {!confirmDelete ? (
                 <motion.div
@@ -203,7 +285,7 @@ export function ProfileView() {
                       setConfirmDelete(true);
                       setDeleteError(null);
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-2.5 text-[12.5px] font-medium text-muted-foreground transition-all duration-200 hover:bg-destructive/10 hover:text-destructive active:scale-[0.98]"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                     Delete account
@@ -215,7 +297,7 @@ export function ProfileView() {
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: "auto" }}
                   exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.22 }}
+                  transition={{ duration: 0.26, ease }}
                   style={{ overflow: "hidden" }}
                 >
                   <div className="rounded-2xl border border-destructive/30 bg-destructive/5 p-4">
@@ -258,7 +340,7 @@ export function ProfileView() {
                             setDeleting(false);
                           }
                         }}
-                        className="flex flex-1 items-center justify-center gap-2 rounded-full bg-destructive px-4 py-2 text-[13px] font-medium text-destructive-foreground transition-colors hover:bg-destructive/90 disabled:opacity-60"
+                        className="flex flex-1 items-center justify-center gap-2 rounded-full bg-destructive px-4 py-2 text-[13px] font-medium text-destructive-foreground transition-all duration-200 hover:bg-destructive/90 active:scale-[0.97] disabled:opacity-60"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                         {deleting ? "Deleting…" : "Delete forever"}
@@ -269,60 +351,63 @@ export function ProfileView() {
               )}
             </AnimatePresence>
           </div>
-        </ProfileGroup>
-      </div>
+        </div>
+      </motion.section>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Login page with blended looping video background
+// Row primitives — iOS-settings style: label left, value right
 // ─────────────────────────────────────────────────────────────────────────
-// ─────────────────────────────────────────────────────────────────────────
-// Card primitive
-// ─────────────────────────────────────────────────────────────────────────
-function ProfileGroup({
-  icon: Icon,
-  title,
-  children,
-  className,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  title: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return (
-    <section
-      className={cn(
-        "overflow-hidden rounded-3xl border border-border/70 bg-card/80 shadow-soft backdrop-blur-xl",
-        className
-      )}
-    >
-      <header className="border-b border-border/60 px-5 py-4">
-        <div className="flex items-center gap-3">
-          <div className="grid h-9 w-9 place-items-center rounded-xl bg-muted">
-            <Icon className="h-4 w-4" />
-          </div>
-          <p className="text-[17px] font-semibold tracking-tight">{title}</p>
-        </div>
-      </header>
-      <div className="space-y-3 p-5">{children}</div>
-    </section>
-  );
-}
-
-function Field({
+function Row({
   label,
   children,
+  last,
+  asDiv,
 }: {
   label: string;
   children: React.ReactNode;
+  last?: boolean;
+  /** Selects manage their own focus — don't wrap them in a <label>. */
+  asDiv?: boolean;
+}) {
+  const Tag: "label" | "div" = asDiv ? "div" : "label";
+  return (
+    <Tag
+      className={cn(
+        "flex cursor-text items-center justify-between gap-6 px-5 py-3.5 transition-colors duration-200",
+        "hover:bg-muted/20 focus-within:bg-muted/30",
+        !last && "border-b border-border/40",
+        asDiv && "cursor-default"
+      )}
+    >
+      <span className="w-24 shrink-0 text-[13.5px] text-muted-foreground">
+        {label}
+      </span>
+      {children}
+    </Tag>
+  );
+}
+
+function RowInput({
+  value,
+  onChange,
+  placeholder,
+  type = "text",
+}: {
+  value: string;
+  onChange: (next: string) => void;
+  placeholder?: string;
+  type?: string;
 }) {
   return (
-    <div className="flex flex-col gap-1.5">
-      <Label>{label}</Label>
-      {children}
-    </div>
+    <input
+      type={type}
+      value={value}
+      placeholder={placeholder}
+      onChange={(e) => onChange(e.target.value)}
+      className="min-w-0 flex-1 bg-transparent text-right text-[14px] font-medium tracking-tight text-foreground outline-none transition-colors duration-200 placeholder:text-muted-foreground/50"
+    />
   );
 }
