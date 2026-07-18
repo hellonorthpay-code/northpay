@@ -36,6 +36,11 @@ import { generatePaystubPDF } from "@/lib/pdf/paystub";
 import type { ValidationIssue } from "@/lib/services/validation";
 import { ConfirmPayrollModal } from "./confirm-payroll-modal";
 import { enqueuePaystubEmails } from "@/lib/email/enqueue-client";
+import { useBilling } from "@/lib/billing/client";
+import {
+  UpgradeBanner,
+  TrialBadge,
+} from "@/components/dashboard/billing/billing";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -441,6 +446,13 @@ export function PayrollView() {
       company.postalCode?.trim()
   );
 
+  // Subscription gate — only blocks once Stripe is configured AND the trial
+  // has ended with no active plan. Dormant (never blocks) until billing is set.
+  const billing = useBilling();
+  const billingBlocked = billing.configured && !billing.entitled;
+  const canRunPayroll =
+    activeEmployees.length > 0 && companyReady && !billingBlocked;
+
   return (
     <>
       {/* Mobile-only: full-screen payroll history with a Back button. */}
@@ -453,6 +465,7 @@ export function PayrollView() {
       )}
 
       <div className={cn("space-y-5", showHistory && "hidden md:block")}>
+      <TrialBadge />
       <SummaryCard
         netPay={preview.totals.net}
         gross={preview.totals.gross}
@@ -464,9 +477,11 @@ export function PayrollView() {
         minStart={earliestStart}
         employeeCount={activeEmployees.length}
         totalCount={employees.length}
-        onOpen={() => { if (companyReady) setConfirmOpen(true); }}
-        canRun={activeEmployees.length > 0 && companyReady}
+        onOpen={() => { if (canRunPayroll) setConfirmOpen(true); }}
+        canRun={canRunPayroll}
       />
+
+      <UpgradeBanner />
 
       {!companyReady && (
         <div className="flex flex-col gap-3 rounded-3xl border border-amber-300/50 bg-amber-50 p-5 text-amber-900 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200 sm:flex-row sm:items-center sm:justify-between">

@@ -23,6 +23,7 @@ import {
   type ProvinceCode,
 } from "@/lib/payroll/types";
 import { cn } from "@/lib/utils";
+import { BillingSettingsCard } from "@/components/dashboard/billing/billing";
 
 const ease = [0.32, 0.72, 0, 1] as const;
 
@@ -209,6 +210,12 @@ export function SettingsView() {
 
   return (
     <>
+      {/* Billing — full width above the grids. Renders nothing until Stripe
+          is configured, so it stays invisible until billing is turned on. */}
+      <div className="mb-5">
+        <BillingSettingsCard />
+      </div>
+
       {/* ── Desktop: 3-col grid (unchanged) ── */}
       <div className="hidden gap-5 lg:grid lg:grid-cols-3">
         <SettingsGroup icon={Building2} title="Company" subtitle="The legal identity used on paystubs and remittances.">
