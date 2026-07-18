@@ -38,6 +38,23 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
+  // Pilot gating: while BILLING_TEST_EMAILS is set, ONLY those accounts are
+  // subject to the trial/paywall. Everyone else is treated as fully entitled
+  // so real users aren't affected during testing. Clear the env var to roll
+  // billing out to all accounts.
+  const testList = (process.env.BILLING_TEST_EMAILS ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  const email = (user.email ?? "").toLowerCase();
+  if (testList.length > 0 && !testList.includes(email)) {
+    return NextResponse.json({
+      configured: true,
+      entitled: true,
+      status: "active",
+    });
+  }
+
   const admin = createClient(url, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
