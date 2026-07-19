@@ -33,7 +33,6 @@ export default function AboutPage() {
       <div className="container relative">
         <Header />
         <Story />
-        <Founders />
         <ContactForm />
         <LegalSection />
       </div>
@@ -105,73 +104,6 @@ function Story() {
           </p>
         </div>
       ))}
-    </motion.section>
-  );
-}
-
-// ─── Founders ────────────────────────────────────────────────────────────
-function Founders() {
-  const team = [
-    {
-      name: "Rajbir Bal",
-      role: "Co-founder · Design & Product",
-      bio: "Leads the design, UI/UX, and the website itself — from the domain to the last pixel. A finance background from York University keeps the product grounded in how the numbers actually work.",
-      initials: "RB",
-      tint: "from-rose-200 to-amber-200 dark:from-rose-500/40 dark:to-amber-500/40",
-    },
-    {
-      name: "Nandan Panchal",
-      role: "Co-founder · Accounting & Finance",
-      bio: "An accountant with five years of accounting and finance experience, and a finance degree from York University. Makes sure every calculation and workflow reflects how payroll is really done.",
-      initials: "NP",
-      tint: "from-sky-200 to-indigo-200 dark:from-sky-500/40 dark:to-indigo-500/40",
-    },
-  ];
-  return (
-    <motion.section
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-60px" }}
-      transition={{ duration: 0.7, ease }}
-      className="mx-auto mt-28 max-w-5xl"
-    >
-      <div className="mx-auto max-w-2xl text-center">
-        <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background/60 px-3 py-1 text-[11px] font-medium uppercase tracking-[0.18em] text-muted-foreground backdrop-blur-md">
-          The Team
-        </span>
-        <h2 className="mt-5 text-balance text-[clamp(1.8rem,3.8vw,2.6rem)] font-semibold leading-[1.1] tracking-tightest">
-          The two people behind NorthPay.
-        </h2>
-        <p className="mx-auto mt-5 text-[15px] leading-relaxed text-muted-foreground">
-          Both originally from Mumbai, now based in Toronto, Canada — building
-          NorthPay for the way modern teams actually work.
-        </p>
-      </div>
-      <div className="mt-12 grid gap-5 md:grid-cols-2">
-        {team.map((m) => (
-          <div
-            key={m.name}
-            className="glass-strong flex items-start gap-5 rounded-2xl p-6 shadow-soft"
-          >
-            <div
-              className={`grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-br ${m.tint} text-[15px] font-semibold text-foreground`}
-            >
-              {m.initials}
-            </div>
-            <div className="min-w-0">
-              <h3 className="text-[16px] font-semibold tracking-tight">
-                {m.name}
-              </h3>
-              <p className="mt-0.5 text-[12px] uppercase tracking-[0.14em] text-muted-foreground">
-                {m.role}
-              </p>
-              <p className="mt-3 text-[14px] leading-relaxed text-muted-foreground">
-                {m.bio}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
     </motion.section>
   );
 }
