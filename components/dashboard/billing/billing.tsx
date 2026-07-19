@@ -77,6 +77,7 @@ export function TrialBadge() {
 export function BillingSettingsCard() {
   const billing = useBilling();
   const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
 
   // Hide entirely until Stripe is configured (nothing to manage yet).
   if (!billing.configured) return null;
@@ -92,13 +93,15 @@ export function BillingSettingsCard() {
 
   async function primary() {
     setBusy(true);
+    setErr(null);
     try {
       if (billing.status === "active" || billing.hasCustomer) {
         await openBillingPortal();
       } else {
         await startCheckout();
       }
-    } catch {
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : "Something went wrong.");
       setBusy(false);
     }
   }
@@ -158,6 +161,11 @@ export function BillingSettingsCard() {
           )}
         </button>
       </div>
+      {err && (
+        <p className="border-t border-destructive/20 bg-destructive/5 px-5 py-3 text-[12px] text-destructive">
+          {err}
+        </p>
+      )}
     </motion.section>
   );
 }
