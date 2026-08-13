@@ -235,6 +235,10 @@ export function LoginView() {
                     <CheckCircle2 className="h-3.5 w-3.5" />
                     Reset link sent — check your email.
                   </p>
+                  <p className="mt-1 text-[11.5px] opacity-80">
+                    From noreply@thenorthpay.com · link expires in 1 hour. Check
+                    spam if you don&rsquo;t see it.
+                  </p>
                 </div>
               )}
 

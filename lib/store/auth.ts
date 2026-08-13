@@ -152,16 +152,33 @@ export const useAuth = create<AuthStore>((set, get) => ({
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))
       return { ok: false, error: "That doesn't look like a valid email." };
 
-    const { error } = await supabase.auth.resetPasswordForEmail(
-      email.trim().toLowerCase(),
-      {
-        redirectTo: `${
-          typeof window !== "undefined" ? window.location.origin : ""
-        }/dashboard/reset-password`,
-      }
-    );
-    if (error) return { ok: false, error: error.message };
-    return { ok: true };
+    // Server route: verifies the account exists, then sends the reset link
+    // from noreply@thenorthpay.com (Brevo) — not Supabase's generic mailer.
+    try {
+      const res = await fetch("/api/auth/reset-request", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        found?: boolean;
+        error?: string;
+      };
+      if (json.found === false)
+        return { ok: false, error: "No account found with this email." };
+      if (!res.ok || !json.ok)
+        return {
+          ok: false,
+          error: json.error ?? "Couldn't send the reset email. Please try again.",
+        };
+      return { ok: true };
+    } catch {
+      return {
+        ok: false,
+        error: "Network error — please check your connection and try again.",
+      };
+    }
   },
 
   resetPassword: async (newPassword) => {

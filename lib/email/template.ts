@@ -22,6 +22,69 @@ function money(n: number): string {
   })}`;
 }
 
+/**
+ * Apple-style password reset email — sent from noreply@thenorthpay.com via
+ * Brevo. One big button, a plain-text fallback link, and expiry note.
+ */
+export function buildPasswordResetEmailHtml(p: {
+  firstName?: string;
+  resetUrl: string;
+}): string {
+  const hi = p.firstName?.trim() ? `Hi ${p.firstName.trim()},` : "Hi,";
+  return `
+<div style="margin:0;padding:32px 16px;background:#f5f5f7;font-family:${FONT};-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;">
+    <tr><td>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:22px;border:1px solid ${HAIR};">
+        <tr><td style="padding:32px 32px 0;">
+          <span style="display:inline-block;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:${INK};">NorthPay</span>
+        </td></tr>
+
+        <tr><td style="padding:26px 32px 0;">
+          <h1 style="margin:0;font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-0.02em;color:${INK};">Reset your password</h1>
+          <p style="margin:10px 0 0;font-size:14px;line-height:1.6;color:${MUTED};">
+            ${hi} we received a request to reset your NorthPay password.
+            Tap the button below to choose a new one.
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:26px 32px 0;" align="center">
+          <a href="${p.resetUrl}"
+             style="display:inline-block;background:${INK};color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-0.01em;padding:14px 36px;border-radius:999px;">
+            Reset password
+          </a>
+        </td></tr>
+
+        <tr><td style="padding:22px 32px 0;">
+          <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED};">
+            Button not working? Copy and paste this link into your browser:<br/>
+            <a href="${p.resetUrl}" style="color:${MUTED};word-break:break-all;">${p.resetUrl}</a>
+          </p>
+        </td></tr>
+
+        <tr><td style="padding:22px 32px 34px;">
+          <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED};">
+            This link expires in 1 hour and can be used once. If you didn't
+            request this, you can safely ignore this email — your password
+            won't change.
+          </p>
+        </td></tr>
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="padding:20px 28px;text-align:center;">
+          <p style="margin:0;font-size:11px;line-height:1.6;color:#a1a1a6;">
+            Sent by NorthPay · thenorthpay.com
+          </p>
+        </td></tr>
+      </table>
+
+    </td></tr>
+  </table>
+</div>`;
+}
+
 export interface PayrollSummaryParams {
   companyName: string;
   /** Pre-formatted pay-period range. */
