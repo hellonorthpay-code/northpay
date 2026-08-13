@@ -30,52 +30,66 @@ export function buildPasswordResetEmailHtml(p: {
   firstName?: string;
   resetUrl: string;
 }): string {
-  const hi = p.firstName?.trim() ? `Hi ${p.firstName.trim()},` : "Hi,";
+  const hi = p.firstName?.trim() ? `Hi ${p.firstName.trim()}` : "Hi";
   return `
-<div style="margin:0;padding:32px 16px;background:#f5f5f7;font-family:${FONT};-webkit-font-smoothing:antialiased;">
-  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;">
+<div style="margin:0;padding:40px 16px;background:#f5f5f7;font-family:${FONT};-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;margin:0 auto;">
     <tr><td>
 
-      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:22px;border:1px solid ${HAIR};">
-        <tr><td style="padding:32px 32px 0;">
-          <span style="display:inline-block;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:${INK};">NorthPay</span>
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:24px;border:1px solid ${HAIR};">
+
+        <!-- Wordmark -->
+        <tr><td style="padding:36px 36px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="30" height="30" align="center" valign="middle"
+                  style="background:${INK};border-radius:9px;font-size:15px;font-weight:700;color:#ffffff;line-height:30px;">N</td>
+              <td style="padding-left:10px;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:${INK};">NorthPay</td>
+            </tr>
+          </table>
         </td></tr>
 
-        <tr><td style="padding:26px 32px 0;">
-          <h1 style="margin:0;font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-0.02em;color:${INK};">Reset your password</h1>
-          <p style="margin:10px 0 0;font-size:14px;line-height:1.6;color:${MUTED};">
-            ${hi} we received a request to reset your NorthPay password.
-            Tap the button below to choose a new one.
+        <!-- Heading + copy -->
+        <tr><td style="padding:32px 36px 0;">
+          <h1 style="margin:0;font-size:26px;line-height:1.15;font-weight:600;letter-spacing:-0.02em;color:${INK};">
+            Reset your password
+          </h1>
+          <p style="margin:12px 0 0;font-size:14px;line-height:1.65;color:${MUTED};">
+            ${hi} — tap the button below to choose a new password for your
+            NorthPay account.
           </p>
         </td></tr>
 
-        <tr><td style="padding:26px 32px 0;" align="center">
+        <!-- Button -->
+        <tr><td style="padding:28px 36px 0;">
           <a href="${p.resetUrl}"
-             style="display:inline-block;background:${INK};color:#ffffff;text-decoration:none;font-size:15px;font-weight:600;letter-spacing:-0.01em;padding:14px 36px;border-radius:999px;">
+             style="display:block;background:${INK};color:#ffffff;text-decoration:none;text-align:center;font-size:15px;font-weight:600;letter-spacing:-0.01em;padding:15px 0;border-radius:999px;">
             Reset password
           </a>
-        </td></tr>
-
-        <tr><td style="padding:22px 32px 0;">
-          <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED};">
-            Button not working? Copy and paste this link into your browser:<br/>
-            <a href="${p.resetUrl}" style="color:${MUTED};word-break:break-all;">${p.resetUrl}</a>
+          <p style="margin:14px 0 0;text-align:center;font-size:12px;color:${MUTED};">
+            Button not working?
+            <a href="${p.resetUrl}" style="color:${INK};font-weight:500;text-decoration:underline;">Open the reset page</a>
           </p>
         </td></tr>
 
-        <tr><td style="padding:22px 32px 34px;">
-          <p style="margin:0;font-size:12px;line-height:1.6;color:${MUTED};">
-            This link expires in 1 hour and can be used once. If you didn't
-            request this, you can safely ignore this email — your password
-            won't change.
-          </p>
+        <!-- Fine print -->
+        <tr><td style="padding:28px 36px 34px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="border-top:1px solid ${HAIR};padding-top:18px;">
+              <p style="margin:0;font-size:12px;line-height:1.65;color:${MUTED};">
+                This link expires in 1 hour and can only be used once.
+                Didn&rsquo;t request it? You can safely ignore this email —
+                your password won&rsquo;t change.
+              </p>
+            </td></tr>
+          </table>
         </td></tr>
       </table>
 
       <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-        <tr><td style="padding:20px 28px;text-align:center;">
+        <tr><td style="padding:22px 28px;text-align:center;">
           <p style="margin:0;font-size:11px;line-height:1.6;color:#a1a1a6;">
-            Sent by NorthPay · thenorthpay.com
+            Sent by NorthPay · <a href="https://www.thenorthpay.com" style="color:#a1a1a6;">thenorthpay.com</a>
           </p>
         </td></tr>
       </table>

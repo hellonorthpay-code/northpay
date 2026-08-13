@@ -47,14 +47,14 @@ export async function POST(request: Request) {
   const origin =
     request.headers.get("origin") ||
     new URL(request.url).origin ||
-    "https://thenorthpay.com";
+    "https://www.thenorthpay.com";
   const redirectTo = `${origin}/dashboard/reset-password`;
 
   const admin = createClient(url, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Generate the recovery link WITHOUT sending Supabase's email. This also
+  // Generate the recovery token WITHOUT sending Supabase's email. This also
   // tells us definitively whether the account exists.
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",
@@ -69,13 +69,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const actionLink = data.properties?.action_link;
-  if (!actionLink) {
+  // IMPORTANT: we do NOT email Supabase's action_link. That link is a
+  // one-time GET through supabase.co/auth/v1/verify — email scanners
+  // (Gmail, Outlook SafeLinks) pre-fetch it, consuming the token before the
+  // user clicks ("otp_expired"), and its redirect depends on the project's
+  // Site URL config. Instead we link straight to OUR reset page with the
+  // hashed token; the page exchanges it via verifyOtp() in JS on load,
+  // which scanners don't execute.
+  const hashedToken = data.properties?.hashed_token;
+  if (!hashedToken) {
     return NextResponse.json(
       { error: "Could not create a reset link." },
       { status: 500 }
     );
   }
+  const resetUrl = `${redirectTo}?token_hash=${encodeURIComponent(hashedToken)}`;
 
   const firstName =
     (data.user?.user_metadata?.first_name as string | undefined) ??
@@ -88,7 +96,7 @@ export async function POST(request: Request) {
       toEmail: email,
       toName: firstName || email,
       subject: "Reset your NorthPay password",
-      html: buildPasswordResetEmailHtml({ firstName, resetUrl: actionLink }),
+      html: buildPasswordResetEmailHtml({ firstName, resetUrl }),
     });
     if (!result.ok) {
       return NextResponse.json(

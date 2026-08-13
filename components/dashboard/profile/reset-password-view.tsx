@@ -63,6 +63,37 @@ export function ResetPasswordView() {
       return;
     }
 
+    // Our reset emails link here directly with ?token_hash=… (never through
+    // Supabase's /verify redirect, which email scanners pre-click and burn).
+    // Exchange it for a recovery session now — scanners don't execute JS, so
+    // the token survives until the person actually opens the page.
+    const tokenHash = query.get("token_hash");
+    if (tokenHash) {
+      void supabase.auth
+        .verifyOtp({ type: "recovery", token_hash: tokenHash })
+        .then(async ({ error }) => {
+          if (settled.current) return;
+          if (!error) {
+            settled.current = true;
+            setLinkState("ready");
+            return;
+          }
+          // Token already used (e.g. the link was opened twice) — if this
+          // browser still holds the recovery session, let them proceed.
+          const {
+            data: { session },
+          } = await supabase.auth.getSession();
+          settled.current = true;
+          if (session) {
+            setLinkState("ready");
+          } else {
+            setLinkError("This reset link is invalid or has expired.");
+            setLinkState("invalid");
+          }
+        });
+      return;
+    }
+
     // Wait for Supabase to turn the link into a session (it processes the
     // URL asynchronously on load). Listen for the auth event AND poll as a
     // fallback; give up after ~6s.
