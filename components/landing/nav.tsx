@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { User } from "lucide-react";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
+import { isRecovery, RESET_PATH } from "@/lib/auth/recovery";
 import { cn } from "@/lib/utils";
 
 // No framer-motion here so the desktop nav doesn't pull framer onto the
@@ -40,6 +41,13 @@ export function LandingNav() {
   const initials =
     (profile.firstName[0] ?? "").toUpperCase() +
     (profile.lastName[0] ?? "").toUpperCase();
+
+  // A password-reset session is a real session — hide the nav so it can't be
+  // used to walk into the app before a new password is actually set.
+  const [inRecovery, setInRecovery] = useState(false);
+  useEffect(() => {
+    setInRecovery(isRecovery() || pathname === RESET_PATH);
+  }, [pathname]);
 
   // ── Sliding highlight ──
   // Measure the active item relative to the nav and glide the pill to it.
@@ -82,6 +90,8 @@ export function LandingNav() {
     // Re-measure when the active item, auth state (adds/removes "Start
     // tracking"), or initials (avatar swap) change the nav's layout.
   }, [active, isAuthed, initials]);
+
+  if (inRecovery) return null;
 
   return (
     <header className="pointer-events-none fixed inset-x-0 top-4 z-40 hidden justify-center duration-500 animate-in fade-in slide-in-from-top-2 md:flex">

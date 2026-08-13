@@ -17,6 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAuth } from "@/lib/store/auth";
 import { supabase } from "@/lib/supabase/client";
+import { clearRecovery, markRecovery } from "@/lib/auth/recovery";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -59,6 +60,7 @@ export function ResetPasswordView() {
         desc?.replace(/\+/g, " ") ??
           "This reset link is invalid or has expired."
       );
+      clearRecovery();
       setLinkState("invalid");
       return;
     }
@@ -75,6 +77,7 @@ export function ResetPasswordView() {
           if (settled.current) return;
           if (!error) {
             settled.current = true;
+            markRecovery();
             setLinkState("ready");
             return;
           }
@@ -85,9 +88,11 @@ export function ResetPasswordView() {
           } = await supabase.auth.getSession();
           settled.current = true;
           if (session) {
+            markRecovery();
             setLinkState("ready");
           } else {
             setLinkError("This reset link is invalid or has expired.");
+            clearRecovery();
             setLinkState("invalid");
           }
         });
@@ -101,6 +106,7 @@ export function ResetPasswordView() {
       if (settled.current) return;
       if (session) {
         settled.current = true;
+        markRecovery();
         setLinkState("ready");
       }
     });
@@ -116,6 +122,7 @@ export function ResetPasswordView() {
       } = await supabase.auth.getSession();
       if (session) {
         settled.current = true;
+        markRecovery();
         setLinkState("ready");
         clearInterval(poll);
         return;
@@ -123,6 +130,7 @@ export function ResetPasswordView() {
       tries += 1;
       if (tries >= 12) {
         settled.current = true;
+        clearRecovery();
         setLinkState("invalid");
         clearInterval(poll);
       }
@@ -156,12 +164,23 @@ export function ResetPasswordView() {
       return;
     }
 
-    // Success → show the confirmation, end the recovery session, and send
-    // them back to sign in with their new password.
+    // Success → show the confirmation, release the lock, end the recovery
+    // session, and send them back to sign in with their new password.
     setDone(true);
     setBusy(false);
+    clearRecovery();
     await supabase.auth.signOut();
     setTimeout(() => router.replace("/login"), 2200);
+  }
+
+  /**
+   * Leaving without setting a password. The recovery session must not
+   * survive — otherwise the visitor stays silently signed in.
+   */
+  async function abandon() {
+    clearRecovery();
+    await supabase.auth.signOut();
+    router.replace("/login");
   }
 
   return (
@@ -197,12 +216,13 @@ export function ResetPasswordView() {
                 "Reset links expire after 1 hour and can only be used once."}{" "}
               Request a new one and try again.
             </p>
-            <Link
-              href="/login"
+            <button
+              type="button"
+              onClick={abandon}
               className="mt-6 inline-flex h-11 items-center justify-center rounded-full bg-foreground px-6 text-[13.5px] font-semibold text-background transition-transform duration-200 hover:scale-[1.02] active:scale-95"
             >
               Request a new link
-            </Link>
+            </button>
           </div>
         )}
 
@@ -302,13 +322,16 @@ export function ResetPasswordView() {
               </Button>
             </form>
 
-            <Link
-              href="/login"
-              className="mt-3 flex items-center justify-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+            {/* Signs the recovery session out — leaving this screen must
+                never leave the visitor quietly logged in. */}
+            <button
+              type="button"
+              onClick={abandon}
+              className="mt-3 flex w-full items-center justify-center gap-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:text-foreground"
             >
               <ArrowLeft className="h-3 w-3" />
               Back to sign in
-            </Link>
+            </button>
           </div>
         )}
       </section>

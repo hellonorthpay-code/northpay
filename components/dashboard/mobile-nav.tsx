@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Landmark, Play, Settings, Users } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
+import { isRecovery, RESET_PATH } from "@/lib/auth/recovery";
 import { cn } from "@/lib/utils";
 
 type Tab = {
@@ -37,6 +38,13 @@ export function MobileNav() {
     hydrateAuth();
   }, [hydrateAuth]);
 
+  // A password-reset session is a real session — hide the nav so it can't be
+  // used to walk into the app before a new password is actually set.
+  const [inRecovery, setInRecovery] = useState(false);
+  useEffect(() => {
+    setInRecovery(isRecovery() || pathname === RESET_PATH);
+  }, [pathname]);
+
   const isAuthed = !!user;
   const visibleTabs = tabs.filter((t) => (t.requiresAuth ? isAuthed : true));
 
@@ -52,6 +60,8 @@ export function MobileNav() {
       );
     return pathname === tab.href || pathname.startsWith(tab.href + "/");
   }
+
+  if (inRecovery) return null;
 
   return (
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">

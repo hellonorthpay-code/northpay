@@ -30,7 +30,10 @@ export default function DashboardLayout({
   // Sidebar (Employees/Payroll/CRA/Settings) is the payroll workflow nav — it
   // doesn't belong on personal-account / full-canvas pages.
   const hideSidebar = isProfile || isResetPassword || isWelcome;
-  const hideTopbar = isWelcome || (isResetPassword && !user);
+  // Reset-password always hides the topbar — the recovery session is a real
+  // session, so any nav link there would drop the visitor into the app
+  // without a new password ever being set.
+  const hideTopbar = isWelcome || isResetPassword;
   const isLoginCard = (isResetPassword || isWelcome) && !user;
 
   useEffect(() => {

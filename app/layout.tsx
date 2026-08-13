@@ -5,6 +5,7 @@ import { LandingNav } from "@/components/landing/nav";
 import { MobileNav } from "@/components/dashboard/mobile-nav";
 import { MobileLoginButton } from "@/components/landing/mobile-login-button";
 import { RouteProgressBar } from "@/components/page-transition";
+import { RecoveryGuard } from "@/components/recovery-guard";
 
 export const metadata: Metadata = {
   title: "NorthPay — Canadian Payroll. Finally Beautiful.",
@@ -35,6 +36,10 @@ export default function RootLayout({
             wrapping the sticky-scroll homepage in AnimatePresence broke its
             scroll measurement on soft navigation (blank until refresh). */}
         <RouteProgressBar />
+        {/* Keeps a password-reset session locked to the reset screen — that
+            session is real, so any nav would otherwise log the visitor in
+            without a new password ever being set. */}
+        <RecoveryGuard />
         <LandingNav />
         <MobileLoginButton />
         {children}
