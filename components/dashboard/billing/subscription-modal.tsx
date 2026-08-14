@@ -67,33 +67,33 @@ export function SubscriptionModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[92vw] gap-5 sm:max-w-md">
+      <DialogContent className="max-w-[88vw] gap-2.5 p-4 max-h-[80vh] overflow-y-auto scrollbar-none sm:max-w-md sm:gap-5 sm:p-7">
         <DialogHeader>
-          <DialogTitle>Subscription</DialogTitle>
+          <DialogTitle className="text-[17px] sm:text-xl">Subscription</DialogTitle>
         </DialogHeader>
 
         {/* Plan hero */}
-        <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-background/60 p-5">
+        <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-background/60 p-3.5 sm:p-5">
           <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/30 blur-2xl dark:bg-rose-500/10" />
           <div className="relative flex items-start justify-between gap-3">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                 NorthPay Monthly
               </p>
-              <p className="mt-2 text-[30px] font-semibold leading-none tracking-tightest tabular-nums">
+              <p className="mt-1 text-[23px] font-semibold leading-none tracking-tightest tabular-nums sm:text-[30px]">
                 $9.99
                 <span className="text-[14px] font-medium text-muted-foreground">
                   {" "}
                   CAD / month
                 </span>
               </p>
-              <p className="mt-2 text-[12px] text-muted-foreground">
+              <p className="mt-1.5 text-[11px] text-muted-foreground">
                 Unlimited employees · payroll runs · paystub emails
               </p>
             </div>
             <span
               className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.1em]",
+                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] sm:px-3 sm:py-1.5 sm:text-[11px]",
                 isActive
                   ? "bg-success/15 text-success"
                   : billing.status === "trial"
@@ -143,14 +143,14 @@ export function SubscriptionModal({
 
         {/* Recent invoices — sample */}
         <div>
-          <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <p className="mb-1 px-1 text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Recent invoices
           </p>
           <div className="overflow-hidden rounded-2xl border border-border/60">
             <InvoiceRow period="July 2026" amount="$9.99" />
             <InvoiceRow period="June 2026" amount="$9.99" last />
           </div>
-          <p className="mt-2 px-1 text-[10.5px] text-muted-foreground/70">
+          <p className="mt-1 px-1 text-[9.5px] leading-relaxed sm:text-[10px] text-muted-foreground/70">
             Sample data — live billing details appear here once your
             subscription is running.
           </p>
@@ -163,14 +163,14 @@ export function SubscriptionModal({
         )}
 
         {/* Actions */}
-        <div className="space-y-2">
+        <div className="space-y-1.5 sm:space-y-2">
           {isActive || billing.hasCustomer ? (
             <motion.button
               whileTap={{ scale: 0.97 }}
               type="button"
               disabled={busy !== null}
               onClick={() => run("portal")}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground text-[14px] font-semibold text-background transition-colors disabled:opacity-60"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground text-[13.5px] font-semibold text-background transition-colors disabled:opacity-60 sm:h-12 sm:text-[14px]"
             >
               <CreditCard className="h-4 w-4" />
               {busy === "portal" ? "Opening…" : "Manage billing"}
@@ -181,7 +181,7 @@ export function SubscriptionModal({
               type="button"
               disabled={busy !== null}
               onClick={() => run("checkout")}
-              className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground text-[14px] font-semibold text-background transition-colors disabled:opacity-60"
+              className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground text-[13.5px] font-semibold text-background transition-colors disabled:opacity-60 sm:h-12 sm:text-[14px]"
             >
               {busy === "checkout" ? "Opening…" : "Subscribe now"}
               <ArrowUpRight className="h-4 w-4" />
@@ -192,18 +192,11 @@ export function SubscriptionModal({
             type="button"
             disabled={busy !== null}
             onClick={() => run("portal")}
-            className="flex h-11 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[13px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60"
+            className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium sm:h-11 sm:text-[13px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11"
           >
             {isActive ? "Cancel subscription" : "View billing portal"}
           </button>
 
-          <button
-            type="button"
-            onClick={() => onOpenChange(false)}
-            className="flex h-10 w-full items-center justify-center rounded-full text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Close
-          </button>
         </div>
       </DialogContent>
     </Dialog>
@@ -224,7 +217,7 @@ function DetailRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 bg-background/50 px-4 py-3",
+        "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
         !last && "border-b border-border/50"
       )}
     >
@@ -251,7 +244,7 @@ function InvoiceRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 bg-background/50 px-4 py-3",
+        "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
         !last && "border-b border-border/50"
       )}
     >

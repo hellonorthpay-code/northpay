@@ -71,7 +71,16 @@ export default function DashboardLayout({
           {/* Hide topbar on login/welcome — those are full-canvas moments
               where the title label would be noise. */}
           {!hideTopbar && <Topbar />}
-          <div className="min-h-0 flex-1">{children}</div>
+          {/* Keyed by route: each tab's page eases in (fade + small rise)
+              instead of snapping. Pure CSS (tailwindcss-animate) — the
+              animation ends at the identity state, so no residual transform
+              lingers over inputs (the mobile-caret rule). */}
+          <div
+            key={pathname}
+            className="min-h-0 flex-1 duration-300 ease-out animate-in fade-in slide-in-from-bottom-2"
+          >
+            {children}
+          </div>
         </div>
       </div>
     </div>
