@@ -13,6 +13,9 @@ export interface BillingStatus {
   status: "active" | "trial" | "expired";
   trialDaysLeft?: number;
   hasCustomer: boolean;
+  /** True only for accounts in the billing pilot (BILLING_TEST_EMAILS) —
+   *  everyone else must see zero billing UI. */
+  pilot: boolean;
 }
 
 async function authedFetch(path: string, init?: RequestInit) {
@@ -39,6 +42,7 @@ export function useBilling(): BillingStatus {
     entitled: true,
     status: "active",
     hasCustomer: false,
+    pilot: false,
   });
 
   useEffect(() => {
@@ -58,6 +62,7 @@ export function useBilling(): BillingStatus {
           status: (j.status as BillingStatus["status"]) ?? "active",
           trialDaysLeft: j.trialDaysLeft,
           hasCustomer: !!j.hasCustomer,
+          pilot: !!j.pilot,
         });
       })
       .catch(() => {

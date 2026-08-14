@@ -21,7 +21,12 @@ export async function GET(request: Request) {
   }
 
   if (!billingConfigured()) {
-    return NextResponse.json({ configured: false, entitled: true, status: "active" });
+    return NextResponse.json({
+      configured: false,
+      entitled: true,
+      status: "active",
+      pilot: false,
+    });
   }
 
   const token = (request.headers.get("authorization") ?? "")
@@ -48,10 +53,12 @@ export async function GET(request: Request) {
     .filter(Boolean);
   const email = (user.email ?? "").toLowerCase();
   if (testList.length > 0 && !testList.includes(email)) {
+    // Not in the pilot — fully entitled AND sees no billing UI at all.
     return NextResponse.json({
       configured: true,
       entitled: true,
       status: "active",
+      pilot: false,
     });
   }
 
@@ -77,6 +84,7 @@ export async function GET(request: Request) {
       configured: true,
       entitled: true,
       status: "active",
+      pilot: true,
       hasCustomer,
     });
   }
@@ -90,6 +98,7 @@ export async function GET(request: Request) {
       entitled: true,
       status: "trial",
       trialDaysLeft: Math.max(1, Math.ceil((trialEnds - now) / DAY_MS)),
+      pilot: true,
       hasCustomer,
     });
   }
@@ -98,6 +107,7 @@ export async function GET(request: Request) {
     configured: true,
     entitled: false,
     status: "expired",
+    pilot: true,
     hasCustomer,
   });
 }

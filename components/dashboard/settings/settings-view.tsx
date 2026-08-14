@@ -24,6 +24,7 @@ import {
 } from "@/lib/payroll/types";
 import { cn } from "@/lib/utils";
 import { BillingSettingsCard } from "@/components/dashboard/billing/billing";
+import { SubscriptionSettingsRow } from "@/components/dashboard/billing/subscription-modal";
 
 const ease = [0.32, 0.72, 0, 1] as const;
 
@@ -275,6 +276,10 @@ export function SettingsView() {
             </Link>
           </div>
         </AccordionSection>
+
+        {/* Subscription — pilot accounts only (BILLING_TEST_EMAILS); opens
+            the plan pop-up with status, sample details, and actions. */}
+        <SubscriptionSettingsRow />
       </div>
     </>
   );

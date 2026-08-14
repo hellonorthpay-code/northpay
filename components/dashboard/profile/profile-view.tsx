@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/select";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
+import { SubscriptionCard } from "@/components/dashboard/billing/subscription-modal";
 import { cn, formatDate } from "@/lib/utils";
 
 const ease = [0.22, 1, 0.36, 1] as const;
@@ -363,6 +364,9 @@ export function ProfileView() {
           <ChevronRight className="h-5 w-5 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
         </Link>
       </motion.div>
+
+      {/* ── Subscription — pilot accounts only (BILLING_TEST_EMAILS) ── */}
+      <SubscriptionCard delay={0.34} />
         </div>
       </div>
     </div>

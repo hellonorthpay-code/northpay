@@ -19,8 +19,10 @@ export function UpgradeBanner() {
   const billing = useBilling();
   const [busy, setBusy] = useState(false);
 
-  // Only block when billing is actually configured AND the user is not entitled.
-  if (!billing.configured || billing.entitled || billing.loading) return null;
+  // Only block when billing is actually configured AND the user is not
+  // entitled — and only ever for pilot accounts (BILLING_TEST_EMAILS).
+  if (!billing.configured || !billing.pilot || billing.entitled || billing.loading)
+    return null;
 
   return (
     <motion.div
@@ -63,7 +65,8 @@ export function UpgradeBanner() {
 /** Trial-days pill for the top of Payroll — gentle nudge, not a block. */
 export function TrialBadge() {
   const billing = useBilling();
-  if (!billing.configured || billing.status !== "trial") return null;
+  if (!billing.configured || !billing.pilot || billing.status !== "trial")
+    return null;
   return (
     <div className="inline-flex items-center gap-1.5 rounded-full border border-border/70 bg-background/70 px-3 py-1.5 text-[12px] font-medium text-muted-foreground shadow-soft">
       <Sparkles className="h-3.5 w-3.5" />
@@ -79,8 +82,8 @@ export function BillingSettingsCard() {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  // Hide entirely until Stripe is configured (nothing to manage yet).
-  if (!billing.configured) return null;
+  // Hide until Stripe is configured, and always for non-pilot accounts.
+  if (!billing.configured || !billing.pilot) return null;
 
   const label =
     billing.status === "active"
