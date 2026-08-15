@@ -22,7 +22,6 @@ import {
   type ProvinceCode,
 } from "@/lib/payroll/types";
 import { cn } from "@/lib/utils";
-import { BillingSettingsCard } from "@/components/dashboard/billing/billing";
 import { SubscriptionSettingsRow } from "@/components/dashboard/billing/subscription-modal";
 
 const ease = [0.32, 0.72, 0, 1] as const;
@@ -192,6 +191,11 @@ export function SettingsView() {
         </Select>
       </Field>
 
+      {/* Billing lives with the other account-level controls rather than as
+          a separate banner above the grid. Renders nothing for non-pilot
+          accounts, so the group simply ends at the tax-tables note. */}
+      <SubscriptionSettingsRow />
+
       <div className="mt-2 rounded-2xl border border-border/60 bg-muted/30 p-4 text-[12.5px]">
         <p className="font-medium tracking-tight">2026 tax tables</p>
         <p className="mt-1 leading-relaxed text-muted-foreground">
@@ -203,12 +207,6 @@ export function SettingsView() {
 
   return (
     <>
-      {/* Billing — full width above the grids. Renders nothing until Stripe
-          is configured, so it stays invisible until billing is turned on. */}
-      <div className="mb-5">
-        <BillingSettingsCard />
-      </div>
-
       {/* ── Desktop: 3-col grid (unchanged) ── */}
       <div className="hidden gap-5 lg:grid lg:grid-cols-2">
         <SettingsGroup icon={Building2} title="Company" subtitle="The legal identity used on paystubs and remittances.">
@@ -258,10 +256,6 @@ export function SettingsView() {
             </Link>
           </div>
         </AccordionSection>
-
-        {/* Subscription — pilot accounts only (BILLING_TEST_EMAILS); opens
-            the plan pop-up with status, sample details, and actions. */}
-        <SubscriptionSettingsRow />
       </div>
     </>
   );
