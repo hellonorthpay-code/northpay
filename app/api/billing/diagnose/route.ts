@@ -122,10 +122,50 @@ export async function GET(request: Request) {
     };
   }
 
+  // Has anyone actually subscribed? Answers "is the payment loop working"
+  // without guessing. Never exposes card data — status/amount/dates only.
+  if (key && nonAsciiReport(key).length === 0) {
+    try {
+      const res = await fetch(
+        `${STRIPE_API}/subscriptions?limit=5&status=all`,
+        { headers: { Authorization: `Bearer ${key}` } }
+      );
+      if (res.ok) {
+        const j = (await res.json()) as {
+          data?: Array<{
+            id: string;
+            status: string;
+            created: number;
+            current_period_end?: number;
+            items?: { data?: Array<{ price?: { unit_amount?: number; currency?: string } }> };
+          }>;
+        };
+        report.subscriptions = {
+          count: j.data?.length ?? 0,
+          list: (j.data ?? []).map((s) => ({
+            id: s.id,
+            status: s.status,
+            created: new Date(s.created * 1000).toISOString().slice(0, 16),
+            renews: s.current_period_end
+              ? new Date(s.current_period_end * 1000).toISOString().slice(0, 10)
+              : null,
+            amount: s.items?.data?.[0]?.price?.unit_amount
+              ? s.items.data[0].price!.unit_amount! / 100
+              : null,
+            currency: s.items?.data?.[0]?.price?.currency,
+          })),
+        };
+      }
+    } catch {
+      /* non-fatal */
+    }
+  }
+
   const ready =
     (report.stripeAuth as { ok?: boolean } | undefined)?.ok === true &&
     (report.price as { ok?: boolean } | undefined)?.ok === true &&
-    !!webhookSecret;
+    !!webhookSecret &&
+    nonAsciiReport(webhookSecret).length === 0;
 
   return NextResponse.json({ ready, ...report });
 }
