@@ -89,6 +89,60 @@ export async function GET(request: Request) {
     });
   }
 
+  // ── Self-heal: ask Stripe directly before declaring the trial over ──
+  //
+  // Webhooks can fail (wrong URL, redirect, outage, signature drift). If that
+  // happens we must NOT lock out someone who has actually paid, so when the
+  // local row isn't active we reconcile against Stripe as the source of
+  // truth — and write the result back so later reads are fast.
+  if (sub?.stripe_customer_id && process.env.STRIPE_SECRET_KEY) {
+    try {
+      const res = await fetch(
+        `https://api.stripe.com/v1/subscriptions?customer=${encodeURIComponent(
+          sub.stripe_customer_id
+        )}&status=all&limit=10`,
+        { headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` } }
+      );
+      if (res.ok) {
+        const json = (await res.json()) as {
+          data?: Array<{
+            id: string;
+            status: string;
+            current_period_end?: number;
+          }>;
+        };
+        const live = (json.data ?? []).find((s) =>
+          paidStatuses.includes(s.status)
+        );
+        if (live) {
+          const periodEnd = live.current_period_end
+            ? new Date(live.current_period_end * 1000).toISOString()
+            : null;
+          await admin
+            .from("subscriptions")
+            .update({
+              stripe_subscription_id: live.id,
+              status: live.status,
+              current_period_end: periodEnd,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("owner_id", user.id);
+
+          return NextResponse.json({
+            configured: true,
+            entitled: true,
+            status: "active",
+            pilot: true,
+            hasCustomer,
+            reconciled: true,
+          });
+        }
+      }
+    } catch {
+      // Non-fatal: fall through to trial/expired below.
+    }
+  }
+
   // Free trial — time-based from signup, no card.
   const created = user.created_at ? new Date(user.created_at).getTime() : now;
   const trialEnds = created + TRIAL_DAYS * DAY_MS;
