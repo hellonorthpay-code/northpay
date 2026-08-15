@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   useBilling,
+  useBillingSummary,
   startCheckout,
   openBillingPortal,
 } from "@/lib/billing/client";
@@ -36,9 +37,9 @@ const ease = [0.22, 1, 0.36, 1] as const;
 // is in BILLING_TEST_EMAILS (billing.pilot).
 //
 // ACTIVE renders a dark "membership card" so paying feels like joining
-// something. Invoices are NOT faked for active members — that row deep-links
-// to Stripe's portal, which holds the real receipts. The card/renewal rows
-// remain sample values in the inactive state only, and say so.
+// something. Every value shown — card brand/last4, renewal date, invoices and
+// their PDF links — comes from Stripe via /api/billing/summary. Nothing is
+// placeholder data: an unknown value hides its row rather than inventing one.
 // ─────────────────────────────────────────────────────────────────────────
 
 export function SubscriptionModal({
@@ -54,6 +55,15 @@ export function SubscriptionModal({
   const [err, setErr] = useState<string | null>(null);
 
   const isActive = billing.status === "active";
+  // Real Stripe details — only fetched once billing is relevant to this user.
+  const summary = useBillingSummary(billing.pilot && billing.configured);
+
+  const renewalLabel = summary.subscription?.renewsAt
+    ? new Date(`${summary.subscription.renewsAt}T00:00:00`).toLocaleDateString(
+        "en-CA",
+        { month: "short", day: "numeric", year: "numeric" }
+      )
+    : null;
 
   async function run(kind: "checkout" | "portal") {
     setBusy(kind);
@@ -191,48 +201,62 @@ export function SubscriptionModal({
         </div>
         )}
 
-        {/* Details — sample data, labelled */}
-        <div className="overflow-hidden rounded-2xl border border-border/60">
-          <DetailRow
-            icon={CreditCard}
-            label="Payment method"
-            value="Visa •••• 4242"
-          />
-          <DetailRow
-            icon={CalendarClock}
-            label="Next renewal"
-            value="Aug 15, 2026"
-          />
-          <DetailRow
-            icon={Mail}
-            label="Billing email"
-            value={user?.email ?? "—"}
-            last
-          />
-        </div>
+        {/* Details — real Stripe values only. A row is omitted entirely
+            rather than shown with an invented value. */}
+        {(summary.card || renewalLabel || user?.email) && (
+          <div className="overflow-hidden rounded-2xl border border-border/60">
+            {summary.card && (
+              <DetailRow
+                icon={CreditCard}
+                label="Payment method"
+                value={`${cardBrand(summary.card.brand)} •••• ${summary.card.last4}`}
+              />
+            )}
+            {renewalLabel && (
+              <DetailRow
+                icon={CalendarClock}
+                label={
+                  summary.subscription?.cancelAtPeriodEnd
+                    ? "Access until"
+                    : "Next renewal"
+                }
+                value={renewalLabel}
+              />
+            )}
+            <DetailRow
+              icon={Mail}
+              label="Billing email"
+              value={summary.billingEmail ?? user?.email ?? "—"}
+              last
+            />
+          </div>
+        )}
 
-        {/* Invoices live in Stripe's portal — we deliberately do NOT invent
-            rows here. Showing a paying member fabricated "Paid" receipts is
-            both dishonest and the fastest way to make the product feel cheap. */}
-        {isActive ? (
-          <button
-            type="button"
-            disabled={busy !== null}
-            onClick={() => run("portal")}
-            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/60 px-4 py-3 text-left transition-colors hover:bg-muted/40 disabled:opacity-60"
-          >
-            <span className="flex items-center gap-2.5">
-              <Download className="h-4 w-4 text-muted-foreground" />
-              <span className="text-[13px] font-medium tracking-tight">
-                Invoices &amp; receipts
-              </span>
-            </span>
-            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
-          </button>
-        ) : (
-          <p className="px-1 text-[9.5px] leading-relaxed sm:text-[10px] text-muted-foreground/70">
-            Card and renewal details shown above are sample values until a
-            subscription is active.
+        {/* Real invoices, with real PDF links. */}
+        {summary.invoices.length > 0 && (
+          <div>
+            <p className="mb-1 px-1 text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Invoices
+            </p>
+            <div className="overflow-hidden rounded-2xl border border-border/60">
+              {summary.invoices.map((inv, i) => (
+                <InvoiceRow
+                  key={inv.id}
+                  date={inv.date}
+                  amount={inv.amount}
+                  currency={inv.currency}
+                  status={inv.status}
+                  pdf={inv.pdf}
+                  last={i === summary.invoices.length - 1}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {summary.loading && isActive && (
+          <p className="px-1 text-[11px] text-muted-foreground">
+            Loading billing details…
           </p>
         )}
 
@@ -401,5 +425,80 @@ export function SubscriptionSettingsRow() {
       </button>
       <SubscriptionModal open={open} onOpenChange={setOpen} />
     </>
+  );
+}
+
+function cardBrand(brand: string) {
+  const map: Record<string, string> = {
+    visa: "Visa",
+    mastercard: "Mastercard",
+    amex: "Amex",
+    discover: "Discover",
+    jcb: "JCB",
+    diners: "Diners",
+    unionpay: "UnionPay",
+  };
+  return map[brand?.toLowerCase()] ?? "Card";
+}
+
+function InvoiceRow({
+  date,
+  amount,
+  currency,
+  status,
+  pdf,
+  last,
+}: {
+  date: string;
+  amount: number;
+  currency: string;
+  status: string;
+  pdf: string | null;
+  last?: boolean;
+}) {
+  const label = new Date(`${date}T00:00:00`).toLocaleDateString("en-CA", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+  const paid = status === "paid";
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
+        !last && "border-b border-border/50"
+      )}
+    >
+      <div className="min-w-0">
+        <p className="truncate text-[13px] font-medium tracking-tight">{label}</p>
+        <p
+          className={cn(
+            "text-[11px] capitalize",
+            paid ? "text-success" : "text-muted-foreground"
+          )}
+        >
+          {status}
+        </p>
+      </div>
+      <div className="flex shrink-0 items-center gap-3">
+        <span className="text-[13px] font-medium tabular-nums">
+          ${amount.toFixed(2)}{" "}
+          <span className="text-[10px] uppercase text-muted-foreground">
+            {currency}
+          </span>
+        </span>
+        {pdf && (
+          <a
+            href={pdf}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-label={`Download invoice for ${label}`}
+            className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Download className="h-3.5 w-3.5" />
+          </a>
+        )}
+      </div>
+    </div>
   );
 }

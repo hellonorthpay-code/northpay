@@ -91,3 +91,73 @@ export async function openBillingPortal(): Promise<void> {
   if (json.url) window.location.href = json.url;
   else throw new Error(json.error || "Could not open billing portal.");
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Real billing details (card, renewal date, invoices) straight from Stripe.
+// Nothing here is ever a placeholder — unknown values come back null and the
+// UI omits the row rather than inventing one.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface BillingInvoice {
+  id: string;
+  date: string;
+  amount: number;
+  currency: string;
+  status: string;
+  pdf: string | null;
+}
+
+export interface BillingSummary {
+  loading: boolean;
+  hasCustomer: boolean;
+  subscription: {
+    status: string;
+    renewsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+  } | null;
+  card: { brand: string; last4: string } | null;
+  billingEmail: string | null;
+  invoices: BillingInvoice[];
+}
+
+/** Hook: the signed-in employer's real Stripe billing details. */
+export function useBillingSummary(enabled: boolean): BillingSummary {
+  const user = useAuth((s) => s.user);
+  const [state, setState] = useState<BillingSummary>({
+    loading: true,
+    hasCustomer: false,
+    subscription: null,
+    card: null,
+    billingEmail: null,
+    invoices: [],
+  });
+
+  useEffect(() => {
+    let alive = true;
+    if (!user || !enabled) {
+      setState((s) => ({ ...s, loading: false }));
+      return;
+    }
+    authedFetch("/api/billing/summary")
+      .then((r) => r.json())
+      .then((j) => {
+        if (!alive) return;
+        setState({
+          loading: false,
+          hasCustomer: !!j.hasCustomer,
+          subscription: j.subscription ?? null,
+          card: j.card ?? null,
+          billingEmail: j.billingEmail ?? null,
+          invoices: Array.isArray(j.invoices) ? j.invoices : [],
+        });
+      })
+      .catch(() => {
+        if (alive) setState((s) => ({ ...s, loading: false }));
+      });
+    return () => {
+      alive = false;
+    };
+  }, [user?.id, enabled]);
+
+  return state;
+}
