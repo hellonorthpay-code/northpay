@@ -33,10 +33,12 @@ const ease = [0.22, 1, 0.36, 1] as const;
 // Subscription pop-up + its entry rows (profile page & mobile Settings).
 //
 // Pilot-only: every component here renders null unless the signed-in account
-// is in BILLING_TEST_EMAILS (billing.pilot). The payment-method / invoice
-// rows are SAMPLE data for now — labelled as such — so the look and feel can
-// be reviewed before real Stripe data is wired through. The buttons are
-// real: Subscribe opens Stripe Checkout, Manage/Cancel open the portal.
+// is in BILLING_TEST_EMAILS (billing.pilot).
+//
+// ACTIVE renders a dark "membership card" so paying feels like joining
+// something. Invoices are NOT faked for active members — that row deep-links
+// to Stripe's portal, which holds the real receipts. The card/renewal rows
+// remain sample values in the inactive state only, and say so.
 // ─────────────────────────────────────────────────────────────────────────
 
 export function SubscriptionModal({
@@ -72,7 +74,74 @@ export function SubscriptionModal({
           <DialogTitle className="text-[17px] sm:text-xl">Subscription</DialogTitle>
         </DialogHeader>
 
-        {/* Plan hero */}
+        {/* ── Active: a premium, inverted membership card ──
+            Subscribing should feel like joining something, not like a status
+            field flipping to green. Deep ink surface, a slow sheen sweep, and
+            a check that draws itself in. */}
+        {isActive ? (
+          <motion.div
+            initial={{ opacity: 0, y: 10, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            transition={{ duration: 0.5, ease }}
+            className="relative overflow-hidden rounded-2xl bg-[#111113] p-4 text-white shadow-pop sm:p-5"
+          >
+            {/* Depth + colour bloom */}
+            <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-16 -left-10 h-40 w-40 rounded-full bg-sky-400/15 blur-3xl" />
+            {/* Sheen sweep */}
+            <motion.div
+              initial={{ x: "-120%" }}
+              animate={{ x: "220%" }}
+              transition={{ duration: 1.6, ease, delay: 0.35 }}
+              className="pointer-events-none absolute inset-y-0 w-1/3 -skew-x-12 bg-gradient-to-r from-transparent via-white/10 to-transparent"
+            />
+
+            <div className="relative">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/50">
+                    NorthPay Monthly
+                  </p>
+                  <p className="mt-2 text-[26px] font-semibold leading-none tracking-tightest tabular-nums sm:text-[32px]">
+                    $9.99
+                    <span className="text-[13px] font-medium text-white/50">
+                      {" "}
+                      CAD / month
+                    </span>
+                  </p>
+                </div>
+
+                {/* Drawn check */}
+                <motion.span
+                  initial={{ scale: 0.4, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ type: "spring", stiffness: 420, damping: 18, delay: 0.15 }}
+                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-400 text-[#111113] shadow-[0_0_22px_rgba(52,211,153,0.55)]"
+                >
+                  <Check className="h-[18px] w-[18px]" strokeWidth={3.2} />
+                </motion.span>
+              </div>
+
+              <motion.p
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, ease, delay: 0.28 }}
+                className="mt-4 text-[15px] font-semibold tracking-tight"
+              >
+                You&rsquo;re subscribed
+              </motion.p>
+              <p className="mt-0.5 text-[11.5px] leading-relaxed text-white/55">
+                Unlimited employees · payroll runs · paystub emails
+              </p>
+
+              <div className="mt-3.5 flex items-center gap-1.5 border-t border-white/10 pt-3 text-[11px] text-white/45">
+                <Sparkles className="h-3 w-3" />
+                Thanks for supporting NorthPay.
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+        /* Plan hero */
         <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-background/60 p-3.5 sm:p-5">
           <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-rose-200/30 blur-2xl dark:bg-rose-500/10" />
           <div className="relative flex items-start justify-between gap-3">
@@ -120,6 +189,7 @@ export function SubscriptionModal({
             </span>
           </div>
         </div>
+        )}
 
         {/* Details — sample data, labelled */}
         <div className="overflow-hidden rounded-2xl border border-border/60">
@@ -141,20 +211,30 @@ export function SubscriptionModal({
           />
         </div>
 
-        {/* Recent invoices — sample */}
-        <div>
-          <p className="mb-1 px-1 text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-            Recent invoices
+        {/* Invoices live in Stripe's portal — we deliberately do NOT invent
+            rows here. Showing a paying member fabricated "Paid" receipts is
+            both dishonest and the fastest way to make the product feel cheap. */}
+        {isActive ? (
+          <button
+            type="button"
+            disabled={busy !== null}
+            onClick={() => run("portal")}
+            className="flex w-full items-center justify-between gap-3 rounded-2xl border border-border/60 px-4 py-3 text-left transition-colors hover:bg-muted/40 disabled:opacity-60"
+          >
+            <span className="flex items-center gap-2.5">
+              <Download className="h-4 w-4 text-muted-foreground" />
+              <span className="text-[13px] font-medium tracking-tight">
+                Invoices &amp; receipts
+              </span>
+            </span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+          </button>
+        ) : (
+          <p className="px-1 text-[9.5px] leading-relaxed sm:text-[10px] text-muted-foreground/70">
+            Card and renewal details shown above are sample values until a
+            subscription is active.
           </p>
-          <div className="overflow-hidden rounded-2xl border border-border/60">
-            <InvoiceRow period="July 2026" amount="$9.99" />
-            <InvoiceRow period="June 2026" amount="$9.99" last />
-          </div>
-          <p className="mt-1 px-1 text-[9.5px] leading-relaxed sm:text-[10px] text-muted-foreground/70">
-            Sample data — live billing details appear here once your
-            subscription is running.
-          </p>
-        </div>
+        )}
 
         {err && (
           <p className="rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12px] font-medium text-destructive">
@@ -235,36 +315,6 @@ function DetailRow({
       <span className="truncate text-[13px] font-medium tracking-tight">
         {value}
       </span>
-    </div>
-  );
-}
-
-function InvoiceRow({
-  period,
-  amount,
-  last,
-}: {
-  period: string;
-  amount: string;
-  last?: boolean;
-}) {
-  return (
-    <div
-      className={cn(
-        "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
-        !last && "border-b border-border/50"
-      )}
-    >
-      <div>
-        <p className="text-[13px] font-medium tracking-tight">{period}</p>
-        <p className="text-[11px] text-success">Paid</p>
-      </div>
-      <div className="flex items-center gap-3">
-        <span className="text-[13px] font-medium tabular-nums">{amount}</span>
-        <span className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground/60 transition-colors hover:bg-muted hover:text-foreground">
-          <Download className="h-3.5 w-3.5" />
-        </span>
-      </div>
     </div>
   );
 }
