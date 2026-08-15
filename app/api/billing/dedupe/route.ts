@@ -1,16 +1,21 @@
 import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Duplicate-subscription cleanup — protected by CRON_SECRET.
 //
-//   GET /api/billing/dedupe?secret=<CRON_SECRET>          → dry run (reports)
-//   GET /api/billing/dedupe?secret=<CRON_SECRET>&apply=1  → cancels extras
+//   GET ?secret=…                 → dry run (reports, cancels nothing)
+//   GET ?secret=…&apply=1         → cancel duplicates, keep the oldest
+//   GET ?secret=…&apply=1&all=1   → cancel EVERY live subscription (clean slate)
 //
-// Keeps the OLDEST live subscription per customer (the one the member
-// actually intended) and cancels the rest immediately. Stripe lets the same
-// customer subscribe repeatedly, so before the checkout guard existed a
-// double-tap could stack charges. Dry run by default — nothing is cancelled
-// unless apply=1 is passed.
+// Stripe lets the same customer subscribe repeatedly, so before the checkout
+// guard existed a double-tap could stack charges. Default behaviour keeps the
+// OLDEST live subscription per customer and cancels the rest; `all=1` wipes
+// them for a from-scratch test. Dry run unless apply=1 — nothing is cancelled
+// by accident.
+//
+// Cancelled rows are also reset in Supabase so a stale "active" record can't
+// keep reporting entitlement after the subscription is gone.
 // ─────────────────────────────────────────────────────────────────────────
 
 const STRIPE = "https://api.stripe.com/v1";
@@ -27,6 +32,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Forbidden." }, { status: 403 });
   }
   const apply = params.get("apply") === "1";
+  const cancelAll = params.get("all") === "1";
 
   const headers = { Authorization: `Bearer ${key}` };
 
@@ -61,15 +67,15 @@ export async function GET(request: Request) {
   const cancelled: string[] = [];
   const wouldCancel: string[] = [];
 
-  for (const [, subs] of byCustomer) {
-    if (subs.length < 2) {
-      if (subs[0]) kept.push(subs[0].id);
-      continue;
-    }
-    // Oldest first — keep that one, cancel the rest.
+  const touchedCustomers = new Set<string>();
+
+  for (const [customer, subs] of byCustomer) {
+    // Oldest first. `all` cancels everything; otherwise keep the first.
     subs.sort((a, b) => a.created - b.created);
-    kept.push(subs[0].id);
-    for (const extra of subs.slice(1)) {
+    const doomed = cancelAll ? subs : subs.slice(1);
+    if (!cancelAll && subs[0]) kept.push(subs[0].id);
+
+    for (const extra of doomed) {
       if (!apply) {
         wouldCancel.push(extra.id);
         continue;
@@ -78,15 +84,46 @@ export async function GET(request: Request) {
         method: "DELETE",
         headers,
       });
-      if (del.ok) cancelled.push(extra.id);
+      if (del.ok) {
+        cancelled.push(extra.id);
+        touchedCustomers.add(customer);
+      }
+    }
+  }
+
+  // Clear local entitlement for customers left with no live subscription, so
+  // a stale "active" row can't keep granting access after cancellation.
+  let rowsReset = 0;
+  if (apply && cancelAll && touchedCustomers.size > 0) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseSecret = process.env.SUPABASE_SECRET_KEY;
+    if (url && supabaseSecret) {
+      const admin = createClient(url, supabaseSecret, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      for (const customer of touchedCustomers) {
+        const { error, count } = await admin
+          .from("subscriptions")
+          .update(
+            {
+              status: "canceled",
+              current_period_end: null,
+              updated_at: new Date().toISOString(),
+            },
+            { count: "exact" }
+          )
+          .eq("stripe_customer_id", customer);
+        if (!error) rowsReset += count ?? 0;
+      }
     }
   }
 
   return NextResponse.json({
-    mode: apply ? "applied" : "dry-run",
+    mode: apply ? (cancelAll ? "applied:all" : "applied:duplicates") : "dry-run",
     customers: byCustomer.size,
     kept,
     cancelled,
     wouldCancel,
+    rowsReset,
   });
 }
