@@ -164,7 +164,11 @@ export function SubscriptionModal({
 
         {/* Actions */}
         <div className="space-y-1.5 sm:space-y-2">
-          {isActive || billing.hasCustomer ? (
+          {/* Primary action is Checkout until a subscription is genuinely
+              ACTIVE. A Stripe customer record alone is not a subscription —
+              routing on hasCustomer sent people to the manage screen with
+              nothing to manage ("No invoice history") and no way to pay. */}
+          {isActive ? (
             <motion.button
               whileTap={{ scale: 0.97 }}
               type="button"
@@ -188,14 +192,17 @@ export function SubscriptionModal({
             </motion.button>
           )}
 
-          <button
-            type="button"
-            disabled={busy !== null}
-            onClick={() => run("portal")}
-            className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium sm:h-11 sm:text-[13px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11"
-          >
-            {isActive ? "Cancel subscription" : "View billing portal"}
-          </button>
+          {/* Only worth showing once Stripe actually has something to manage. */}
+          {billing.hasCustomer && (
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => run("portal")}
+              className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium sm:h-11 sm:text-[13px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11"
+            >
+              {isActive ? "Cancel subscription" : "View billing portal"}
+            </button>
+          )}
 
         </div>
       </DialogContent>

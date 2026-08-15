@@ -98,7 +98,9 @@ export function BillingSettingsCard() {
     setBusy(true);
     setErr(null);
     try {
-      if (billing.status === "active" || billing.hasCustomer) {
+      // Checkout stays primary until a subscription is genuinely active — a
+      // Stripe customer record alone is not a subscription.
+      if (billing.status === "active") {
         await openBillingPortal();
       } else {
         await startCheckout();
@@ -154,7 +156,7 @@ export function BillingSettingsCard() {
           onClick={primary}
           className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-[13px] font-medium text-background transition-transform duration-200 hover:scale-[1.02] active:scale-95 disabled:opacity-60"
         >
-          {billing.status === "active" || billing.hasCustomer ? (
+          {billing.status === "active" ? (
             <>Manage billing</>
           ) : (
             <>
