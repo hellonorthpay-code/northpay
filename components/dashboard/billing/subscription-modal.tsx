@@ -22,6 +22,7 @@ import {
 import {
   useBilling,
   useBillingSummary,
+  billingLabel,
   startCheckout,
   openBillingPortal,
 } from "@/lib/billing/client";
@@ -54,7 +55,9 @@ export function SubscriptionModal({
   const [busy, setBusy] = useState<"checkout" | "portal" | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  const isActive = billing.status === "active";
+  const isActive = billing.status === "active" || billing.status === "past_due";
+  const ending = !!billing.cancelAtPeriodEnd;
+  const label = billingLabel(billing);
   // Real Stripe details — only fetched once billing is relevant to this user.
   const summary = useBillingSummary(billing.pilot && billing.configured);
 
@@ -126,9 +129,18 @@ export function SubscriptionModal({
                   initial={{ scale: 0.4, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ type: "spring", stiffness: 420, damping: 18, delay: 0.15 }}
-                  className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-emerald-400 text-[#111113] shadow-[0_0_22px_rgba(52,211,153,0.55)]"
+                  className={cn(
+                    "grid h-9 w-9 shrink-0 place-items-center rounded-full text-[#111113]",
+                    ending
+                      ? "bg-amber-300 shadow-[0_0_22px_rgba(252,211,77,0.5)]"
+                      : "bg-emerald-400 shadow-[0_0_22px_rgba(52,211,153,0.55)]"
+                  )}
                 >
-                  <Check className="h-[18px] w-[18px]" strokeWidth={3.2} />
+                  {ending ? (
+                    <CalendarClock className="h-[18px] w-[18px]" strokeWidth={2.6} />
+                  ) : (
+                    <Check className="h-[18px] w-[18px]" strokeWidth={3.2} />
+                  )}
                 </motion.span>
               </div>
 
@@ -138,15 +150,19 @@ export function SubscriptionModal({
                 transition={{ duration: 0.45, ease, delay: 0.28 }}
                 className="mt-4 text-[15px] font-semibold tracking-tight"
               >
-                You&rsquo;re subscribed
+                {ending ? label.title : "You’re subscribed"}
               </motion.p>
               <p className="mt-0.5 text-[11.5px] leading-relaxed text-white/55">
-                Unlimited employees · payroll runs · paystub emails
+                {ending
+                  ? label.detail
+                  : "Unlimited employees · payroll runs · paystub emails"}
               </p>
 
               <div className="mt-3.5 flex items-center gap-1.5 border-t border-white/10 pt-3 text-[11px] text-white/45">
                 <Sparkles className="h-3 w-3" />
-                Thanks for supporting NorthPay.
+                {ending
+                  ? "You can resume any time before then."
+                  : "Thanks for supporting NorthPay."}
               </div>
             </div>
           </motion.div>
@@ -304,7 +320,11 @@ export function SubscriptionModal({
               onClick={() => run("portal")}
               className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium sm:h-11 sm:text-[13px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11"
             >
-              {isActive ? "Cancel subscription" : "View billing portal"}
+              {ending
+                ? "Resume subscription"
+                : isActive
+                ? "Cancel subscription"
+                : "View billing portal"}
             </button>
           )}
 
@@ -396,14 +416,7 @@ export function SubscriptionSettingsRow() {
 
   if (!billing.configured || !billing.pilot) return null;
 
-  const subtitle =
-    billing.status === "active"
-      ? "Active plan"
-      : billing.status === "trial"
-      ? `Free trial · ${billing.trialDaysLeft} day${
-          billing.trialDaysLeft === 1 ? "" : "s"
-        } left`
-      : "Trial ended";
+  const subtitle = billingLabel(billing).title;
 
   return (
     <>

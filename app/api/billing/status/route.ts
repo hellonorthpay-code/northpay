@@ -74,8 +74,76 @@ export async function GET(request: Request) {
   const now = Date.now();
   const hasCustomer = !!sub?.stripe_customer_id;
 
-  // Paid & current?
   const paidStatuses = ["active", "trialing", "past_due"];
+
+  // ── Live subscription shape, straight from Stripe ──
+  // A cancelled-but-not-yet-expired subscription still reports status
+  // "active" in Stripe (access runs to the period end). The UI must be able
+  // to say "Cancels on <date>" rather than a flat "Active", so we read the
+  // real subscription whenever this account has a customer.
+  let live: {
+    status: string;
+    renewsAt: string | null;
+    cancelAtPeriodEnd: boolean;
+  } | null = null;
+
+  if (hasCustomer && process.env.STRIPE_SECRET_KEY) {
+    try {
+      const res = await fetch(
+        `https://api.stripe.com/v1/subscriptions?customer=${encodeURIComponent(
+          sub!.stripe_customer_id as string
+        )}&status=all&limit=10`,
+        { headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` } }
+      );
+      if (res.ok) {
+        const json = (await res.json()) as {
+          data?: Array<{
+            id: string;
+            status: string;
+            current_period_end?: number;
+            cancel_at_period_end?: boolean;
+          }>;
+        };
+        const s = (json.data ?? []).find((x) => paidStatuses.includes(x.status));
+        if (s) {
+          live = {
+            status: s.status,
+            renewsAt: s.current_period_end
+              ? new Date(s.current_period_end * 1000).toISOString().slice(0, 10)
+              : null,
+            cancelAtPeriodEnd: !!s.cancel_at_period_end,
+          };
+          // Keep the local row honest so a later read without Stripe is right.
+          await admin
+            .from("subscriptions")
+            .update({
+              status: s.status,
+              current_period_end: s.current_period_end
+                ? new Date(s.current_period_end * 1000).toISOString()
+                : null,
+              updated_at: new Date().toISOString(),
+            })
+            .eq("owner_id", user.id);
+        }
+      }
+    } catch {
+      // Non-fatal — fall back to the stored row below.
+    }
+  }
+
+  if (live) {
+    return NextResponse.json({
+      configured: true,
+      entitled: true,
+      status: live.status === "past_due" ? "past_due" : "active",
+      cancelAtPeriodEnd: live.cancelAtPeriodEnd,
+      renewsAt: live.renewsAt,
+      pilot: true,
+      hasCustomer,
+    });
+  }
+
+  // Stored row fallback (Stripe unreachable).
   const periodOk =
     !sub?.current_period_end ||
     new Date(sub.current_period_end).getTime() > now;
@@ -84,6 +152,9 @@ export async function GET(request: Request) {
       configured: true,
       entitled: true,
       status: "active",
+      renewsAt: sub.current_period_end
+        ? String(sub.current_period_end).slice(0, 10)
+        : null,
       pilot: true,
       hasCustomer,
     });

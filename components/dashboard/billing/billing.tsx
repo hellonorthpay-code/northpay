@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { CreditCard, Sparkles, Check, ArrowUpRight } from "lucide-react";
 import {
   useBilling,
+  billingLabel,
   startCheckout,
   openBillingPortal,
 } from "@/lib/billing/client";
@@ -85,14 +86,8 @@ export function BillingSettingsCard() {
   // Hide until Stripe is configured, and always for non-pilot accounts.
   if (!billing.configured || !billing.pilot) return null;
 
-  const label =
-    billing.status === "active"
-      ? "Active subscription"
-      : billing.status === "trial"
-      ? `Free trial · ${billing.trialDaysLeft} day${
-          billing.trialDaysLeft === 1 ? "" : "s"
-        } left`
-      : "Trial ended";
+  const info = billingLabel(billing);
+  const isLive = billing.status === "active" || billing.status === "past_due";
 
   async function primary() {
     setBusy(true);
@@ -100,7 +95,7 @@ export function BillingSettingsCard() {
     try {
       // Checkout stays primary until a subscription is genuinely active — a
       // Stripe customer record alone is not a subscription.
-      if (billing.status === "active") {
+      if (billing.status === "active" || billing.status === "past_due") {
         await openBillingPortal();
       } else {
         await startCheckout();
@@ -130,24 +125,20 @@ export function BillingSettingsCard() {
         <div className="flex items-center gap-2.5">
           <span
             className={
-              billing.status === "active"
+              info.tone === "active"
                 ? "grid h-8 w-8 place-items-center rounded-full bg-success/15 text-success"
                 : "grid h-8 w-8 place-items-center rounded-full bg-muted text-muted-foreground"
             }
           >
-            {billing.status === "active" ? (
+            {info.tone === "active" ? (
               <Check className="h-4 w-4" strokeWidth={3} />
             ) : (
               <Sparkles className="h-4 w-4" />
             )}
           </span>
           <div>
-            <p className="text-[13.5px] font-medium tracking-tight">{label}</p>
-            <p className="text-[11.5px] text-muted-foreground">
-              {billing.status === "active"
-                ? "Manage your card or cancel anytime."
-                : "NorthPay subscription."}
-            </p>
+            <p className="text-[13.5px] font-medium tracking-tight">{info.title}</p>
+            <p className="text-[11.5px] text-muted-foreground">{info.detail}</p>
           </div>
         </div>
         <button
@@ -156,7 +147,7 @@ export function BillingSettingsCard() {
           onClick={primary}
           className="inline-flex items-center gap-2 rounded-full bg-foreground px-5 py-2.5 text-[13px] font-medium text-background transition-transform duration-200 hover:scale-[1.02] active:scale-95 disabled:opacity-60"
         >
-          {billing.status === "active" ? (
+          {isLive ? (
             <>Manage billing</>
           ) : (
             <>

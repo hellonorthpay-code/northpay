@@ -10,8 +10,12 @@ export interface BillingStatus {
   configured: boolean;
   /** True when the user may use gated features (paid or in trial). */
   entitled: boolean;
-  status: "active" | "trial" | "expired";
+  status: "active" | "trial" | "expired" | "past_due";
   trialDaysLeft?: number;
+  /** True when the member has cancelled but access runs to the period end. */
+  cancelAtPeriodEnd?: boolean;
+  /** ISO date access renews (or ends, when cancelling). */
+  renewsAt?: string | null;
   hasCustomer: boolean;
   /** True only for accounts in the billing pilot (BILLING_TEST_EMAILS) —
    *  everyone else must see zero billing UI. */
@@ -61,6 +65,8 @@ export function useBilling(): BillingStatus {
           entitled: j.entitled !== false,
           status: (j.status as BillingStatus["status"]) ?? "active",
           trialDaysLeft: j.trialDaysLeft,
+          cancelAtPeriodEnd: !!j.cancelAtPeriodEnd,
+          renewsAt: j.renewsAt ?? null,
           hasCustomer: !!j.hasCustomer,
           pilot: !!j.pilot,
         });
@@ -160,4 +166,59 @@ export function useBillingSummary(enabled: boolean): BillingSummary {
   }, [user?.id, enabled]);
 
   return state;
+}
+
+/**
+ * One place that turns billing state into words. Every surface (settings row,
+ * modal card, payroll banner) reads from this so they can never disagree —
+ * a cancelled subscription must not read "Active" anywhere.
+ */
+export function billingLabel(b: BillingStatus): {
+  title: string;
+  detail: string;
+  tone: "active" | "ending" | "trial" | "warn" | "expired";
+} {
+  const when = b.renewsAt
+    ? new Date(`${b.renewsAt}T00:00:00`).toLocaleDateString("en-CA", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      })
+    : null;
+
+  if (b.status === "past_due") {
+    return {
+      title: "Payment failed",
+      detail: "Update your card to keep your subscription.",
+      tone: "warn",
+    };
+  }
+  if (b.status === "active" && b.cancelAtPeriodEnd) {
+    return {
+      title: when ? `Cancels on ${when}` : "Cancelling",
+      detail: when
+        ? `You keep full access until ${when}.`
+        : "You keep access until the end of the period.",
+      tone: "ending",
+    };
+  }
+  if (b.status === "active") {
+    return {
+      title: "Active subscription",
+      detail: when ? `Renews ${when}.` : "Manage your card or cancel anytime.",
+      tone: "active",
+    };
+  }
+  if (b.status === "trial") {
+    return {
+      title: `Free trial · ${b.trialDaysLeft} day${b.trialDaysLeft === 1 ? "" : "s"} left`,
+      detail: "Subscribe any time to keep access.",
+      tone: "trial",
+    };
+  }
+  return {
+    title: "Trial ended",
+    detail: "Subscribe to keep running payroll.",
+    tone: "expired",
+  };
 }
