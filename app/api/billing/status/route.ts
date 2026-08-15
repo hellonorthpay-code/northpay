@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { billingConfigured } from "@/lib/billing/stripe";
+import { billingConfigured, subPeriodEndISO, subIsEnding, type StripeSubShape } from "@/lib/billing/stripe";
 
 const TRIAL_DAYS = 14;
 const DAY_MS = 86_400_000;
@@ -97,30 +97,21 @@ export async function GET(request: Request) {
       );
       if (res.ok) {
         const json = (await res.json()) as {
-          data?: Array<{
-            id: string;
-            status: string;
-            current_period_end?: number;
-            cancel_at_period_end?: boolean;
-          }>;
+          data?: Array<StripeSubShape & { status: string }>;
         };
         const s = (json.data ?? []).find((x) => paidStatuses.includes(x.status));
         if (s) {
           live = {
             status: s.status,
-            renewsAt: s.current_period_end
-              ? new Date(s.current_period_end * 1000).toISOString().slice(0, 10)
-              : null,
-            cancelAtPeriodEnd: !!s.cancel_at_period_end,
+            renewsAt: subPeriodEndISO(s),
+            cancelAtPeriodEnd: subIsEnding(s),
           };
           // Keep the local row honest so a later read without Stripe is right.
           await admin
             .from("subscriptions")
             .update({
               status: s.status,
-              current_period_end: s.current_period_end
-                ? new Date(s.current_period_end * 1000).toISOString()
-                : null,
+              current_period_end: subPeriodEndISO(s),
               updated_at: new Date().toISOString(),
             })
             .eq("owner_id", user.id);

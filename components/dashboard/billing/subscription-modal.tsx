@@ -374,14 +374,7 @@ export function SubscriptionCard({ delay = 0.34 }: { delay?: number }) {
 
   if (!billing.configured || !billing.pilot) return null;
 
-  const subtitle =
-    billing.status === "active"
-      ? "Active · manage your plan and payment method."
-      : billing.status === "trial"
-      ? `Free trial · ${billing.trialDaysLeft} day${
-          billing.trialDaysLeft === 1 ? "" : "s"
-        } left.`
-      : "Trial ended · subscribe to keep running payroll.";
+  const subtitle = billingLabel(billing).detail;
 
   return (
     <>

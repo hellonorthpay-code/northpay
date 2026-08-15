@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { subPeriodEndISO, subIsEnding, type StripeSubShape } from "@/lib/billing/stripe";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Real billing summary for the signed-in employer.
@@ -126,10 +127,8 @@ export async function GET(request: Request) {
     subscription: sub
       ? {
           status: sub.status,
-          renewsAt: sub.current_period_end
-            ? new Date(sub.current_period_end * 1000).toISOString().slice(0, 10)
-            : null,
-          cancelAtPeriodEnd: !!sub.cancel_at_period_end,
+          renewsAt: subPeriodEndISO(sub as StripeSubShape),
+          cancelAtPeriodEnd: subIsEnding(sub as StripeSubShape),
         }
       : null,
     card,

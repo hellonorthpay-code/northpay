@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { subPeriodEndISO, subIsEnding, type StripeSubShape } from "@/lib/billing/stripe";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Billing config check — protected by CRON_SECRET.
@@ -146,9 +147,8 @@ export async function GET(request: Request) {
             id: s.id,
             status: s.status,
             created: new Date(s.created * 1000).toISOString().slice(0, 16),
-            renews: s.current_period_end
-              ? new Date(s.current_period_end * 1000).toISOString().slice(0, 10)
-              : null,
+            renews: subPeriodEndISO(s as StripeSubShape),
+            ending: subIsEnding(s as StripeSubShape),
             amount: s.items?.data?.[0]?.price?.unit_amount
               ? s.items.data[0].price!.unit_amount! / 100
               : null,

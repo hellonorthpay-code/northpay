@@ -164,3 +164,43 @@ export function verifyWebhook(
     return null;
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Reading a subscription's period/cancellation across Stripe API versions.
+//
+// Stripe moved `current_period_end` off the Subscription and onto each
+// Subscription Item in recent API versions (this account is on
+// 2026-06-24.dahlia), so reading only the top-level field silently yields
+// null — which is why a cancelled plan showed no end date. Check both, and
+// fall back to `cancel_at` when the plan is set to cancel.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface StripeSubShape {
+  id?: string;
+  status?: string;
+  current_period_end?: number | null;
+  cancel_at?: number | null;
+  cancel_at_period_end?: boolean;
+  items?: { data?: Array<{ current_period_end?: number | null }> };
+}
+
+/** Unix seconds when the current period ends, from wherever Stripe put it. */
+export function subPeriodEnd(sub: StripeSubShape): number | null {
+  return (
+    sub.current_period_end ??
+    sub.items?.data?.[0]?.current_period_end ??
+    sub.cancel_at ??
+    null
+  );
+}
+
+/** ISO yyyy-mm-dd for the end of the current period, or null. */
+export function subPeriodEndISO(sub: StripeSubShape): string | null {
+  const secs = subPeriodEnd(sub);
+  return secs ? new Date(secs * 1000).toISOString().slice(0, 10) : null;
+}
+
+/** True when the member has cancelled and is running out the paid period. */
+export function subIsEnding(sub: StripeSubShape): boolean {
+  return !!sub.cancel_at_period_end || !!sub.cancel_at;
+}
