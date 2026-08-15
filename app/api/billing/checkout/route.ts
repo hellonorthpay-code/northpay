@@ -57,6 +57,36 @@ export async function POST(request: Request) {
       existing?.stripe_customer_id ||
       (await findOrCreateCustomer(user.email, user.id));
 
+    // ── Never let one account stack subscriptions ──
+    // Stripe will happily create a second (and third) subscription for the
+    // same customer, so a double-tap or a stale tab means a real customer
+    // silently pays twice. Check Stripe itself — not just our row, which can
+    // lag if a webhook was missed — and send them to manage instead.
+    const existingSubs = await fetch(
+      `https://api.stripe.com/v1/subscriptions?customer=${encodeURIComponent(
+        customerId
+      )}&status=all&limit=10`,
+      { headers: { Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}` } }
+    );
+    if (existingSubs.ok) {
+      const json = (await existingSubs.json()) as {
+        data?: Array<{ status: string }>;
+      };
+      const alreadyPaying = (json.data ?? []).some((s) =>
+        ["active", "trialing", "past_due"].includes(s.status)
+      );
+      if (alreadyPaying) {
+        return NextResponse.json(
+          {
+            error:
+              "You already have an active subscription. Use Manage billing to update or cancel it.",
+            alreadySubscribed: true,
+          },
+          { status: 409 }
+        );
+      }
+    }
+
     // Ensure a row exists so the webhook can match by customer id later.
     await admin.from("subscriptions").upsert(
       { owner_id: user.id, stripe_customer_id: customerId, updated_at: new Date().toISOString() },
