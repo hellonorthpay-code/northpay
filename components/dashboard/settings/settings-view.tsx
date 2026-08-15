@@ -2,12 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Bell, Building2, CheckCircle2, ChevronRight, ExternalLink, Info, Moon, RotateCcw, Sparkles, User } from "lucide-react";
+import { Building2, CheckCircle2, ChevronRight, ExternalLink, Info, RotateCcw, Sparkles, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   Select,
   SelectContent,
@@ -29,8 +28,7 @@ import { SubscriptionSettingsRow } from "@/components/dashboard/billing/subscrip
 const ease = [0.32, 0.72, 0, 1] as const;
 
 export function SettingsView() {
-  const { company, setCompany, theme, setTheme, notifications, toggleNotification } =
-    useSettings();
+  const { company, setCompany, theme, setTheme } = useSettings();
 
   // Company details now use a draft + Save/Cancel (instead of saving on every
   // keystroke), so the user can review changes before committing.
@@ -167,7 +165,10 @@ export function SettingsView() {
     </>
   );
 
-  const payrollFields = (
+  // One "System" group: the province new employees default to, plus theme.
+  // Notification toggles were removed — they promised emails NorthPay does
+  // not send, so they were UI with nothing behind them.
+  const systemFields = (
     <>
       <Field label="Default province">
         <Select value={company.defaultProvince} onValueChange={(v) => setCompany({ defaultProvince: v as ProvinceCode })}>
@@ -179,6 +180,18 @@ export function SettingsView() {
           </SelectContent>
         </Select>
       </Field>
+
+      <Field label="Theme">
+        <Select value={theme} onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="system">System</SelectItem>
+            <SelectItem value="light">Light</SelectItem>
+            <SelectItem value="dark">Dark</SelectItem>
+          </SelectContent>
+        </Select>
+      </Field>
+
       <div className="mt-2 rounded-2xl border border-border/60 bg-muted/30 p-4 text-[12.5px]">
         <p className="font-medium tracking-tight">2026 tax tables</p>
         <p className="mt-1 leading-relaxed text-muted-foreground">
@@ -186,27 +199,6 @@ export function SettingsView() {
         </p>
       </div>
     </>
-  );
-
-  const appearanceFields = (
-    <Field label="Theme">
-      <Select value={theme} onValueChange={(v) => setTheme(v as "light" | "dark" | "system")}>
-        <SelectTrigger><SelectValue /></SelectTrigger>
-        <SelectContent>
-          <SelectItem value="system">System</SelectItem>
-          <SelectItem value="light">Light</SelectItem>
-          <SelectItem value="dark">Dark</SelectItem>
-        </SelectContent>
-      </Select>
-    </Field>
-  );
-
-  const notificationFields = (
-    <div className="space-y-1.5">
-      <SwitchRow label="Payroll reminders" sub="Nudge me 2 days before each pay date." checked={notifications.payrollReminders} onChange={() => toggleNotification("payrollReminders")} />
-      <SwitchRow label="Paystub ready" sub="Tell me when paystubs are generated." checked={notifications.paystubReady} onChange={() => toggleNotification("paystubReady")} />
-      <SwitchRow label="Product updates" sub="Rare. Only meaningful releases." checked={notifications.productUpdates} onChange={() => toggleNotification("productUpdates")} />
-    </div>
   );
 
   return (
@@ -218,16 +210,12 @@ export function SettingsView() {
       </div>
 
       {/* ── Desktop: 3-col grid (unchanged) ── */}
-      <div className="hidden gap-5 lg:grid lg:grid-cols-3">
+      <div className="hidden gap-5 lg:grid lg:grid-cols-2">
         <SettingsGroup icon={Building2} title="Company" subtitle="The legal identity used on paystubs and remittances.">
           {companyFields}
         </SettingsGroup>
-        <SettingsGroup icon={Sparkles} title="Payroll defaults" subtitle="Pre-fills new employees so you can move fast.">
-          {payrollFields}
-        </SettingsGroup>
-        <SettingsGroup icon={Moon} title="Appearance & notifications" subtitle="Make it feel like yours.">
-          {appearanceFields}
-          <div className="mt-3 space-y-1.5">{notificationFields}</div>
+        <SettingsGroup icon={Sparkles} title="System" subtitle="Defaults for new employees and how NorthPay looks.">
+          {systemFields}
         </SettingsGroup>
       </div>
 
@@ -237,14 +225,8 @@ export function SettingsView() {
         <AccordionSection icon={Building2} title="Company Details" subtitle="Legal name, address, CRA account">
           <div className="space-y-3">{companyFields}</div>
         </AccordionSection>
-        <AccordionSection icon={Sparkles} title="Payroll Defaults" subtitle="Province, pay frequency, tax tables">
-          <div className="space-y-3">{payrollFields}</div>
-        </AccordionSection>
-        <AccordionSection icon={Moon} title="Appearance" subtitle="Theme and display preferences">
-          <div className="space-y-3">{appearanceFields}</div>
-        </AccordionSection>
-        <AccordionSection icon={Bell} title="Notifications" subtitle="Reminders and alerts">
-          {notificationFields}
+        <AccordionSection icon={Sparkles} title="System" subtitle="Default province, theme, tax tables">
+          <div className="space-y-3">{systemFields}</div>
         </AccordionSection>
         <AccordionSection icon={Info} title="About NorthPay" subtitle="Founders, legal, and privacy policy">
           <div className="space-y-3">
@@ -387,26 +369,6 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   );
 }
 
-function SwitchRow({
-  label, sub, checked, onChange,
-}: {
-  label: string; sub: string; checked: boolean; onChange: () => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-2xl border border-border/60 bg-background/40 px-4 py-3">
-      <div className="min-w-0">
-        <p className="text-[13.5px] font-medium tracking-tight">{label}</p>
-        <p className="text-[11.5px] text-muted-foreground">{sub}</p>
-      </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
-    </div>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────
-// Mobile: profile card that links to /dashboard/profile. Mirrors the
-// AccordionSection chrome so it sits visually flush with the rest.
-// ─────────────────────────────────────────────────────────────────────────
 function ProfileLinkCard() {
   const profile = useProfile((s) => s.profile);
   const initials =
