@@ -155,10 +155,23 @@ export function ProfileView() {
                 {user.provider === "google" ? "Google" : "Email"} · {user.email}
               </p>
             </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-success/15 px-2.5 py-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-success">
-              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-success" />
-              Active
-            </span>
+            {/* Premium status badge — same ink surface + emerald check as the
+                subscription membership card, so "active" reads as a mark of
+                standing rather than a pale form-state tag. */}
+            <motion.span
+              initial={{ opacity: 0, scale: 0.85 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ type: "spring", stiffness: 420, damping: 22, delay: 0.1 }}
+              className="relative inline-flex shrink-0 items-center gap-2 overflow-hidden rounded-full bg-[#111113] py-1.5 pl-1.5 pr-3.5 shadow-pop"
+            >
+              <span className="pointer-events-none absolute -right-6 -top-6 h-16 w-16 rounded-full bg-emerald-400/25 blur-2xl" />
+              <span className="relative grid h-5 w-5 place-items-center rounded-full bg-emerald-400 text-[#111113] shadow-[0_0_12px_rgba(52,211,153,0.6)]">
+                <Check className="h-3 w-3" strokeWidth={3.4} />
+              </span>
+              <span className="relative text-[10.5px] font-semibold uppercase tracking-[0.14em] text-white">
+                Active
+              </span>
+            </motion.span>
           </div>
 
           <button
