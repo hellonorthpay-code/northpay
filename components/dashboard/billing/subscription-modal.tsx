@@ -256,26 +256,25 @@ export function SubscriptionModal({
             </p>
             <div className="overflow-hidden rounded-2xl border border-border/60">
               {summary.invoices.map((inv, i) => (
-                <InvoiceRow
-                  key={inv.id}
-                  date={inv.date}
-                  amount={inv.amount}
-                  currency={inv.currency}
-                  status={inv.status}
-                  pdf={inv.pdf}
-                  last={i === summary.invoices.length - 1}
-                  // Mobile keeps the list short: only the latest two. Done in
-                  // CSS rather than a width check so server and client render
-                  // the same markup.
-                  className={cn(
-                    i >= 2 && "hidden sm:flex",
+                // Visibility lives on a wrapper so it never competes with the
+                // row's own `flex` display utility. Mobile keeps the latest two.
+                <div key={inv.id} className={cn(i >= 2 && "hidden sm:block")}>
+                  <InvoiceRow
+                    date={inv.date}
+                    amount={inv.amount}
+                    currency={inv.currency}
+                    status={inv.status}
+                    pdf={inv.pdf}
+                    last={i === summary.invoices.length - 1}
                     // Row 2 becomes the visual last row on mobile, so drop its
                     // divider there but keep it on wider screens.
-                    i === 1 &&
-                      summary.invoices.length > 2 &&
-                      "border-b-0 sm:border-b"
-                  )}
-                />
+                    className={cn(
+                      i === 1 &&
+                        summary.invoices.length > 2 &&
+                        "border-b-0 sm:border-b"
+                    )}
+                  />
+                </div>
               ))}
             </div>
           </div>
@@ -323,26 +322,32 @@ export function SubscriptionModal({
             </motion.button>
           )}
 
-          {/* Only worth showing once Stripe actually has something to manage. */}
+          {/* Only worth showing once Stripe actually has something to manage.
+              The hide is on a WRAPPER, not the button: putting `hidden` and
+              `flex` on the same element makes two display utilities fight,
+              which is why the cancel action still appeared on phones. */}
           {billing.hasCustomer && (
-            <button
-              type="button"
-              disabled={busy !== null}
-              onClick={() => run("portal")}
+            <div
               className={cn(
-                "h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11 sm:text-[13px]",
                 // Cancelling is reachable inside Manage billing, so mobile
                 // drops the duplicate destructive action. Resume / View portal
-                // are not cancel actions, so they stay.
-                isActive && !ending ? "hidden sm:flex" : "flex"
+                // are not cancel actions, so they stay at every size.
+                isActive && !ending ? "hidden sm:block" : "block"
               )}
             >
-              {ending
-                ? "Resume subscription"
-                : isActive
-                ? "Cancel subscription"
-                : "View billing portal"}
-            </button>
+              <button
+                type="button"
+                disabled={busy !== null}
+                onClick={() => run("portal")}
+                className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11 sm:text-[13px]"
+              >
+                {ending
+                  ? "Resume subscription"
+                  : isActive
+                  ? "Cancel subscription"
+                  : "View billing portal"}
+              </button>
+            </div>
           )}
 
         </div>
