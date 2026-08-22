@@ -82,12 +82,38 @@ export function useBilling(): BillingStatus {
   return state;
 }
 
-/** Start Stripe Checkout and redirect. */
-export async function startCheckout(): Promise<void> {
-  const res = await authedFetch("/api/billing/checkout", { method: "POST" });
+/** Start Stripe Checkout and redirect, optionally pre-applying a promo code. */
+export async function startCheckout(promoCode?: string): Promise<void> {
+  const res = await authedFetch("/api/billing/checkout", {
+    method: "POST",
+    body: JSON.stringify({ promoCode: promoCode ?? "" }),
+  });
   const json = (await res.json()) as { url?: string; error?: string };
   if (json.url) window.location.href = json.url;
   else throw new Error(json.error || "Could not start checkout.");
+}
+
+export interface PromoResult {
+  valid: boolean;
+  code?: string;
+  /** e.g. "20% off" */
+  label?: string;
+  /** e.g. "on your first month" */
+  detail?: string;
+}
+
+/** Check a promo code before checkout. Never throws for an invalid code. */
+export async function validatePromoCode(code: string): Promise<PromoResult> {
+  try {
+    const res = await authedFetch("/api/billing/promo", {
+      method: "POST",
+      body: JSON.stringify({ code }),
+    });
+    const json = (await res.json()) as PromoResult;
+    return json?.valid ? json : { valid: false };
+  } catch {
+    return { valid: false };
+  }
 }
 
 /** Open the Stripe billing portal and redirect. */

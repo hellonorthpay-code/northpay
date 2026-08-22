@@ -11,6 +11,7 @@ import {
   Download,
   Mail,
   Sparkles,
+  Tag,
   XCircle,
 } from "lucide-react";
 import {
@@ -25,7 +26,9 @@ import {
   useIsNarrow,
   billingLabel,
   startCheckout,
+  validatePromoCode,
   openBillingPortal,
+  type PromoResult,
 } from "@/lib/billing/client";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
@@ -56,6 +59,23 @@ export function SubscriptionModal({
   const [busy, setBusy] = useState<"checkout" | "portal" | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
+  // Promo code — validated before checkout so the discount is confirmed on
+  // this screen rather than being a surprise (good or bad) on Stripe's page.
+  const [promoOpen, setPromoOpen] = useState(false);
+  const [promoInput, setPromoInput] = useState("");
+  const [promoChecking, setPromoChecking] = useState(false);
+  const [promo, setPromo] = useState<PromoResult | null>(null);
+
+  async function applyPromo() {
+    const code = promoInput.trim();
+    if (!code) return;
+    setPromoChecking(true);
+    setPromo(null);
+    const result = await validatePromoCode(code);
+    setPromo(result);
+    setPromoChecking(false);
+  }
+
   const isActive = billing.status === "active" || billing.status === "past_due";
   const ending = !!billing.cancelAtPeriodEnd;
   const label = billingLabel(billing);
@@ -85,7 +105,9 @@ export function SubscriptionModal({
     setBusy(kind);
     setErr(null);
     try {
-      if (kind === "checkout") await startCheckout();
+      if (kind === "checkout") {
+        await startCheckout(promo?.valid ? promo.code : undefined);
+      }
       else await openBillingPortal();
     } catch (e) {
       setErr(e instanceof Error ? e.message : "Something went wrong.");
@@ -287,6 +309,66 @@ export function SubscriptionModal({
           <p className="px-1 text-[11px] text-muted-foreground">
             Loading billing details…
           </p>
+        )}
+
+        {/* Promo code — only worth offering to someone about to subscribe.
+            Validated here so the discount is confirmed before leaving the app;
+            Stripe's own promo box still appears if no code is pre-applied. */}
+        {!isActive && (
+          <div>
+            {!promoOpen ? (
+              <button
+                type="button"
+                onClick={() => setPromoOpen(true)}
+                className="flex items-center gap-1.5 px-1 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              >
+                <Tag className="h-3.5 w-3.5" />
+                Have a promo code?
+              </button>
+            ) : (
+              <div className="rounded-2xl border border-border/60 p-3">
+                <div className="flex items-center gap-2">
+                  <input
+                    value={promoInput}
+                    onChange={(e) => {
+                      setPromoInput(e.target.value.toUpperCase());
+                      setPromo(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        void applyPromo();
+                      }
+                    }}
+                    placeholder="Enter code"
+                    autoCapitalize="characters"
+                    spellCheck={false}
+                    className="h-10 min-w-0 flex-1 rounded-xl border border-border bg-background px-3 text-[14px] uppercase tracking-wide outline-none transition-colors placeholder:normal-case placeholder:tracking-normal placeholder:text-muted-foreground focus:border-foreground/30"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => void applyPromo()}
+                    disabled={promoChecking || !promoInput.trim()}
+                    className="h-10 shrink-0 rounded-xl bg-foreground px-4 text-[13px] font-semibold text-background transition-opacity disabled:opacity-40"
+                  >
+                    {promoChecking ? "Checking…" : "Apply"}
+                  </button>
+                </div>
+
+                {promo?.valid && (
+                  <p className="mt-2 flex items-center gap-1.5 px-0.5 text-[12px] font-medium text-success">
+                    <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                    {promo.label} {promo.detail} — applied at checkout.
+                  </p>
+                )}
+                {promo && !promo.valid && (
+                  <p className="mt-2 px-0.5 text-[12px] font-medium text-destructive">
+                    That code isn&rsquo;t valid.
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {err && (

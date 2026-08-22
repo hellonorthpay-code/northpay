@@ -4,6 +4,7 @@ import {
   billingConfigured,
   createCheckoutSession,
   findOrCreateCustomer,
+  findPromotionCode,
 } from "@/lib/billing/stripe";
 
 /**
@@ -34,6 +35,15 @@ export async function POST(request: Request) {
   } = await anon.auth.getUser(token);
   if (error || !user || !user.email) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
+  }
+
+  // Optional promo code the customer applied in-app.
+  let promoCode = "";
+  try {
+    const body = (await request.json()) as { promoCode?: string };
+    promoCode = (body?.promoCode ?? "").trim();
+  } catch {
+    // No body is fine — checkout without a pre-applied discount.
   }
 
   const origin =
@@ -93,9 +103,18 @@ export async function POST(request: Request) {
       { onConflict: "owner_id" }
     );
 
+    // Resolve the code server-side; an invalid one is ignored rather than
+    // blocking checkout, and Stripe's own promo box still appears.
+    let promotionCodeId: string | null = null;
+    if (promoCode) {
+      const promo = await findPromotionCode(promoCode);
+      promotionCodeId = promo?.id ?? null;
+    }
+
     const checkoutUrl = await createCheckoutSession({
       customerId,
       userId: user.id,
+      promotionCodeId,
       successUrl: `${origin}/dashboard/settings?billing=success`,
       cancelUrl: `${origin}/dashboard/settings?billing=cancelled`,
     });

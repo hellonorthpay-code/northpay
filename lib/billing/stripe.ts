@@ -93,24 +93,95 @@ export async function findOrCreateCustomer(
   return created.id;
 }
 
+export interface PromoLookup {
+  id: string;
+  code: string;
+  /** Human-readable discount, e.g. "20% off" or "$5.00 off". */
+  label: string;
+  /** "forever" | "once" | "repeating" */
+  duration: string;
+  durationInMonths?: number | null;
+}
+
+/**
+ * Look up an active promotion code by the string a customer typed.
+ * Returns null when it doesn't exist, is inactive, or is expired —
+ * we never explain WHY beyond "not valid", so codes can't be probed.
+ */
+export async function findPromotionCode(
+  code: string
+): Promise<PromoLookup | null> {
+  const trimmed = code.trim();
+  if (!trimmed) return null;
+
+  const res = (await stripeGet(
+    `/promotion_codes?code=${encodeURIComponent(trimmed)}&active=true&limit=1`
+  )) as {
+    data?: Array<{
+      id: string;
+      code: string;
+      coupon?: {
+        percent_off?: number | null;
+        amount_off?: number | null;
+        currency?: string | null;
+        duration?: string;
+        duration_in_months?: number | null;
+        valid?: boolean;
+      };
+    }>;
+  };
+
+  const promo = res.data?.[0];
+  if (!promo || !promo.coupon?.valid) return null;
+
+  const c = promo.coupon;
+  const label = c.percent_off
+    ? `${c.percent_off}% off`
+    : c.amount_off
+      ? `$${(c.amount_off / 100).toFixed(2)} ${(c.currency ?? "").toUpperCase()} off`
+      : "Discount";
+
+  return {
+    id: promo.id,
+    code: promo.code,
+    label,
+    duration: c.duration ?? "once",
+    durationInMonths: c.duration_in_months ?? null,
+  };
+}
+
 /** Hosted Checkout for the monthly subscription. Returns the redirect URL. */
 export async function createCheckoutSession(opts: {
   customerId: string;
   userId: string;
   successUrl: string;
   cancelUrl: string;
+  /** Stripe promotion_code id (promo_…), when the customer pre-applied one. */
+  promotionCodeId?: string | null;
 }): Promise<string> {
-  const session = (await stripePost("/checkout/sessions", {
+  const body: Record<string, unknown> = {
     mode: "subscription",
     customer: opts.customerId,
     client_reference_id: opts.userId,
     success_url: opts.successUrl,
     cancel_url: opts.cancelUrl,
-    allow_promotion_codes: "true",
     "line_items[0][price]": process.env.STRIPE_PRICE_ID,
     "line_items[0][quantity]": 1,
     "subscription_data[metadata][northpay_user_id]": opts.userId,
-  })) as { url: string };
+  };
+
+  // Stripe rejects a session that both pre-applies a discount AND offers the
+  // promo-code box, so pick one: pre-apply what the customer already entered,
+  // otherwise let them add a code on Stripe's page.
+  if (opts.promotionCodeId) {
+    body["discounts[0][promotion_code]"] = opts.promotionCodeId;
+  } else {
+    body.allow_promotion_codes = "true";
+  }
+
+  const session = (await stripePost("/checkout/sessions", body)) as {
+    url: string;
+  };
   return session.url;
 }
 
