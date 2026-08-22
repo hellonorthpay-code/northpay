@@ -264,6 +264,17 @@ export function SubscriptionModal({
                   status={inv.status}
                   pdf={inv.pdf}
                   last={i === summary.invoices.length - 1}
+                  // Mobile keeps the list short: only the latest two. Done in
+                  // CSS rather than a width check so server and client render
+                  // the same markup.
+                  className={cn(
+                    i >= 2 && "hidden sm:flex",
+                    // Row 2 becomes the visual last row on mobile, so drop its
+                    // divider there but keep it on wider screens.
+                    i === 1 &&
+                      summary.invoices.length > 2 &&
+                      "border-b-0 sm:border-b"
+                  )}
                 />
               ))}
             </div>
@@ -318,7 +329,13 @@ export function SubscriptionModal({
               type="button"
               disabled={busy !== null}
               onClick={() => run("portal")}
-              className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium sm:h-11 sm:text-[13px] text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11"
+              className={cn(
+                "h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11 sm:text-[13px]",
+                // Cancelling is reachable inside Manage billing, so mobile
+                // drops the duplicate destructive action. Resume / View portal
+                // are not cancel actions, so they stay.
+                isActive && !ending ? "hidden sm:flex" : "flex"
+              )}
             >
               {ending
                 ? "Resume subscription"
@@ -349,7 +366,8 @@ function DetailRow({
     <div
       className={cn(
         "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
-        !last && "border-b border-border/50"
+        !last && "border-b border-border/50",
+        className
       )}
     >
       <span className="flex items-center gap-2.5 text-[13px] text-muted-foreground">
@@ -454,6 +472,7 @@ function InvoiceRow({
   status,
   pdf,
   last,
+  className,
 }: {
   date: string;
   amount: number;
@@ -461,6 +480,7 @@ function InvoiceRow({
   status: string;
   pdf: string | null;
   last?: boolean;
+  className?: string;
 }) {
   const label = new Date(`${date}T00:00:00`).toLocaleDateString("en-CA", {
     month: "short",
@@ -472,7 +492,8 @@ function InvoiceRow({
     <div
       className={cn(
         "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
-        !last && "border-b border-border/50"
+        !last && "border-b border-border/50",
+        className
       )}
     >
       <div className="min-w-0">
