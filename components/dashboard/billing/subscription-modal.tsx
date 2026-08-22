@@ -447,8 +447,7 @@ function DetailRow({
     <div
       className={cn(
         "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
-        !last && "border-b border-border/50",
-        className
+        !last && "border-b border-border/50"
       )}
     >
       <span className="flex items-center gap-2.5 text-[13px] text-muted-foreground">
