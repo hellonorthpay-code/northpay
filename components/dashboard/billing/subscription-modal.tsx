@@ -389,7 +389,7 @@ export function SubscriptionModal({
               type="button"
               disabled={busy !== null}
               onClick={() => run("portal")}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground text-[13.5px] font-semibold text-background transition-colors disabled:opacity-60 sm:h-12 sm:text-[14px]"
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full bg-foreground text-[15px] font-semibold text-background transition-colors disabled:opacity-60 sm:h-12 sm:text-[14px]"
             >
               <CreditCard className="h-4 w-4" />
               {busy === "portal" ? "Opening…" : "Manage billing"}
@@ -400,7 +400,7 @@ export function SubscriptionModal({
               type="button"
               disabled={busy !== null}
               onClick={() => run("checkout")}
-              className="flex h-10 w-full items-center justify-center gap-2 rounded-full bg-foreground text-[13.5px] font-semibold text-background transition-colors disabled:opacity-60 sm:h-12 sm:text-[14px]"
+              className="flex h-[52px] w-full items-center justify-center gap-2 rounded-full bg-foreground text-[15px] font-semibold text-background transition-colors disabled:opacity-60 sm:h-12 sm:text-[14px]"
             >
               {busy === "checkout" ? "Opening…" : "Subscribe now"}
               <ArrowUpRight className="h-4 w-4" />
@@ -446,15 +446,18 @@ function DetailRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
+        // Fixed row height so every row lines up regardless of which ones
+        // render; the label never wraps and the value truncates from the
+        // right, which keeps long emails from pushing the layout around.
+        "flex min-h-[52px] items-center justify-between gap-4 bg-background/50 px-4 sm:min-h-[46px] sm:px-4",
         !last && "border-b border-border/50"
       )}
     >
-      <span className="flex items-center gap-2.5 text-[13px] text-muted-foreground">
-        <Icon className="h-4 w-4" />
-        {label}
+      <span className="flex shrink-0 items-center gap-2.5 text-[13px] text-muted-foreground">
+        <Icon className="h-4 w-4 shrink-0" />
+        <span className="whitespace-nowrap">{label}</span>
       </span>
-      <span className="truncate text-[13px] font-medium tracking-tight">
+      <span className="min-w-0 truncate text-right text-[13px] font-medium tracking-tight">
         {value}
       </span>
     </div>
@@ -571,7 +574,7 @@ function InvoiceRow({
   return (
     <div
       className={cn(
-        "flex items-center justify-between gap-3 bg-background/50 px-3 py-2 sm:px-3.5 sm:py-2.5",
+        "flex min-h-[56px] items-center justify-between gap-4 bg-background/50 px-4 sm:min-h-[50px]",
         !last && "border-b border-border/50",
         className
       )}

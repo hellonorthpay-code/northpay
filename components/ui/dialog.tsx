@@ -94,8 +94,8 @@ export const DialogContent = React.forwardRef<
     >
       {children}
       {!hideClose && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 inline-flex h-10 w-10 items-center justify-center rounded-full bg-muted/60 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-          <X className="h-5 w-5" strokeWidth={2.4} />
+        <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95 sm:right-4 sm:top-4 sm:h-10 sm:w-10">
+          <X className="h-6 w-6 sm:h-5 sm:w-5" strokeWidth={2.4} />
         </DialogPrimitive.Close>
       )}
     </DialogPrimitive.Content>
