@@ -22,6 +22,7 @@ import {
 import {
   useBilling,
   useBillingSummary,
+  useIsNarrow,
   billingLabel,
   startCheckout,
   openBillingPortal,
@@ -60,6 +61,18 @@ export function SubscriptionModal({
   const label = billingLabel(billing);
   // Real Stripe details — only fetched once billing is relevant to this user.
   const summary = useBillingSummary(billing.pilot && billing.configured);
+  // Narrow viewports get a trimmed sheet. Decided in JS, not CSS: `hidden`
+  // alongside `flex` on one element lets flex win, which kept the cancel
+  // button on screen through two CSS-only attempts.
+  const narrow = useIsNarrow();
+  const visibleInvoices = narrow
+    ? summary.invoices.slice(0, 2)
+    : summary.invoices;
+  // Cancelling stays reachable inside Manage billing, so the phone sheet
+  // drops the duplicate destructive action. Resume / View portal are not
+  // cancel actions and remain at every size.
+  const showSecondaryAction =
+    billing.hasCustomer && !(narrow && isActive && !ending);
 
   const renewalLabel = summary.subscription?.renewsAt
     ? new Date(`${summary.subscription.renewsAt}T00:00:00`).toLocaleDateString(
@@ -249,32 +262,22 @@ export function SubscriptionModal({
         )}
 
         {/* Real invoices, with real PDF links. */}
-        {summary.invoices.length > 0 && (
+        {visibleInvoices.length > 0 && (
           <div>
             <p className="mb-1 px-1 text-[10px] sm:text-[10.5px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
               Invoices
             </p>
             <div className="overflow-hidden rounded-2xl border border-border/60">
-              {summary.invoices.map((inv, i) => (
-                // Visibility lives on a wrapper so it never competes with the
-                // row's own `flex` display utility. Mobile keeps the latest two.
-                <div key={inv.id} className={cn(i >= 2 && "hidden sm:block")}>
-                  <InvoiceRow
-                    date={inv.date}
-                    amount={inv.amount}
-                    currency={inv.currency}
-                    status={inv.status}
-                    pdf={inv.pdf}
-                    last={i === summary.invoices.length - 1}
-                    // Row 2 becomes the visual last row on mobile, so drop its
-                    // divider there but keep it on wider screens.
-                    className={cn(
-                      i === 1 &&
-                        summary.invoices.length > 2 &&
-                        "border-b-0 sm:border-b"
-                    )}
-                  />
-                </div>
+              {visibleInvoices.map((inv, i) => (
+                <InvoiceRow
+                  key={inv.id}
+                  date={inv.date}
+                  amount={inv.amount}
+                  currency={inv.currency}
+                  status={inv.status}
+                  pdf={inv.pdf}
+                  last={i === visibleInvoices.length - 1}
+                />
               ))}
             </div>
           </div>
@@ -326,28 +329,19 @@ export function SubscriptionModal({
               The hide is on a WRAPPER, not the button: putting `hidden` and
               `flex` on the same element makes two display utilities fight,
               which is why the cancel action still appeared on phones. */}
-          {billing.hasCustomer && (
-            <div
-              className={cn(
-                // Cancelling is reachable inside Manage billing, so mobile
-                // drops the duplicate destructive action. Resume / View portal
-                // are not cancel actions, so they stay at every size.
-                isActive && !ending ? "hidden sm:block" : "block"
-              )}
+          {showSecondaryAction && (
+            <button
+              type="button"
+              disabled={busy !== null}
+              onClick={() => run("portal")}
+              className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11 sm:text-[13px]"
             >
-              <button
-                type="button"
-                disabled={busy !== null}
-                onClick={() => run("portal")}
-                className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11 sm:text-[13px]"
-              >
-                {ending
-                  ? "Resume subscription"
-                  : isActive
-                  ? "Cancel subscription"
-                  : "View billing portal"}
-              </button>
-            </div>
+              {ending
+                ? "Resume subscription"
+                : isActive
+                ? "Cancel subscription"
+                : "View billing portal"}
+            </button>
           )}
 
         </div>

@@ -222,3 +222,26 @@ export function billingLabel(b: BillingStatus): {
     tone: "expired",
   };
 }
+
+/**
+ * Narrow-viewport check for layout decisions that CSS handles badly.
+ *
+ * Starts false so the first paint matches the server, then corrects on mount
+ * and on resize. Used where `hidden`/`flex` utilities would collide on one
+ * element — putting both on the same node lets `flex` win and the element
+ * stays visible, which is exactly how the mobile cancel button survived two
+ * attempts to hide it.
+ */
+export function useIsNarrow(breakpoint = 640): boolean {
+  const [narrow, setNarrow] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia(`(max-width: ${breakpoint - 1}px)`);
+    const apply = () => setNarrow(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, [breakpoint]);
+
+  return narrow;
+}
