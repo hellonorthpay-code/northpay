@@ -76,6 +76,52 @@ async function stripeGet(path: string): Promise<Record<string, unknown>> {
   return json;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Is a stored customer id still real?
+//
+// Customer ids are scoped to one Stripe mode. Switching test → live (or
+// rotating accounts) leaves rows pointing at ids that no longer resolve, and
+// Stripe answers `resource_missing`. That is NOT a transient outage: falling
+// back to the stored row on it makes the app claim an active subscription
+// that cannot be billed, and sends checkout to a customer that can't be used.
+// Distinguish the three cases so callers can react correctly.
+// ─────────────────────────────────────────────────────────────────────────
+
+export type CustomerState = "exists" | "missing" | "unknown";
+
+/** Does this customer id resolve in the CURRENT Stripe mode? */
+export async function checkCustomer(customerId: string): Promise<CustomerState> {
+  try {
+    const res = await fetch(
+      `${STRIPE_API}/customers/${encodeURIComponent(customerId)}`,
+      { headers: { Authorization: `Bearer ${key()}` } }
+    );
+    if (res.status === 404) return "missing";
+    if (!res.ok) return isResourceMissing(await res.json().catch(() => null))
+      ? "missing"
+      : "unknown";
+    const json = (await res.json()) as { deleted?: boolean };
+    // A deleted customer still resolves but can't be charged — treat as gone.
+    return json.deleted ? "missing" : "exists";
+  } catch {
+    // Network/DNS failure — say nothing rather than destroying a good row.
+    return "unknown";
+  }
+}
+
+/**
+ * True when a Stripe error body means "that object doesn't exist here".
+ * Deliberately narrow — only the explicit code counts, so a malformed
+ * request or a bad key can never be mistaken for a stale customer and
+ * trigger us to wipe a perfectly good row.
+ */
+export function isResourceMissing(body: unknown): boolean {
+  return (
+    (body as { error?: { code?: string } } | null)?.error?.code ===
+    "resource_missing"
+  );
+}
+
 /** Reuse a customer for this email, or create one. Returns the customer id. */
 export async function findOrCreateCustomer(
   email: string,

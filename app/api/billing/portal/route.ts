@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { billingConfigured, createPortalSession } from "@/lib/billing/stripe";
+import {
+  billingConfigured,
+  checkCustomer,
+  createPortalSession,
+} from "@/lib/billing/stripe";
 
 /**
  * Open Stripe's hosted billing portal so the employer can update their card
@@ -49,6 +53,15 @@ export async function POST(request: Request) {
     request.headers.get("origin") ||
     new URL(request.url).origin ||
     "https://thenorthpay.com";
+
+  // A customer from another Stripe mode can't open a portal session. Say so
+  // in plain language rather than surfacing Stripe's raw "No such customer".
+  if ((await checkCustomer(sub.stripe_customer_id)) === "missing") {
+    return NextResponse.json(
+      { error: "No billing history on this account yet. Subscribe to get started." },
+      { status: 400 }
+    );
+  }
 
   try {
     const portalUrl = await createPortalSession({

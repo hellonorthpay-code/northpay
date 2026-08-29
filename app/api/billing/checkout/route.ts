@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   billingConfigured,
+  checkCustomer,
   createCheckoutSession,
   findOrCreateCustomer,
   findPromotionCode,
@@ -63,9 +64,19 @@ export async function POST(request: Request) {
       .eq("owner_id", user.id)
       .maybeSingle();
 
-    const customerId =
-      existing?.stripe_customer_id ||
-      (await findOrCreateCustomer(user.email, user.id));
+    // A stored customer id is only usable if it still resolves in the current
+    // Stripe mode. Test-mode ids survive the switch to live keys and then fail
+    // checkout with "No such customer", so verify before trusting it. Only an
+    // explicit "missing" discards it — a transient error keeps the id, since
+    // minting a duplicate customer is worse than a retryable failure.
+    let customerId = existing?.stripe_customer_id ?? null;
+    if (customerId && (await checkCustomer(customerId)) === "missing") {
+      customerId = null;
+    }
+    const staleCleared = !!existing?.stripe_customer_id && !customerId;
+    if (!customerId) {
+      customerId = await findOrCreateCustomer(user.email, user.id);
+    }
 
     // ── Never let one account stack subscriptions ──
     // Stripe will happily create a second (and third) subscription for the
@@ -99,7 +110,17 @@ export async function POST(request: Request) {
 
     // Ensure a row exists so the webhook can match by customer id later.
     await admin.from("subscriptions").upsert(
-      { owner_id: user.id, stripe_customer_id: customerId, updated_at: new Date().toISOString() },
+      {
+        owner_id: user.id,
+        stripe_customer_id: customerId,
+        updated_at: new Date().toISOString(),
+        // When we replaced a dead customer, the subscription fields beside it
+        // describe a subscription in the old mode. Drop them so nothing reads
+        // back an "active" plan that no longer exists.
+        ...(staleCleared
+          ? { stripe_subscription_id: null, status: null, current_period_end: null }
+          : {}),
+      },
       { onConflict: "owner_id" }
     );
 

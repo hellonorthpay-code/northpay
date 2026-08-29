@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { billingConfigured, subPeriodEndISO, subIsEnding, type StripeSubShape } from "@/lib/billing/stripe";
+import {
+  billingConfigured,
+  isResourceMissing,
+  subPeriodEndISO,
+  subIsEnding,
+  type StripeSubShape,
+} from "@/lib/billing/stripe";
 
 const TRIAL_DAYS = 14;
 const DAY_MS = 86_400_000;
@@ -72,9 +78,14 @@ export async function GET(request: Request) {
     .maybeSingle();
 
   const now = Date.now();
-  const hasCustomer = !!sub?.stripe_customer_id;
+  let hasCustomer = !!sub?.stripe_customer_id;
 
   const paidStatuses = ["active", "trialing", "past_due"];
+
+  // Set when Stripe says the stored customer doesn't exist in this mode.
+  // Distinct from "Stripe unreachable": the stored row is provably wrong,
+  // so it must NOT be used as a fallback further down.
+  let customerMissing = false;
 
   // ── Live subscription shape, straight from Stripe ──
   // A cancelled-but-not-yet-expired subscription still reports status
@@ -116,10 +127,32 @@ export async function GET(request: Request) {
             })
             .eq("owner_id", user.id);
         }
+      } else if (isResourceMissing(await res.json().catch(() => null))) {
+        customerMissing = true;
       }
     } catch {
       // Non-fatal — fall back to the stored row below.
     }
+  }
+
+  // ── Stale customer from another Stripe mode ──
+  // Going test → live leaves a cus_… that no longer resolves. Left alone,
+  // the stored row keeps reporting "active", so the UI cheerfully says
+  // "You're subscribed" for a subscription that cannot be billed, and
+  // checkout fails against a customer Stripe has never heard of. Clear it
+  // and let checkout mint a fresh customer.
+  if (customerMissing) {
+    await admin
+      .from("subscriptions")
+      .update({
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        status: null,
+        current_period_end: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("owner_id", user.id);
+    hasCustomer = false;
   }
 
   if (live) {
@@ -138,7 +171,7 @@ export async function GET(request: Request) {
   const periodOk =
     !sub?.current_period_end ||
     new Date(sub.current_period_end).getTime() > now;
-  if (sub && paidStatuses.includes(sub.status) && periodOk) {
+  if (!customerMissing && sub && paidStatuses.includes(sub.status) && periodOk) {
     return NextResponse.json({
       configured: true,
       entitled: true,
@@ -157,7 +190,7 @@ export async function GET(request: Request) {
   // happens we must NOT lock out someone who has actually paid, so when the
   // local row isn't active we reconcile against Stripe as the source of
   // truth — and write the result back so later reads are fast.
-  if (sub?.stripe_customer_id && process.env.STRIPE_SECRET_KEY) {
+  if (!customerMissing && sub?.stripe_customer_id && process.env.STRIPE_SECRET_KEY) {
     try {
       const res = await fetch(
         `https://api.stripe.com/v1/subscriptions?customer=${encodeURIComponent(

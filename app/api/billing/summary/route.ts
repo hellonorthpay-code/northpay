@@ -1,6 +1,11 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { subPeriodEndISO, subIsEnding, type StripeSubShape } from "@/lib/billing/stripe";
+import {
+  checkCustomer,
+  subPeriodEndISO,
+  subIsEnding,
+  type StripeSubShape,
+} from "@/lib/billing/stripe";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Real billing summary for the signed-in employer.
@@ -54,6 +59,13 @@ export async function GET(request: Request) {
 
   const customerId = row?.stripe_customer_id;
   if (!customerId) {
+    return NextResponse.json({ configured: true, hasCustomer: false });
+  }
+
+  // The stored id may belong to a different Stripe mode (test ids don't
+  // resolve under live keys). Report "no customer" rather than rendering
+  // empty card / renewal / invoice rows for an account Stripe can't see.
+  if ((await checkCustomer(customerId)) === "missing") {
     return NextResponse.json({ configured: true, hasCustomer: false });
   }
 
