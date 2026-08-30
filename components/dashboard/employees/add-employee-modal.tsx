@@ -323,7 +323,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
               variant="solid"
               className="group ml-auto"
             >
-              <ChevronRight className="h-5 w-5 transition-transform duration-200 group-hover:translate-x-0.5 sm:h-7 sm:w-7" strokeWidth={2.6} />
+              <ChevronRight className="h-7 w-7 transition-transform duration-200 group-hover:translate-x-0.5" strokeWidth={2.6} />
             </IconButton>
           ) : (
             <Button onClick={submit} disabled={!canSubmit} className="h-12 rounded-full px-6 text-[15px] font-semibold sm:h-16 sm:px-7 sm:text-[16px]">
@@ -1133,7 +1133,7 @@ const IconButton = React.forwardRef<
   }
 >(({ className, variant = "ghost", ...props }, ref) => {
   const base =
-    "inline-flex h-12 w-12 items-center justify-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed sm:h-16 sm:w-16";
+    "inline-flex h-16 w-16 items-center justify-center rounded-full transition-colors disabled:opacity-40 disabled:cursor-not-allowed";
   const tone =
     variant === "solid"
       ? "bg-foreground text-background hover:bg-foreground/90 dark:bg-white dark:text-black dark:hover:bg-white/90"

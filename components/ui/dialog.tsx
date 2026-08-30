@@ -95,14 +95,17 @@ export const DialogContent = React.forwardRef<
       {children}
       {/* Solid ink disc with a knocked-out cross — the same vocabulary as the
           primary button, so dismiss reads as a real control instead of a grey
-          smudge. Sized to sit clear of dialog content: 44px is the standard
-          minimum touch target, and going larger started colliding with the
-          first card inside the sheet.
+          smudge.
+          Sized per input device: 56px on phones, where the target is a thumb
+          and 44px reads small next to full-width fields; 44px from sm: up,
+          where a pointer is precise and a large disc would crowd the first
+          card in the sheet. It also tucks nearer the corner on phones to keep
+          that clearance.
           `bg-foreground`/`text-background` rather than literal black/white so
           the disc inverts correctly in dark mode. */}
       {!hideClose && (
-        <DialogPrimitive.Close className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-foreground text-background shadow-soft transition-opacity hover:opacity-85 active:scale-95">
-          <X className="h-[22px] w-[22px]" strokeWidth={2.5} />
+        <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-foreground text-background shadow-soft transition-opacity hover:opacity-85 active:scale-95 sm:right-4 sm:top-4 sm:h-11 sm:w-11">
+          <X className="h-7 w-7 sm:h-[22px] sm:w-[22px]" strokeWidth={2.5} />
         </DialogPrimitive.Close>
       )}
     </DialogPrimitive.Content>

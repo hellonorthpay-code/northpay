@@ -120,12 +120,12 @@ export function MobileNav() {
           cheap to paint and never blocks taps. */}
       <div
         ref={rowRef}
-        className="pointer-events-auto relative flex max-w-full items-center gap-0.5 rounded-full border border-border/60 bg-background/95 p-1 shadow-pop"
+        className="pointer-events-auto relative flex max-w-full items-center gap-1 rounded-full border border-border/60 bg-background/95 p-1.5 shadow-pop"
       >
         {/* The one gliding highlight. */}
         <span
           aria-hidden
-          className="absolute top-1 bottom-1 rounded-full bg-muted dark:bg-white/[0.12]"
+          className="absolute top-1.5 bottom-1.5 rounded-full bg-muted dark:bg-white/[0.12]"
           style={{
             left: pill.left,
             width: pill.width,
@@ -148,8 +148,8 @@ export function MobileNav() {
               aria-label={tab.label}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex h-11 shrink-0 items-center justify-center gap-1.5 rounded-full transition-[color,transform] duration-300 active:scale-95",
-                tab.iconOnly ? "w-11" : "px-3",
+                "relative flex h-[52px] shrink-0 items-center justify-center gap-1.5 rounded-full transition-[color,transform] duration-300 active:scale-95",
+                tab.iconOnly ? "w-[52px]" : "px-4",
                 active
                   ? "text-foreground"
                   : "text-muted-foreground hover:text-foreground",
@@ -157,12 +157,12 @@ export function MobileNav() {
             >
               <tab.icon
                 className={cn(
-                  "relative z-10 h-[18px] w-[18px] shrink-0 transition-transform duration-300",
+                  "relative z-10 h-[21px] w-[21px] shrink-0 transition-transform duration-300",
                   active ? "scale-110" : "",
                 )}
               />
               {!tab.iconOnly && (
-                <span className="relative z-10 text-[11.5px] font-medium tracking-tight">
+                <span className="relative z-10 text-[12.5px] font-medium tracking-tight">
                   {tab.label}
                 </span>
               )}
