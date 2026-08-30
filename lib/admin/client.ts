@@ -3,9 +3,16 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/store/auth";
-import type { AdminStats } from "@/lib/admin/types";
+import type { AdminStats, AdminStripeSummary } from "@/lib/admin/types";
 
-export type { AdminStats, AdminUserRow } from "@/lib/admin/types";
+export type {
+  AdminStats,
+  AdminUserRow,
+  AdminAnalytics,
+  AdminDayPoint,
+  AdminStripeSummary,
+  AdminStripeTx,
+} from "@/lib/admin/types";
 
 /** fetch() with the current Supabase access token attached as a bearer. */
 async function authedFetch(path: string, init?: RequestInit) {
@@ -73,6 +80,16 @@ export async function fetchAdminStats(): Promise<AdminStats> {
     throw new Error(body.error || `Request failed (${res.status})`);
   }
   return (await res.json()) as AdminStats;
+}
+
+/** Every Stripe transaction on the platform, plus volume and MRR. */
+export async function fetchAdminStripe(): Promise<AdminStripeSummary> {
+  const res = await authedFetch("/api/admin/stripe");
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  return (await res.json()) as AdminStripeSummary;
 }
 
 export async function adminSetSuspended(id: string, suspend: boolean) {

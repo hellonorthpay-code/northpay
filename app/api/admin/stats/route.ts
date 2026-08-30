@@ -116,6 +116,43 @@ export async function GET(request: Request) {
     admin.from("payroll_runs").select("*", { count: "exact", head: true }),
   ]);
 
+  // ── Analytics ──
+  // Built from rows already in memory, so the extra tab costs no extra
+  // queries. Series are zero-filled across every day in the window: a gap
+  // must read as "nothing happened", not as a missing point.
+  const DAYS = 30;
+  const dayKey = (t: number) => new Date(t).toISOString().slice(0, 10);
+  const emptySeries = () => {
+    const out = new Map<string, number>();
+    for (let i = DAYS - 1; i >= 0; i--) out.set(dayKey(now - i * DAY), 0);
+    return out;
+  };
+
+  const signupSeries = emptySeries();
+  for (const u of collected) {
+    if (!u.created_at) continue;
+    const k = dayKey(new Date(u.created_at).getTime());
+    if (signupSeries.has(k)) signupSeries.set(k, signupSeries.get(k)! + 1);
+  }
+
+  const runSeries = emptySeries();
+  let runs30 = 0;
+  for (const r of runRows) {
+    if (!r.created_at) continue;
+    const t = new Date(r.created_at).getTime();
+    const k = dayKey(t);
+    if (runSeries.has(k)) {
+      runSeries.set(k, runSeries.get(k)! + 1);
+      runs30++;
+    }
+  }
+
+  const toPoints = (m: Map<string, number>) =>
+    [...m.entries()].map(([date, value]) => ({ date, value }));
+
+  const employersWithEmployees = empByOwner.size;
+  const totalEmployeesCounted = [...empByOwner.values()].reduce((a, b) => a + b, 0);
+
   const stats: AdminStats = {
     totalUsers: collected.length,
     activeUsers,
@@ -124,6 +161,16 @@ export async function GET(request: Request) {
     totalEmployees: empCount ?? 0,
     totalPayrollRuns: runCount ?? 0,
     users,
+    analytics: {
+      signups: toPoints(signupSeries),
+      runs: toPoints(runSeries),
+      activatedUsers: runByOwner.size,
+      onboardedUsers: employersWithEmployees,
+      runs30,
+      avgEmployees: employersWithEmployees
+        ? Math.round((totalEmployeesCounted / employersWithEmployees) * 10) / 10
+        : 0,
+    },
   };
 
   return NextResponse.json(stats);

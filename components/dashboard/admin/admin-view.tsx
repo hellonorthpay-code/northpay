@@ -1,11 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   AlertCircle,
   Ban,
   ChevronDown,
+  CreditCard,
+  ExternalLink,
+  LineChart,
   RotateCcw,
   ShieldCheck,
   Trash2,
@@ -16,17 +19,33 @@ import {
   adminDeleteUser,
   adminSetSuspended,
   fetchAdminStats,
+  fetchAdminStripe,
+  type AdminAnalytics,
+  type AdminDayPoint,
   type AdminStats,
+  type AdminStripeSummary,
   type AdminUserRow,
 } from "@/lib/admin/client";
 import { cn, formatDate } from "@/lib/utils";
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
+/** Critically damped — settles without overshoot, and stays interruptible. */
+const indicatorSpring = { type: "spring", bounce: 0, duration: 0.35 } as const;
+
+type AdminTab = "users" | "analytics" | "stripe";
+
+const TABS: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
+  { id: "users", label: "Users", icon: Users },
+  { id: "analytics", label: "Analytics", icon: LineChart },
+  { id: "stripe", label: "Stripe", icon: CreditCard },
+];
+
 export function AdminView() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tab, setTab] = useState<AdminTab>("users");
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -87,7 +106,94 @@ export function AdminView() {
         </div>
       </motion.div>
 
-      {/* ─── Stat cards ─── */}
+      <AdminTabs value={tab} onChange={setTab} />
+
+      {/* Panels cross-fade in place. No horizontal travel: the tab bar already
+          carries the spatial story, and a sliding panel would fight it. */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={tab}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.18, ease }}
+        >
+          {tab === "users" && <UsersPanel stats={stats} onChanged={load} />}
+          {tab === "analytics" && <AnalyticsPanel stats={stats} />}
+          {tab === "stripe" && <StripePanel />}
+        </motion.div>
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/**
+ * Segmented control.
+ *
+ * The active pill is a single shared element moved between tabs with a
+ * layout animation, so switching reads as one object travelling rather than
+ * two crossfading. The spring is critically damped (no overshoot) and
+ * interruptible — tapping a third tab mid-flight redirects from wherever the
+ * pill currently is instead of jumping.
+ */
+function AdminTabs({
+  value,
+  onChange,
+}: {
+  value: AdminTab;
+  onChange: (t: AdminTab) => void;
+}) {
+  const reduced = useReducedMotion();
+
+  return (
+    <div
+      role="tablist"
+      aria-label="Admin sections"
+      className="flex gap-1 rounded-2xl border border-border/60 bg-muted/40 p-1 backdrop-blur-xl"
+    >
+      {TABS.map(({ id, label, icon: Icon }) => {
+        const active = value === id;
+        return (
+          <button
+            key={id}
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(id)}
+            className={cn(
+              // Feedback lives on the press, not the release.
+              "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-medium tracking-tight transition-colors duration-150 active:scale-[0.98]",
+              active
+                ? "text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            )}
+          >
+            {active && (
+              <motion.span
+                layoutId="admin-tab-pill"
+                transition={reduced ? { duration: 0 } : indicatorSpring}
+                className="absolute inset-0 rounded-xl bg-card shadow-soft"
+              />
+            )}
+            <span className="relative flex items-center gap-2">
+              <Icon className="h-3.5 w-3.5" />
+              {label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function UsersPanel({
+  stats,
+  onChanged,
+}: {
+  stats: AdminStats;
+  onChanged: () => void | Promise<void>;
+}) {
+  return (
+    <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         <StatCard label="Total users" value={stats.totalUsers} />
         <StatCard label="Active (30 days)" value={stats.activeUsers} />
@@ -97,7 +203,6 @@ export function AdminView() {
         <StatCard label="Payroll runs (all)" value={stats.totalPayrollRuns} />
       </div>
 
-      {/* ─── Users table ─── */}
       <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
         <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
           <Users className="h-3.5 w-3.5" />
@@ -105,7 +210,7 @@ export function AdminView() {
         </div>
         <ul className="divide-y divide-border/40">
           {stats.users.map((u) => (
-            <UserRow key={u.id} user={u} onChanged={load} />
+            <UserRow key={u.id} user={u} onChanged={onChanged} />
           ))}
           {stats.users.length === 0 && (
             <li className="px-5 py-6 text-center text-[12.5px] text-muted-foreground">
@@ -118,15 +223,248 @@ export function AdminView() {
   );
 }
 
-function StatCard({ label, value }: { label: string; value: number }) {
+function AnalyticsPanel({ stats }: { stats: AdminStats }) {
+  const a: AdminAnalytics = stats.analytics;
+
+  // Funnel: signed up → added an employee → actually ran payroll. Percentages
+  // are of total users, so the drop between steps is the thing you read.
+  const pct = (n: number) =>
+    stats.totalUsers ? Math.round((n / stats.totalUsers) * 100) : 0;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Ran payroll" value={a.activatedUsers} hint={`${pct(a.activatedUsers)}% of users`} />
+        <StatCard label="Added employees" value={a.onboardedUsers} hint={`${pct(a.onboardedUsers)}% of users`} />
+        <StatCard label="Runs (30 days)" value={a.runs30} />
+        <StatCard label="Avg employees" value={a.avgEmployees} hint="per employer" />
+      </div>
+
+      <TrendChart title="Signups" subtitle="Last 30 days" points={a.signups} />
+      <TrendChart title="Payroll runs" subtitle="Last 30 days" points={a.runs} />
+    </div>
+  );
+}
+
+/**
+ * Bar chart for a 30-day series.
+ *
+ * Deliberately spare: no gridlines, no axis furniture. The series is
+ * zero-filled server-side, so an empty day renders as a visible baseline
+ * rather than a gap — "nothing happened" and "no data" must not look alike.
+ */
+function TrendChart({
+  title,
+  subtitle,
+  points,
+}: {
+  title: string;
+  subtitle: string;
+  points: AdminDayPoint[];
+}) {
+  const max = Math.max(1, ...points.map((p) => p.value));
+  const total = points.reduce((sum, p) => sum + p.value, 0);
+  const fmt = (iso: string) =>
+    new Date(`${iso}T00:00:00`).toLocaleDateString("en-CA", {
+      month: "short",
+      day: "numeric",
+    });
+
+  return (
+    <div className="rounded-3xl border border-border/70 bg-card/70 p-5 shadow-soft backdrop-blur-xl">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-[14px] font-semibold tracking-tight">{title}</p>
+          <p className="text-[12px] text-muted-foreground">{subtitle}</p>
+        </div>
+        <p className="text-[22px] font-semibold leading-none tracking-tightest tabular-nums">
+          {total.toLocaleString()}
+        </p>
+      </div>
+
+      <div className="mt-5 flex h-24 items-end gap-[3px]">
+        {points.map((p) => (
+          <div
+            key={p.date}
+            title={`${fmt(p.date)} · ${p.value}`}
+            className={cn(
+              "flex-1 rounded-t-[3px] transition-colors",
+              p.value
+                ? "bg-foreground/70 hover:bg-foreground"
+                : "bg-foreground/15"
+            )}
+            style={{
+              // A zero day keeps a 2px floor, so the baseline reads as a line
+              // and an empty stretch can't be mistaken for missing data.
+              height: p.value ? `${Math.max(6, (p.value / max) * 100)}%` : "2px",
+            }}
+          />
+        ))}
+      </div>
+
+      <div className="mt-2 flex justify-between text-[10.5px] tabular-nums text-muted-foreground">
+        <span>{points.length ? fmt(points[0].date) : ""}</span>
+        <span>{points.length ? fmt(points[points.length - 1].date) : ""}</span>
+      </div>
+    </div>
+  );
+}
+
+function StripePanel() {
+  const [data, setData] = useState<AdminStripeSummary | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Loaded only when this tab is opened — the admin page shouldn't pay for a
+  // Stripe round-trip on every visit.
+  useEffect(() => {
+    let alive = true;
+    fetchAdminStripe()
+      .then((d) => alive && setData(d))
+      .catch((e) => alive && setError(e instanceof Error ? e.message : "Failed."))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (loading) {
+    return (
+      <p className="text-[13px] text-muted-foreground">Loading transactions…</p>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-start gap-3 rounded-3xl border border-destructive/30 bg-destructive/10 p-5 text-destructive">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className="text-[13px] font-medium">{error}</p>
+      </div>
+    );
+  }
+
+  if (!data) return null;
+
+  if (!data.configured) {
+    return (
+      <div className="rounded-3xl border border-border/70 bg-card/70 p-8 text-center shadow-soft backdrop-blur-xl">
+        <CreditCard className="mx-auto h-5 w-5 text-muted-foreground" />
+        <p className="mt-3 text-[14px] font-semibold tracking-tight">
+          Stripe isn&apos;t connected
+        </p>
+        <p className="mt-1 text-[12.5px] text-muted-foreground">
+          Transactions appear here once billing is configured.
+        </p>
+      </div>
+    );
+  }
+
+  const money = (n: number) =>
+    `$${n.toLocaleString("en-CA", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <StatCard label="Net volume" value={data.netVolume} money hint="after refunds" />
+        <StatCard label="MRR" value={data.mrr} money hint="recurring" />
+        <StatCard label="Active subs" value={data.activeSubscriptions} />
+        <StatCard label="Refunded" value={data.refundedTotal} money />
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
+        <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <CreditCard className="h-3.5 w-3.5" />
+          Transactions · {data.transactions.length}
+        </div>
+        <ul className="divide-y divide-border/40">
+          {data.transactions.map((t) => (
+            <li
+              key={t.id}
+              className="flex items-center justify-between gap-4 px-5 py-3.5"
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-medium tracking-tight">
+                  {t.email ?? "—"}
+                </p>
+                <p className="truncate text-[11.5px] text-muted-foreground">
+                  {formatDate(t.date)}
+                  {t.description ? ` · ${t.description}` : ""}
+                </p>
+              </div>
+
+              <div className="flex shrink-0 items-center gap-3">
+                <div className="text-right">
+                  <p
+                    className={cn(
+                      "text-[13.5px] font-semibold tabular-nums tracking-tight",
+                      t.refunded && "text-muted-foreground line-through"
+                    )}
+                  >
+                    {money(t.amount)}
+                  </p>
+                  <p className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
+                    {t.refunded
+                      ? "Refunded"
+                      : t.status === "succeeded"
+                        ? "Paid"
+                        : t.status}
+                  </p>
+                </div>
+                {t.receiptUrl && (
+                  <a
+                    href={t.receiptUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open receipt"
+                    className="grid h-8 w-8 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+            </li>
+          ))}
+          {data.transactions.length === 0 && (
+            <li className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
+              No transactions yet.
+            </li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  hint,
+  money,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+  money?: boolean;
+}) {
   return (
     <div className="rounded-3xl border border-border/70 bg-card/70 p-5 shadow-soft backdrop-blur-xl">
       <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
         {label}
       </p>
       <p className="mt-2 text-[28px] font-semibold leading-none tracking-tightest tabular-nums">
-        {value.toLocaleString()}
+        {money
+          ? `$${value.toLocaleString("en-CA", {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2,
+            })}`
+          : value.toLocaleString()}
       </p>
+      {hint && (
+        <p className="mt-1.5 text-[11px] text-muted-foreground">{hint}</p>
+      )}
     </div>
   );
 }
