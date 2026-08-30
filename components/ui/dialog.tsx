@@ -93,9 +93,14 @@ export const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
+      {/* Roughly double the previous glyph, and full-strength ink rather than
+          muted grey — dismiss is the one control someone reaches for when
+          they're already done, so it shouldn't be the faintest thing on
+          screen. `text-foreground` reads black in light mode and stays
+          legible in dark, which a hard-coded black would not. */}
       {!hideClose && (
-        <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted/60 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95 sm:right-4 sm:top-4 sm:h-10 sm:w-10">
-          <X className="h-6 w-6 sm:h-5 sm:w-5" strokeWidth={2.4} />
+        <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-muted/60 text-foreground transition-colors hover:bg-muted active:scale-95 sm:right-4 sm:top-4 sm:h-14 sm:w-14">
+          <X className="h-10 w-10" strokeWidth={2.2} />
         </DialogPrimitive.Close>
       )}
     </DialogPrimitive.Content>

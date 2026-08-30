@@ -88,11 +88,16 @@ export function SubscriptionModal({
   const visibleInvoices = narrow
     ? summary.invoices.slice(0, 2)
     : summary.invoices;
-  // Cancelling stays reachable inside Manage billing, so the phone sheet
-  // drops the duplicate destructive action. Resume / View portal are not
-  // cancel actions and remain at every size.
+  // No standalone "Cancel subscription" button, at any size. It opened the
+  // Stripe portal — exactly what Manage billing does — so it was the same
+  // action twice, with the destructive-sounding label given equal weight to
+  // the useful one. Cancelling stays one tap inside Manage billing.
+  //
+  // Resume (for a subscription running out its period) and View portal (for
+  // an account with billing history but no live plan) are different actions,
+  // not cancels, so they stay.
   const showSecondaryAction =
-    billing.hasCustomer && !(narrow && isActive && !ending);
+    billing.hasCustomer && !(isActive && !ending);
 
   const renewalLabel = summary.subscription?.renewsAt
     ? new Date(`${summary.subscription.renewsAt}T00:00:00`).toLocaleDateString(
@@ -418,11 +423,7 @@ export function SubscriptionModal({
               onClick={() => run("portal")}
               className="flex h-9 w-full items-center justify-center rounded-full border border-border/70 bg-background/70 text-[12.5px] font-medium text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground disabled:opacity-60 sm:h-11 sm:text-[13px]"
             >
-              {ending
-                ? "Resume subscription"
-                : isActive
-                ? "Cancel subscription"
-                : "View billing portal"}
+              {ending ? "Resume subscription" : "View billing portal"}
             </button>
           )}
 
