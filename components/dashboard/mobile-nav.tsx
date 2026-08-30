@@ -96,7 +96,18 @@ export function MobileNav() {
   if (inRecovery) return null;
 
   return (
-    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:hidden">
+    // Lifted off the screen edge: the floor goes 0.75rem → 1.5rem.
+    //
+    // env(safe-area-inset-bottom) only resolves once the viewport is declared
+    // `viewport-fit: cover`, which this app never set — so the inset is 0 and
+    // this expression has always been deciding the position on its own. The
+    // floor IS the gap, which is why 12px read as hugging the bottom.
+    //
+    // Kept as max() rather than calc(): CSS requires whitespace around `+`
+    // inside calc(), and a Tailwind arbitrary value can't contain spaces, so
+    // calc(1.5rem+env(…)) parses as invalid and the padding silently drops to
+    // zero — the opposite of what's wanted here.
+    <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:hidden">
       {/* Segmented pill — Home (icon) · Employees/Payroll/CRA (icon+text) ·
           Settings (icon). No framer / no backdrop-blur: the glide is a pure
           CSS transition on one absolutely-positioned highlight, so it stays

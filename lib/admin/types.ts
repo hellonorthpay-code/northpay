@@ -35,8 +35,7 @@ export interface TrafficBreakdown {
   value: number;
   /** Percent of the total for this dimension, for the inline bar. */
   share: number;
-  /** Country rows only. */
-  flag?: string;
+  /** Country rows only — the ISO-2 code. */
   code?: string;
 }
 

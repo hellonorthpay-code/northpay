@@ -58,14 +58,6 @@ function countryName(code: string): string {
   }
 }
 
-/** ISO-2 → flag emoji (regional indicator pair). */
-function flag(code: string): string {
-  if (!/^[A-Za-z]{2}$/.test(code)) return "";
-  return String.fromCodePoint(
-    ...[...code.toUpperCase()].map((c) => 127397 + c.charCodeAt(0))
-  );
-}
-
 export async function GET(request: Request) {
   const gate = await requireAdmin(request);
   if (!gate.ok) {
@@ -126,7 +118,6 @@ export async function GET(request: Request) {
   const countries = tally(rows, (r) => r.country, 10).map((c) => ({
     ...c,
     label: countryName(c.label),
-    flag: flag(c.label),
     code: c.label,
   }));
 

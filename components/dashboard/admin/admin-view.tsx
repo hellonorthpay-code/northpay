@@ -328,12 +328,8 @@ function AnalyticsPanel() {
             <StatCard label="Views / visitor" value={data.viewsPerVisitor} />
             <StatCard
               label="Top country"
-              text={
-                data.countries[0]
-                  ? `${data.countries[0].flag} ${data.countries[0].code}`
-                  : "—"
-              }
-              hint={data.countries[0]?.label}
+              text={data.countries[0]?.label ?? "—"}
+              hint={data.countries[0] ? `${data.countries[0].share}% of visits` : undefined}
             />
           </div>
 
@@ -345,7 +341,6 @@ function AnalyticsPanel() {
               icon={Globe}
               rows={data.countries}
               empty="No visits recorded yet."
-              renderLabel={(r) => `${r.flag ?? ""} ${r.label}`}
             />
             <BreakdownCard
               title="Where they came from"
