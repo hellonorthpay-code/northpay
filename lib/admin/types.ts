@@ -17,27 +17,6 @@ export interface AdminUserRow {
   lastRunAt: string | null;
 }
 
-/** One day in a trend series. `date` is ISO yyyy-mm-dd. */
-export interface AdminDayPoint {
-  date: string;
-  value: number;
-}
-
-export interface AdminAnalytics {
-  /** Signups per day, oldest → newest, last 30 days (zero-filled). */
-  signups: AdminDayPoint[];
-  /** Payroll runs per day, oldest → newest, last 30 days (zero-filled). */
-  runs: AdminDayPoint[];
-  /** Employers who have run payroll at least once. */
-  activatedUsers: number;
-  /** Employers who have added at least one employee. */
-  onboardedUsers: number;
-  /** Payroll runs in the last 30 days. */
-  runs30: number;
-  /** Mean employees across employers who have added any. */
-  avgEmployees: number;
-}
-
 export interface AdminStats {
   totalUsers: number;
   /** Signed in within the last 30 days. */
@@ -47,7 +26,44 @@ export interface AdminStats {
   totalEmployees: number;
   totalPayrollRuns: number;
   users: AdminUserRow[];
-  analytics: AdminAnalytics;
+}
+
+// ─── Website audience ───
+
+export interface TrafficBreakdown {
+  label: string;
+  value: number;
+  /** Percent of the total for this dimension, for the inline bar. */
+  share: number;
+  /** Country rows only. */
+  flag?: string;
+  code?: string;
+}
+
+export interface TrafficDayPoint {
+  date: string;
+  /** Pageviews that day. */
+  value: number;
+  /** Distinct visitors that day. */
+  visitors: number;
+}
+
+export interface AdminTraffic {
+  /** False when the page_views migration hasn't been run yet. */
+  ready: boolean;
+  message?: string;
+  days: number;
+  pageviews: number;
+  visitors: number;
+  viewsPerVisitor: number;
+  series: TrafficDayPoint[];
+  countries: TrafficBreakdown[];
+  cities: TrafficBreakdown[];
+  referrers: TrafficBreakdown[];
+  pages: TrafficBreakdown[];
+  devices: TrafficBreakdown[];
+  browsers: TrafficBreakdown[];
+  systems: TrafficBreakdown[];
 }
 
 // ─── Stripe (live transactions), admin-only ───

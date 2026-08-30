@@ -99,6 +99,122 @@ export function buildPasswordResetEmailHtml(p: {
 </div>`;
 }
 
+export interface SubscriptionConfirmedParams {
+  firstName?: string;
+  /** e.g. "NorthPay Monthly" */
+  planName: string;
+  /** Charged amount in dollars. */
+  amount: number;
+  currency: string;
+  /** Pre-formatted, e.g. "September 29, 2026". */
+  nextRenewal: string;
+  /** e.g. "Amex •••• 1001" — omitted entirely when unknown. */
+  paymentMethod?: string;
+  /** Stripe-hosted receipt or invoice PDF. */
+  receiptUrl?: string;
+}
+
+/**
+ * Subscription confirmation — sent once, after the first successful charge.
+ *
+ * This is a *completion* message, so it leads with what happened and then
+ * answers the questions that would otherwise become support email: what was
+ * charged, when it renews, which card, where the receipt is, and how to
+ * cancel. No celebration graphics — the reassurance comes from the facts
+ * being right there, not from confetti.
+ */
+export function buildSubscriptionConfirmedEmailHtml(
+  p: SubscriptionConfirmedParams
+): string {
+  const hi = p.firstName?.trim() ? `Hi ${p.firstName.trim()} — ` : "";
+  const cur = p.currency.toUpperCase();
+
+  const row = (label: string, value: string, last = false) => `
+            <tr>
+              <td style="padding:13px 0;${last ? "" : `border-bottom:1px solid ${HAIR};`}font-size:13.5px;color:${MUTED};">${label}</td>
+              <td align="right" style="padding:13px 0;${last ? "" : `border-bottom:1px solid ${HAIR};`}font-size:13.5px;font-weight:600;color:${INK};">${value}</td>
+            </tr>`;
+
+  return `
+<div style="margin:0;padding:40px 16px;background:#f5f5f7;font-family:${FONT};-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:440px;margin:0 auto;">
+    <tr><td>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:24px;border:1px solid ${HAIR};">
+
+        <!-- Wordmark -->
+        <tr><td style="padding:36px 36px 0;">
+          <table role="presentation" cellpadding="0" cellspacing="0">
+            <tr>
+              <td width="30" height="30" align="center" valign="middle"
+                  style="background:${INK};border-radius:9px;font-size:15px;font-weight:700;color:#ffffff;line-height:30px;">N</td>
+              <td style="padding-left:10px;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:${INK};">NorthPay</td>
+            </tr>
+          </table>
+        </td></tr>
+
+        <!-- Heading -->
+        <tr><td style="padding:30px 36px 0;">
+          <h1 style="margin:0;font-size:26px;line-height:1.15;font-weight:600;letter-spacing:-0.02em;color:${INK};">
+            Subscription confirmed
+          </h1>
+          <p style="margin:12px 0 0;font-size:14px;line-height:1.65;color:${MUTED};">
+            ${hi}your ${p.planName} plan is active. Everything in NorthPay is
+            unlocked, and your payroll history stays exactly where it was.
+          </p>
+        </td></tr>
+
+        <!-- Details -->
+        <tr><td style="padding:26px 36px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0"
+                 style="background:#fbfbfd;border:1px solid ${HAIR};border-radius:16px;padding:2px 18px;">
+${row("Plan", p.planName)}
+${row("Amount", `${money(p.amount)} ${cur} / month`)}
+${row("Next renewal", p.nextRenewal, !p.paymentMethod)}
+${p.paymentMethod ? row("Payment method", p.paymentMethod, true) : ""}
+          </table>
+        </td></tr>
+
+        ${
+          p.receiptUrl
+            ? `<!-- Receipt -->
+        <tr><td style="padding:24px 36px 0;">
+          <a href="${p.receiptUrl}"
+             style="display:block;background:${INK};color:#ffffff;text-decoration:none;text-align:center;font-size:15px;font-weight:600;letter-spacing:-0.01em;padding:15px 0;border-radius:999px;">
+            View receipt
+          </a>
+        </td></tr>`
+            : ""
+        }
+
+        <!-- Fine print -->
+        <tr><td style="padding:26px 36px 34px;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            <tr><td style="border-top:1px solid ${HAIR};padding-top:18px;">
+              <p style="margin:0;font-size:12px;line-height:1.65;color:${MUTED};">
+                Your plan renews automatically each month. You can cancel any
+                time from <strong style="color:${INK};font-weight:600;">Settings &rsaquo; Subscription</strong> —
+                if you do, you keep full access until the end of the period
+                you&rsquo;ve already paid for.
+              </p>
+            </td></tr>
+          </table>
+        </td></tr>
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="padding:22px 28px;text-align:center;">
+          <p style="margin:0;font-size:11px;line-height:1.6;color:#a1a1a6;">
+            Sent by NorthPay · <a href="https://www.thenorthpay.com" style="color:#a1a1a6;">thenorthpay.com</a>
+          </p>
+        </td></tr>
+      </table>
+
+    </td></tr>
+  </table>
+</div>`;
+}
+
 export interface PayrollSummaryParams {
   companyName: string;
   /** Pre-formatted pay-period range. */

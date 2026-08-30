@@ -6,6 +6,7 @@ import { MobileNav } from "@/components/dashboard/mobile-nav";
 import { MobileLoginButton } from "@/components/landing/mobile-login-button";
 import { RouteProgressBar } from "@/components/page-transition";
 import { RecoveryGuard } from "@/components/recovery-guard";
+import { AnalyticsBeacon } from "@/components/analytics-beacon";
 
 export const metadata: Metadata = {
   title: "NorthPay — Canadian Payroll. Finally Beautiful.",
@@ -40,6 +41,8 @@ export default function RootLayout({
             session is real, so any nav would otherwise log the visitor in
             without a new password ever being set. */}
         <RecoveryGuard />
+        {/* Cookieless, first-party page-view beacon. Public pages only. */}
+        <AnalyticsBeacon />
         <LandingNav />
         <MobileLoginButton />
         {children}

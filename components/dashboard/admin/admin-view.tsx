@@ -5,10 +5,16 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   AlertCircle,
   Ban,
+  ArrowUpRight,
   ChevronDown,
+  Chrome,
   CreditCard,
   ExternalLink,
+  FileText,
+  Globe,
   LineChart,
+  MapPin,
+  Smartphone,
   RotateCcw,
   ShieldCheck,
   Trash2,
@@ -20,11 +26,13 @@ import {
   adminSetSuspended,
   fetchAdminStats,
   fetchAdminStripe,
-  type AdminAnalytics,
-  type AdminDayPoint,
+  fetchAdminTraffic,
   type AdminStats,
   type AdminStripeSummary,
+  type AdminTraffic,
   type AdminUserRow,
+  type TrafficBreakdown,
+  type TrafficDayPoint,
 } from "@/lib/admin/client";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -119,7 +127,7 @@ export function AdminView() {
           transition={{ duration: 0.18, ease }}
         >
           {tab === "users" && <UsersPanel stats={stats} onChanged={load} />}
-          {tab === "analytics" && <AnalyticsPanel stats={stats} />}
+          {tab === "analytics" && <AnalyticsPanel />}
           {tab === "stripe" && <StripePanel />}
         </motion.div>
       </AnimatePresence>
@@ -223,47 +231,176 @@ function UsersPanel({
   );
 }
 
-function AnalyticsPanel({ stats }: { stats: AdminStats }) {
-  const a: AdminAnalytics = stats.analytics;
+const RANGES = [7, 30, 90] as const;
 
-  // Funnel: signed up → added an employee → actually ran payroll. Percentages
-  // are of total users, so the drop between steps is the thing you read.
-  const pct = (n: number) =>
-    stats.totalUsers ? Math.round((n / stats.totalUsers) * 100) : 0;
+/**
+ * Website audience.
+ *
+ * Reads real first-party traffic. Where a dimension has no data yet, the card
+ * says so plainly rather than rendering an empty frame — "nothing here yet"
+ * and "something broke" must never look alike.
+ */
+function AnalyticsPanel() {
+  const [days, setDays] = useState<number>(30);
+  const [data, setData] = useState<AdminTraffic | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const reduced = useReducedMotion();
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    fetchAdminTraffic(days)
+      .then((d) => alive && setData(d))
+      .catch((e) => alive && setError(e instanceof Error ? e.message : "Failed."))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, [days]);
+
+  if (error) {
+    return (
+      <div className="flex items-start gap-3 rounded-3xl border border-destructive/30 bg-destructive/10 p-5 text-destructive">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className="text-[13px] font-medium">{error}</p>
+      </div>
+    );
+  }
+
+  // The table exists only after the migration is run. Say exactly that.
+  if (data && !data.ready) {
+    return (
+      <div className="rounded-3xl border border-border/70 bg-card/70 p-8 text-center shadow-soft backdrop-blur-xl">
+        <Globe className="mx-auto h-5 w-5 text-muted-foreground" />
+        <p className="mt-3 text-[14px] font-semibold tracking-tight">
+          Traffic collection isn&apos;t set up yet
+        </p>
+        <p className="mx-auto mt-1 max-w-sm text-[12.5px] leading-relaxed text-muted-foreground">
+          Run the <code className="rounded bg-muted px-1.5 py-0.5">0004_page_views</code>{" "}
+          migration in Supabase, and visits will start appearing here.
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <StatCard label="Ran payroll" value={a.activatedUsers} hint={`${pct(a.activatedUsers)}% of users`} />
-        <StatCard label="Added employees" value={a.onboardedUsers} hint={`${pct(a.onboardedUsers)}% of users`} />
-        <StatCard label="Runs (30 days)" value={a.runs30} />
-        <StatCard label="Avg employees" value={a.avgEmployees} hint="per employer" />
+      {/* Range control — same pill language as the tab bar above it, so the
+          two read as the same kind of control at different scopes. */}
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          Website audience
+        </p>
+        <div className="flex gap-1 rounded-full border border-border/60 bg-muted/40 p-1">
+          {RANGES.map((d) => {
+            const active = d === days;
+            return (
+              <button
+                key={d}
+                onClick={() => setDays(d)}
+                className={cn(
+                  "relative rounded-full px-3 py-1.5 text-[12px] font-medium tabular-nums tracking-tight transition-colors active:scale-[0.97]",
+                  active ? "text-foreground" : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {active && (
+                  <motion.span
+                    layoutId="admin-range-pill"
+                    transition={reduced ? { duration: 0 } : indicatorSpring}
+                    className="absolute inset-0 rounded-full bg-card shadow-soft"
+                  />
+                )}
+                <span className="relative">{d}d</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      <TrendChart title="Signups" subtitle="Last 30 days" points={a.signups} />
-      <TrendChart title="Payroll runs" subtitle="Last 30 days" points={a.runs} />
+      {loading && !data ? (
+        <p className="text-[13px] text-muted-foreground">Loading traffic…</p>
+      ) : !data ? null : (
+        <>
+          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <StatCard label="Visitors" value={data.visitors} hint="unique, cookieless" />
+            <StatCard label="Pageviews" value={data.pageviews} />
+            <StatCard label="Views / visitor" value={data.viewsPerVisitor} />
+            <StatCard
+              label="Top country"
+              text={
+                data.countries[0]
+                  ? `${data.countries[0].flag} ${data.countries[0].code}`
+                  : "—"
+              }
+              hint={data.countries[0]?.label}
+            />
+          </div>
+
+          <TrafficChart points={data.series} days={data.days} />
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <BreakdownCard
+              title="Countries"
+              icon={Globe}
+              rows={data.countries}
+              empty="No visits recorded yet."
+              renderLabel={(r) => `${r.flag ?? ""} ${r.label}`}
+            />
+            <BreakdownCard
+              title="Where they came from"
+              icon={ArrowUpRight}
+              rows={data.referrers}
+              empty="Everyone arrived directly — no referring sites yet."
+            />
+            <BreakdownCard
+              title="Top pages"
+              icon={FileText}
+              rows={data.pages}
+              empty="No pages viewed yet."
+            />
+            <BreakdownCard
+              title="Cities"
+              icon={MapPin}
+              rows={data.cities}
+              empty="No city data yet."
+            />
+            <BreakdownCard
+              title="Devices"
+              icon={Smartphone}
+              rows={data.devices}
+              empty="No device data yet."
+            />
+            <BreakdownCard
+              title="Browsers"
+              icon={Chrome}
+              rows={data.browsers}
+              empty="No browser data yet."
+            />
+          </div>
+
+          <p className="px-1 text-[11.5px] leading-relaxed text-muted-foreground">
+            Collected first-party — no cookies, no third-party scripts, and no IP
+            addresses stored. Visitors are counted with a hash that changes every
+            day, so nobody can be followed across days. Requests sending Do Not
+            Track are skipped.
+          </p>
+        </>
+      )}
     </div>
   );
 }
 
 /**
- * Bar chart for a 30-day series.
+ * Visitors and pageviews over the window.
  *
- * Deliberately spare: no gridlines, no axis furniture. The series is
- * zero-filled server-side, so an empty day renders as a visible baseline
- * rather than a gap — "nothing happened" and "no data" must not look alike.
+ * Two series in one frame: solid bars are visitors, the lighter column behind
+ * is pageviews. Stacking them separately would make the reader do the
+ * comparison in their head.
  */
-function TrendChart({
-  title,
-  subtitle,
-  points,
-}: {
-  title: string;
-  subtitle: string;
-  points: AdminDayPoint[];
-}) {
+function TrafficChart({ points, days }: { points: TrafficDayPoint[]; days: number }) {
   const max = Math.max(1, ...points.map((p) => p.value));
-  const total = points.reduce((sum, p) => sum + p.value, 0);
+  const totalVisitors = points.reduce((s, p) => s + p.visitors, 0);
   const fmt = (iso: string) =>
     new Date(`${iso}T00:00:00`).toLocaleDateString("en-CA", {
       month: "short",
@@ -274,38 +411,109 @@ function TrendChart({
     <div className="rounded-3xl border border-border/70 bg-card/70 p-5 shadow-soft backdrop-blur-xl">
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <p className="text-[14px] font-semibold tracking-tight">{title}</p>
-          <p className="text-[12px] text-muted-foreground">{subtitle}</p>
+          <p className="text-[14px] font-semibold tracking-tight">Visitors</p>
+          <p className="text-[12px] text-muted-foreground">Last {days} days</p>
         </div>
         <p className="text-[22px] font-semibold leading-none tracking-tightest tabular-nums">
-          {total.toLocaleString()}
+          {totalVisitors.toLocaleString()}
         </p>
       </div>
 
-      <div className="mt-5 flex h-24 items-end gap-[3px]">
+      <div className="mt-5 flex h-28 items-end gap-[2px]">
         {points.map((p) => (
           <div
             key={p.date}
-            title={`${fmt(p.date)} · ${p.value}`}
-            className={cn(
-              "flex-1 rounded-t-[3px] transition-colors",
-              p.value
-                ? "bg-foreground/70 hover:bg-foreground"
-                : "bg-foreground/15"
-            )}
-            style={{
-              // A zero day keeps a 2px floor, so the baseline reads as a line
-              // and an empty stretch can't be mistaken for missing data.
-              height: p.value ? `${Math.max(6, (p.value / max) * 100)}%` : "2px",
-            }}
-          />
+            title={`${fmt(p.date)} · ${p.visitors} visitors · ${p.value} views`}
+            className="relative flex-1"
+            style={{ height: "100%" }}
+          >
+            {/* Pageviews sit behind at low contrast; visitors read as the
+                primary figure in front. */}
+            <div
+              className="absolute bottom-0 w-full rounded-t-[3px] bg-foreground/15"
+              style={{ height: p.value ? `${Math.max(4, (p.value / max) * 100)}%` : "2px" }}
+            />
+            <div
+              className="absolute bottom-0 w-full rounded-t-[3px] bg-foreground/70 transition-colors hover:bg-foreground"
+              style={{
+                height: p.visitors ? `${Math.max(4, (p.visitors / max) * 100)}%` : "0%",
+              }}
+            />
+          </div>
         ))}
       </div>
 
-      <div className="mt-2 flex justify-between text-[10.5px] tabular-nums text-muted-foreground">
+      <div className="mt-2 flex items-center justify-between text-[10.5px] tabular-nums text-muted-foreground">
         <span>{points.length ? fmt(points[0].date) : ""}</span>
+        <span className="flex items-center gap-3">
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-[2px] bg-foreground/70" /> Visitors
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="h-2 w-2 rounded-[2px] bg-foreground/15" /> Views
+          </span>
+        </span>
         <span>{points.length ? fmt(points[points.length - 1].date) : ""}</span>
       </div>
+    </div>
+  );
+}
+
+/**
+ * A ranked list with the share drawn *behind* the row rather than beside it.
+ * Proximity and mapping: the bar occupies the row it describes, so the shape
+ * of the list is readable before any number is.
+ */
+function BreakdownCard({
+  title,
+  icon: Icon,
+  rows,
+  empty,
+  renderLabel,
+}: {
+  title: string;
+  icon: typeof Globe;
+  rows: TrafficBreakdown[];
+  empty: string;
+  renderLabel?: (r: TrafficBreakdown) => string;
+}) {
+  return (
+    <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
+      <div className="flex items-center gap-2 border-b border-border/60 bg-muted/30 px-5 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+        <Icon className="h-3.5 w-3.5" />
+        {title}
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="px-5 py-7 text-center text-[12.5px] text-muted-foreground">
+          {empty}
+        </p>
+      ) : (
+        <ul className="divide-y divide-border/40">
+          {rows.map((r) => (
+            <li key={r.label} className="relative">
+              <div
+                className="absolute inset-y-0 left-0 bg-foreground/[0.06]"
+                style={{ width: `${Math.max(2, r.share)}%` }}
+                aria-hidden
+              />
+              <div className="relative flex items-center justify-between gap-4 px-5 py-2.5">
+                <span className="min-w-0 truncate text-[13px] tracking-tight">
+                  {renderLabel ? renderLabel(r) : r.label}
+                </span>
+                <span className="flex shrink-0 items-baseline gap-2.5">
+                  <span className="text-[13px] font-semibold tabular-nums tracking-tight">
+                    {r.value.toLocaleString()}
+                  </span>
+                  <span className="w-10 text-right text-[11px] tabular-nums text-muted-foreground">
+                    {r.share}%
+                  </span>
+                </span>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -441,11 +649,15 @@ function StripePanel() {
 function StatCard({
   label,
   value,
+  text,
   hint,
   money,
 }: {
   label: string;
-  value: number;
+  /** Numeric figure. Omit when passing `text` instead. */
+  value?: number;
+  /** Non-numeric headline (e.g. a country) — rendered at the same weight. */
+  text?: string;
   hint?: string;
   money?: boolean;
 }) {
@@ -455,12 +667,14 @@ function StatCard({
         {label}
       </p>
       <p className="mt-2 text-[28px] font-semibold leading-none tracking-tightest tabular-nums">
-        {money
-          ? `$${value.toLocaleString("en-CA", {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2,
-            })}`
-          : value.toLocaleString()}
+        {text !== undefined
+          ? text
+          : money
+            ? `$${(value ?? 0).toLocaleString("en-CA", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              })}`
+            : (value ?? 0).toLocaleString()}
       </p>
       {hint && (
         <p className="mt-1.5 text-[11px] text-muted-foreground">{hint}</p>
