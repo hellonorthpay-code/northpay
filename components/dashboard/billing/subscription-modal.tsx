@@ -123,7 +123,7 @@ export function SubscriptionModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[88vw] gap-2.5 p-4 max-h-[80vh] overflow-y-auto scrollbar-none sm:max-w-md sm:gap-5 sm:p-7">
-        <DialogHeader>
+        <DialogHeader className="pr-12 sm:pr-14">
           <DialogTitle className="text-[17px] sm:text-xl">Subscription</DialogTitle>
         </DialogHeader>
 
@@ -136,7 +136,7 @@ export function SubscriptionModal({
             initial={{ opacity: 0, y: 10, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.5, ease }}
-            className="relative overflow-hidden rounded-2xl bg-[#111113] p-4 text-white shadow-pop sm:p-5"
+            className="relative mt-1 overflow-hidden rounded-2xl bg-[#111113] p-4 text-white shadow-pop sm:mt-2 sm:p-5"
           >
             {/* Depth + colour bloom */}
             <div className="pointer-events-none absolute -right-12 -top-14 h-40 w-40 rounded-full bg-emerald-400/20 blur-3xl" />

@@ -93,14 +93,16 @@ export const DialogContent = React.forwardRef<
       {...props}
     >
       {children}
-      {/* Roughly double the previous glyph, and full-strength ink rather than
-          muted grey — dismiss is the one control someone reaches for when
-          they're already done, so it shouldn't be the faintest thing on
-          screen. `text-foreground` reads black in light mode and stays
-          legible in dark, which a hard-coded black would not. */}
+      {/* Solid ink disc with a knocked-out cross — the same vocabulary as the
+          primary button, so dismiss reads as a real control instead of a grey
+          smudge. Sized to sit clear of dialog content: 44px is the standard
+          minimum touch target, and going larger started colliding with the
+          first card inside the sheet.
+          `bg-foreground`/`text-background` rather than literal black/white so
+          the disc inverts correctly in dark mode. */}
       {!hideClose && (
-        <DialogPrimitive.Close className="absolute right-3 top-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-muted/60 text-foreground transition-colors hover:bg-muted active:scale-95 sm:right-4 sm:top-4 sm:h-14 sm:w-14">
-          <X className="h-10 w-10" strokeWidth={2.2} />
+        <DialogPrimitive.Close className="absolute right-4 top-4 inline-flex h-11 w-11 items-center justify-center rounded-full bg-foreground text-background shadow-soft transition-opacity hover:opacity-85 active:scale-95">
+          <X className="h-[22px] w-[22px]" strokeWidth={2.5} />
         </DialogPrimitive.Close>
       )}
     </DialogPrimitive.Content>
