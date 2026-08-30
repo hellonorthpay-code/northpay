@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Building2, CheckCircle2, ChevronRight, ExternalLink, Info, RotateCcw, Sparkles, User } from "lucide-react";
+import { Building2, CheckCircle2, ChevronRight, ExternalLink, Home, Info, RotateCcw, Sparkles, User } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -256,6 +256,29 @@ export function SettingsView() {
             </Link>
           </div>
         </AccordionSection>
+
+        {/* Home moved out of the bottom nav. It's a way OUT of the app, not a
+            destination inside it, so it sits at the end — a plain link card
+            rather than an accordion, since there's nothing to expand. */}
+        <Link
+          href="/"
+          className="flex items-center justify-between rounded-2xl border border-border/60 bg-card/70 px-4 py-3.5 shadow-soft transition-colors hover:bg-muted/40 active:scale-[0.995]"
+        >
+          <div className="flex items-center gap-3">
+            <div className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-muted text-foreground">
+              <Home className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-[13.5px] font-medium tracking-tight">
+                NorthPay home page
+              </p>
+              <p className="text-[11.5px] text-muted-foreground">
+                Leave the dashboard for the public site
+              </p>
+            </div>
+          </div>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+        </Link>
       </div>
     </>
   );

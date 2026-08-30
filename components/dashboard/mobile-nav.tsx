@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Landmark, Play, Settings, Users } from "lucide-react";
+import { Landmark, Play, Settings, Users } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { isRecovery, RESET_PATH } from "@/lib/auth/recovery";
 import { cn } from "@/lib/utils";
@@ -11,17 +11,20 @@ import { cn } from "@/lib/utils";
 type Tab = {
   href: string;
   label: string;
-  icon: typeof Home;
+  icon: typeof Users;
   exact?: boolean;
   requiresAuth?: boolean;
-  /** Icon-only (no label) — used for Home (left) and Settings (right). */
+  /** Icon-only (no label) — used for Settings (right). */
   iconOnly?: boolean;
 };
 
-// Order = layout: Home (left) · Employees · Payroll · CRA (middle, icon+text)
-// · Settings (right).
+// Order = layout: Employees · Payroll · CRA (icon+text) · Settings (right).
+//
+// No Home tab. Leaving for the marketing site isn't something you do often
+// enough to spend a permanent slot on, and it sat next to four in-app
+// destinations while doing something categorically different — exiting the
+// app. It lives in Settings now, where the other "leave" actions are.
 const tabs: Tab[] = [
-  { href: "/", label: "Home", icon: Home, exact: true, iconOnly: true },
   { href: "/dashboard/employees", label: "Employees", icon: Users, requiresAuth: true },
   { href: "/dashboard/payroll", label: "Payroll", icon: Play, requiresAuth: true },
   { href: "/dashboard/cra", label: "CRA", icon: Landmark, requiresAuth: true },
@@ -94,6 +97,9 @@ export function MobileNav() {
   }, [activeHref, isAuthed]);
 
   if (inRecovery) return null;
+  // Every tab now requires auth, so there is nothing to show a signed-out
+  // visitor — render nothing rather than an empty pill on marketing pages.
+  if (visibleTabs.length === 0) return null;
 
   return (
     // Lifted off the screen edge: the floor goes 0.75rem → 1.5rem.
@@ -108,8 +114,8 @@ export function MobileNav() {
     // calc(1.5rem+env(…)) parses as invalid and the padding silently drops to
     // zero — the opposite of what's wanted here.
     <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-50 flex justify-center px-3 pb-[max(1.5rem,env(safe-area-inset-bottom))] md:hidden">
-      {/* Segmented pill — Home (icon) · Employees/Payroll/CRA (icon+text) ·
-          Settings (icon). No framer / no backdrop-blur: the glide is a pure
+      {/* Segmented pill — Employees/Payroll/CRA (icon+text) · Settings
+          (icon). No framer / no backdrop-blur: the glide is a pure
           CSS transition on one absolutely-positioned highlight, so it stays
           cheap to paint and never blocks taps. */}
       <div
