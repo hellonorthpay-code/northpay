@@ -31,6 +31,12 @@ export interface SamplePaystubResult {
   ok: true;
   /** False when the email provider isn't configured; figures still returned. */
   emailed: boolean;
+  /**
+   * Coarse, non-sensitive explanation when `emailed` is false, so a failed
+   * delivery can be diagnosed from the response instead of server logs:
+   *   email_not_configured · queue_insert_failed · pdf_failed · queued_drain_failed
+   */
+  reason?: string;
   periodLabel: string;
   gross: number;
   federalTax: number;

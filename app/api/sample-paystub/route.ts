@@ -206,6 +206,7 @@ export async function POST(request: Request) {
   const result: SamplePaystubResult = {
     ok: true,
     emailed: false,
+    reason: emailConfigured() ? undefined : "email_not_configured",
     periodLabel,
     gross: line.grossPay,
     federalTax: line.federalTax,
@@ -261,12 +262,15 @@ export async function POST(request: Request) {
         await drainQueue(admin);
       } catch (e) {
         console.warn("[sample-paystub] immediate drain failed (non-fatal):", e);
+        result.reason = "queued_drain_failed";
       }
     } else {
       console.warn("[sample-paystub] queue insert failed:", error.message);
+      result.reason = "queue_insert_failed";
     }
     } catch (e) {
       console.warn("[sample-paystub] delivery failed (figures still returned):", e);
+      result.reason = "pdf_failed";
     }
   }
 
