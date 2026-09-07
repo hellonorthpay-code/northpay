@@ -393,3 +393,98 @@ export function buildPaystubEmailHtml(p: PaystubEmailParams): string {
   </table>
 </div>`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Sample paystub — the landing-page "Try a sample paystub" funnel.
+//
+// Same card, same hero figure, same hairline breakdown as a real paystub, so
+// the email itself is a preview of the product. Two deliberate differences:
+// a clear "sample" label (this is not a payroll record), and a single call
+// to action back to the app.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface SamplePaystubEmailParams {
+  firstName: string;
+  businessName: string;
+  /** Pre-formatted pay-period range. */
+  range: string;
+  provinceName: string;
+  gross: number;
+  federalTax: number;
+  provincialTax: number;
+  cpp: number;
+  ei: number;
+  net: number;
+  /** Where "Start tracking" points. */
+  appUrl: string;
+}
+
+export function buildSamplePaystubEmailHtml(p: SamplePaystubEmailParams): string {
+  const row = (label: string, value: string, last = false) => `
+    <tr>
+      <td style="padding:13px 0;font-size:14px;color:${MUTED};${last ? "" : `border-bottom:1px solid ${HAIR};`}">${label}</td>
+      <td style="padding:13px 0;font-size:14px;color:${INK};text-align:right;font-variant-numeric:tabular-nums;${last ? "" : `border-bottom:1px solid ${HAIR};`}">${value}</td>
+    </tr>`;
+
+  return `
+<div style="margin:0;padding:32px 16px;background:#f5f5f7;font-family:${FONT};-webkit-font-smoothing:antialiased;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;margin:0 auto;">
+    <tr><td>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:22px;border:1px solid ${HAIR};">
+        <tr><td style="padding:32px 32px 0;">
+          <span style="display:inline-block;font-size:16px;font-weight:600;letter-spacing:-0.01em;color:${INK};">NorthPay</span>
+        </td></tr>
+
+        <tr><td style="padding:26px 32px 0;">
+          <span style="display:inline-block;padding:4px 10px;border-radius:999px;background:#f5f5f7;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${MUTED};">Sample paystub</span>
+          <h1 style="margin:14px 0 0;font-size:24px;line-height:1.2;font-weight:600;letter-spacing:-0.02em;color:${INK};">Here&rsquo;s what ${p.firstName}&rsquo;s paystub would look like</h1>
+          <p style="margin:6px 0 0;font-size:14px;color:${MUTED};">${p.businessName} &middot; ${p.provinceName} &middot; ${p.range}</p>
+        </td></tr>
+
+        <tr><td style="padding:26px 32px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;border-radius:16px;">
+            <tr><td style="padding:22px 24px;text-align:center;">
+              <p style="margin:0;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.1em;color:${MUTED};">Net pay</p>
+              <p style="margin:8px 0 0;font-size:36px;line-height:1;font-weight:600;letter-spacing:-0.02em;color:${INK};font-variant-numeric:tabular-nums;">${money(p.net)}</p>
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:24px 32px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+            ${row("Gross pay", money(p.gross))}
+            ${row("Federal tax", "−" + money(p.federalTax))}
+            ${row("Provincial tax", "−" + money(p.provincialTax))}
+            ${row("CPP", "−" + money(p.cpp))}
+            ${row("EI", "−" + money(p.ei), true)}
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:22px 32px 0;">
+          <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f5f5f7;border-radius:12px;">
+            <tr><td style="padding:14px 16px;font-size:13px;color:${MUTED};">
+              The full statement of earnings is attached as a PDF &mdash; the same document your employees would receive.
+            </td></tr>
+          </table>
+        </td></tr>
+
+        <tr><td style="padding:26px 32px 34px;text-align:center;">
+          <a href="${p.appUrl}" style="display:inline-block;padding:14px 26px;border-radius:999px;background:${INK};color:#ffffff;font-size:14px;font-weight:600;text-decoration:none;">Run payroll for real</a>
+          <p style="margin:14px 0 0;font-size:12px;color:${MUTED};">Free to start. Every employee, every province we support, every pay period.</p>
+        </td></tr>
+      </table>
+
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+        <tr><td style="padding:20px 28px;text-align:center;">
+          <p style="margin:0;font-size:11px;line-height:1.6;color:#a1a1a6;">
+            This is a sample generated from the figures you entered. It is not a payroll record.<br/>
+            Calculated with 2026 CRA rates &mdash; verify against your own records before relying on it.
+          </p>
+        </td></tr>
+      </table>
+
+    </td></tr>
+  </table>
+</div>`;
+}

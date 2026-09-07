@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 // Both are deferred so they don't block the hero/nav becoming interactive on
@@ -13,15 +13,20 @@ const HeroPayrollCards = dynamic(
   () => import("./hero-cards").then((m) => m.HeroPayrollCards),
   { ssr: false }
 );
-const HowItWorksModal = dynamic(
-  () => import("./how-it-works-modal").then((m) => m.HowItWorksModal),
+// The sample-paystub wizard replaces the old "See how it works" tour: a
+// visitor now gets a real paystub for their own numbers, delivered to their
+// inbox, instead of a walkthrough of someone else's.
+const SamplePaystubModal = dynamic(
+  () => import("./sample-paystub-modal").then((m) => m.SamplePaystubModal),
   { ssr: false }
 );
 
 // Entrances use tailwindcss-animate (pure CSS) instead of framer-motion, so the
 // hero hydrates without pulling framer onto the homepage's critical path.
 export function Hero() {
-  const [howItWorksOpen, setHowItWorksOpen] = useState(false);
+  const [sampleOpen, setSampleOpen] = useState(false);
+  // Where the button was when it was pressed, so the sheet swells out of it.
+  const [sampleOrigin, setSampleOrigin] = useState<{ x: number; y: number } | null>(null);
   // The mockup cards animate (framer) continuously — skip them on phones so the
   // main thread stays free and nav taps render instantly. Default false (also
   // the SSR value) so they never mount on mobile.
@@ -67,17 +72,24 @@ export function Hero() {
             <Button
               size="lg"
               variant="outline"
-              onClick={() => setHowItWorksOpen(true)}
+              className="group"
+              onClick={(e) => {
+                const r = e.currentTarget.getBoundingClientRect();
+                setSampleOrigin({ x: r.left + r.width / 2, y: r.top + r.height / 2 });
+                setSampleOpen(true);
+              }}
             >
-              See how it works
+              <FileText className="h-4 w-4 transition-transform duration-300 group-hover:-translate-y-0.5" />
+              Try a sample paystub
             </Button>
           </div>
 
-          {/* Only mount (and download) the modal once it's actually opened. */}
-          {howItWorksOpen && (
-            <HowItWorksModal
-              open={howItWorksOpen}
-              onClose={() => setHowItWorksOpen(false)}
+          {/* Only mount (and download) the wizard once it's actually opened. */}
+          {sampleOpen && (
+            <SamplePaystubModal
+              open={sampleOpen}
+              onOpenChange={setSampleOpen}
+              origin={sampleOrigin}
             />
           )}
         </div>
