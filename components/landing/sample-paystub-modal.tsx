@@ -205,7 +205,7 @@ export function SamplePaystubModal({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.32, ease: EASE }}
-            className="space-y-6"
+            className="space-y-4 sm:space-y-6"
           >
             {result ? (
               <Done result={result} form={form} onClose={() => onOpenChange(false)} />
@@ -297,7 +297,7 @@ function Field({
 
 function StepOne({ form, set }: { form: FormState; set: Setter }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <Lead
         eyebrow="Step 1 of 4"
         title="Who's getting paid?"
@@ -327,7 +327,7 @@ function StepOne({ form, set }: { form: FormState; set: Setter }) {
 
 function StepTwo({ form, set }: { form: FormState; set: Setter }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <Lead
         eyebrow="Step 2 of 4"
         title="The business"
@@ -394,7 +394,7 @@ function StepThree({
 }) {
   const freq = SAMPLE_FREQUENCIES.find((f) => f.id === form.payFrequency)?.label ?? "";
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <Lead
         eyebrow="Step 3 of 4"
         title="This pay period"
@@ -443,7 +443,7 @@ function StepThree({
 
 function StepFour({ form, set }: { form: FormState; set: Setter }) {
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       <Lead
         eyebrow="Step 4 of 4"
         title="Where should it go?"
@@ -502,7 +502,7 @@ function Done({
     ["EI", -result.ei],
   ];
   return (
-    <div className="space-y-5">
+    <div className="space-y-4 sm:space-y-5">
       {/* Net pay reveal — the one number that matters, given the room. */}
       <div className="rounded-3xl bg-foreground px-6 py-6 text-background dark:bg-white dark:text-black">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">

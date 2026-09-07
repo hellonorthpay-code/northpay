@@ -65,19 +65,23 @@ export const DialogContent = React.forwardRef<
         - no slide-from-bottom; iOS-style sheets swell from the centre.
         - 420ms with the iOS smooth curve so the swell feels deliberate
           rather than abrupt. Same curve on close → symmetric dismiss. */}
+    {/* Centering lives on a plain wrapper (grid + place-items-center), NOT
+        on the sheet itself. The previous `inset-0 m-auto h-fit` relied on
+        `height: fit-content`, which iOS Safari ignores — the sheet then
+        stretched to its max-height and the grid spread every row out, which
+        is why forms looked twice as tall on phones as on desktop. No
+        transform anywhere in the chain (a persistent transform on an
+        ancestor makes mobile browsers misplace the text caret), and the
+        wrapper passes pointer events through so clicks beside the sheet
+        still reach the overlay and dismiss. */}
+    <div className="pointer-events-none fixed inset-0 z-50 grid place-items-center p-4">
     <DialogPrimitive.Content
       ref={ref}
       onPointerDownOutside={ignoreIfPopover}
       onInteractOutside={ignoreIfPopover}
       onFocusOutside={ignoreIfPopover}
       className={cn(
-        // Centered via inset-0 + margin auto (NOT translate). A persistent
-        // CSS transform / will-change / backdrop-filter on an ancestor makes
-        // mobile browsers (Android Chrome) draw the text caret in the wrong
-        // place inside child inputs — this avoids all three. The open zoom
-        // animation still uses a temporary transform, which is fine once it
-        // settles.
-        "fixed inset-0 z-50 m-auto grid h-fit w-full max-w-lg gap-6 rounded-3xl border border-border bg-background p-7 shadow-pop",
+        "pointer-events-auto relative grid w-full max-w-lg gap-6 rounded-3xl border border-border bg-background p-7 shadow-pop",
         "origin-center",
         "data-[state=open]:animate-in data-[state=closed]:animate-out",
         "data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0",
@@ -109,6 +113,7 @@ export const DialogContent = React.forwardRef<
         </DialogPrimitive.Close>
       )}
     </DialogPrimitive.Content>
+    </div>
   </DialogPrimitive.Portal>
   );
 });
