@@ -39,7 +39,7 @@ export function UpgradeBanner() {
             Your free trial has ended
           </p>
           <p className="mt-1 text-[12.5px] opacity-90">
-            Subscribe to keep running payroll and emailing paystubs.
+            {billingLabel(billing).detail}
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { LAUNCH_OFFER } from "@/lib/billing/offer";
 import {
   billingConfigured,
   checkCustomer,
@@ -125,11 +126,19 @@ export async function POST(request: Request) {
       { onConflict: "owner_id" }
     );
 
-    // Resolve the code server-side. If the customer was shown a code as
-    // applied, it must either apply or stop them here — never fall through
-    // to a full-price checkout they didn't agree to.
+    // ── Discount resolution ──
+    //
+    // This is the ONLY place the offer is applied. Doing it here rather than
+    // at the button means every entry point honours it: the subscribe sheet,
+    // the trial-ended banner on Payroll, the Settings card, and anything
+    // added later. Deciding it per-button is how two of the three existing
+    // buttons ended up sending customers to a full-price checkout while the
+    // homepage advertised two months free.
     let promotionCodeId: string | null = null;
+
     if (promoCode) {
+      // Explicit code: it must either apply or stop checkout here — never
+      // fall through to a full-price session the customer didn't agree to.
       const promo = await findPromotionCode(promoCode);
       if (!promo) {
         return NextResponse.json(
@@ -147,6 +156,19 @@ export async function POST(request: Request) {
         );
       }
       promotionCodeId = promo.id;
+    } else {
+      // No code given: apply the launch offer when this customer qualifies.
+      // Silent by design — if the offer doesn't exist in Stripe, or they've
+      // paid before, checkout proceeds at the normal price rather than
+      // failing. An explicit code always beats this.
+      try {
+        const offer = await findPromotionCode(LAUNCH_OFFER.code);
+        if (offer && (!offer.firstTimeOnly || !(await customerHasPaid(customerId)))) {
+          promotionCodeId = offer.id;
+        }
+      } catch {
+        // Offer lookup is best-effort; never block a paying customer over it.
+      }
     }
 
     const checkoutUrl = await createCheckoutSession({
