@@ -139,6 +139,46 @@ export async function findOrCreateCustomer(
   return created.id;
 }
 
+// ─────────────────────────────────────────────────────────────────────────
+// Promotion codes across Stripe API versions.
+//
+// API 2026-06-24 (this account) moved the coupon under `promotion.coupon`
+// and renamed the create parameter `promotion_code` → `code`. Older
+// versions expose `coupon` directly. The list endpoint does not expand the
+// coupon, so it may arrive as a bare id; resolve it to an object either way.
+// ─────────────────────────────────────────────────────────────────────────
+
+interface CouponShape {
+  id?: string;
+  percent_off?: number | null;
+  amount_off?: number | null;
+  currency?: string | null;
+  duration?: string;
+  duration_in_months?: number | null;
+  valid?: boolean;
+}
+
+interface PromoCodeShape {
+  id: string;
+  code: string;
+  active?: boolean;
+  times_redeemed?: number;
+  restrictions?: { first_time_transaction?: boolean };
+  coupon?: CouponShape | string;
+  promotion?: { type?: string; coupon?: CouponShape | string };
+}
+
+async function resolveCoupon(p: PromoCodeShape): Promise<CouponShape | null> {
+  const raw = p.coupon ?? p.promotion?.coupon;
+  if (!raw) return null;
+  if (typeof raw === "object") return raw;
+  try {
+    return (await stripeGet(`/coupons/${encodeURIComponent(raw)}`)) as CouponShape;
+  } catch {
+    return null;
+  }
+}
+
 export interface PromoLookup {
   id: string;
   code: string;
@@ -164,26 +204,13 @@ export async function findPromotionCode(
 
   const res = (await stripeGet(
     `/promotion_codes?code=${encodeURIComponent(trimmed)}&active=true&limit=1`
-  )) as {
-    data?: Array<{
-      id: string;
-      code: string;
-      restrictions?: { first_time_transaction?: boolean };
-      coupon?: {
-        percent_off?: number | null;
-        amount_off?: number | null;
-        currency?: string | null;
-        duration?: string;
-        duration_in_months?: number | null;
-        valid?: boolean;
-      };
-    }>;
-  };
+  )) as { data?: PromoCodeShape[] };
 
   const promo = res.data?.[0];
-  if (!promo || !promo.coupon?.valid) return null;
+  if (!promo) return null;
+  const c = await resolveCoupon(promo);
+  if (!c || c.valid === false) return null;
 
-  const c = promo.coupon;
   const label = c.percent_off
     ? `${c.percent_off}% off`
     : c.amount_off
@@ -243,30 +270,15 @@ export interface LaunchOfferState {
   timesRedeemed?: number;
 }
 
-interface PromoRecord {
-  id: string;
-  code: string;
-  active: boolean;
-  times_redeemed?: number;
-  restrictions?: { first_time_transaction?: boolean };
-  coupon?: {
-    id: string;
-    percent_off?: number | null;
-    duration?: string;
-    duration_in_months?: number | null;
-    valid?: boolean;
-  };
-}
-
-function auditOffer(
-  p: PromoRecord,
+async function auditOffer(
+  p: PromoCodeShape,
   offer: { code: string; percentOff: number; freeMonths: number }
-): LaunchOfferState {
+): Promise<LaunchOfferState> {
   const mismatches: string[] = [];
-  if (!p.active) mismatches.push("promotion code is inactive");
+  if (p.active === false) mismatches.push("promotion code is inactive");
   if (!p.restrictions?.first_time_transaction)
     mismatches.push("not restricted to first-time customers");
-  const c = p.coupon;
+  const c = await resolveCoupon(p);
   if (!c) mismatches.push("no coupon attached");
   else {
     if (c.percent_off !== offer.percentOff)
@@ -297,7 +309,7 @@ export async function getLaunchOffer(offer: {
 }): Promise<LaunchOfferState> {
   const res = (await stripeGet(
     `/promotion_codes?code=${encodeURIComponent(offer.code)}&limit=1`
-  )) as { data?: PromoRecord[] };
+  )) as { data?: PromoCodeShape[] };
   const p = res.data?.[0];
   if (!p) return { code: offer.code, exists: false, ok: false, mismatches: [] };
   return auditOffer(p, offer);
@@ -332,9 +344,11 @@ export async function ensureLaunchOffer(offer: {
     });
   }
 
+  // API 2026-06-24 shape: `code` + `promotion{type,coupon}`. The previous
+  // `promotion_code` + `coupon` parameters are rejected on this version.
   await stripePost("/promotion_codes", {
-    promotion_code: offer.code,
-    coupon: offer.couponId,
+    code: offer.code,
+    promotion: { type: "coupon", coupon: offer.couponId },
     active: true,
     restrictions: { first_time_transaction: true },
   });
