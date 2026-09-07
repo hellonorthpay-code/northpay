@@ -74,14 +74,20 @@ export function SubscriptionModal({
   const [promoChecking, setPromoChecking] = useState(false);
   const [promo, setPromo] = useState<PromoResult | null>(null);
 
-  async function applyPromo(explicit?: string) {
+  async function applyPromo(explicit?: string, auto = false) {
     const code = (explicit ?? promoInput).trim();
     if (!code) return;
     setPromoChecking(true);
     setPromo(null);
     const result = await validatePromoCode(code);
-    setPromo(result);
     setPromoChecking(false);
+    // A code the customer never typed has to fail silently. If the launch
+    // offer isn't live in Stripe (or this account isn't eligible), the offer
+    // simply doesn't appear — telling someone "that code isn't valid" for a
+    // code we filled in ourselves reads as a broken app.
+    if (auto && !result.valid) return;
+    if (auto) setPromoInput(code);
+    setPromo(result);
   }
 
   const isActive = billing.status === "active" || billing.status === "past_due";
@@ -93,9 +99,9 @@ export function SubscriptionModal({
   useEffect(() => {
     if (!open || !offerEligible || billing.loading) return;
     if (promoInput) return; // the customer typed something else — respect it
-    setPromoInput(LAUNCH_OFFER.code);
-    setPromoOpen(true);
-    void applyPromo(LAUNCH_OFFER.code);
+    // The offer card is the surface for this; the promo box stays closed so
+    // the same discount isn't announced twice.
+    void applyPromo(LAUNCH_OFFER.code, true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, offerEligible, billing.loading]);
   const offerApplied = !!promo?.valid && promo.code === LAUNCH_OFFER.code;

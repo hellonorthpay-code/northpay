@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { ArrowRight, FileText } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { LAUNCH_OFFER } from "@/lib/billing/offer";
 
 // Both are deferred so they don't block the hero/nav becoming interactive on
 // mobile: the modal is only needed on click, and the mockup cards sit below the
@@ -63,9 +64,14 @@ export function Hero() {
           </p>
 
           <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+            {/* Leads with the offer, not the verb. "Start tracking" described
+                what the button does; this says what the visitor gets. Kept
+                conservative on purpose: a new signup actually gets 14 days
+                free before the 2 discounted months even begin, so the
+                headline can never over-promise. */}
             <Link href="/dashboard">
               <Button size="lg" className="group">
-                Start tracking
+                Try {LAUNCH_OFFER.freeMonths} months free
                 <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
               </Button>
             </Link>
