@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
-import { billingConfigured, findPromotionCode } from "@/lib/billing/stripe";
+import {
+  billingConfigured,
+  customerHasPaid,
+  findPromotionCode,
+} from "@/lib/billing/stripe";
 
 // ─────────────────────────────────────────────────────────────────────────
 // Validate a promo code before checkout.
@@ -50,6 +54,26 @@ export async function POST(request: Request) {
   try {
     const promo = await findPromotionCode(code);
     if (!promo) return NextResponse.json({ valid: false });
+
+    // First-time-only codes: check what Stripe will check, before the
+    // customer is told "applied". Only a customer with billing history can
+    // be ineligible, so this costs nothing for a fresh signup.
+    if (promo.firstTimeOnly) {
+      const secretKey = process.env.SUPABASE_SECRET_KEY;
+      if (secretKey) {
+        const admin = createClient(url, secretKey, {
+          auth: { autoRefreshToken: false, persistSession: false },
+        });
+        const { data: row } = await admin
+          .from("subscriptions")
+          .select("stripe_customer_id")
+          .eq("owner_id", user.id)
+          .maybeSingle();
+        if (row?.stripe_customer_id && (await customerHasPaid(row.stripe_customer_id))) {
+          return NextResponse.json({ valid: false, reason: "new_customers_only" });
+        }
+      }
+    }
 
     const forever = promo.duration === "forever";
     const months = promo.durationInMonths;

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowUpRight,
@@ -32,6 +32,14 @@ import {
 } from "@/lib/billing/client";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
+import { LAUNCH_OFFER } from "@/lib/billing/offer";
+
+/** "Nov 7, 2026" for a subscription started today with 2 free months. */
+function firstChargeLabel(): string {
+  const d = new Date();
+  d.setMonth(d.getMonth() + LAUNCH_OFFER.freeMonths);
+  return d.toLocaleDateString("en-CA", { month: "short", day: "numeric", year: "numeric" });
+}
 
 const ease = [0.22, 1, 0.36, 1] as const;
 
@@ -66,8 +74,8 @@ export function SubscriptionModal({
   const [promoChecking, setPromoChecking] = useState(false);
   const [promo, setPromo] = useState<PromoResult | null>(null);
 
-  async function applyPromo() {
-    const code = promoInput.trim();
+  async function applyPromo(explicit?: string) {
+    const code = (explicit ?? promoInput).trim();
     if (!code) return;
     setPromoChecking(true);
     setPromo(null);
@@ -77,6 +85,20 @@ export function SubscriptionModal({
   }
 
   const isActive = billing.status === "active" || billing.status === "past_due";
+
+  // Launch offer: pre-applied for eligible accounts the moment the sheet
+  // opens, and validated against Stripe's own first-time rule before it is
+  // shown as applied. Someone with a prior payment simply never sees it.
+  const offerEligible = !isActive && billing.offerEligible !== false;
+  useEffect(() => {
+    if (!open || !offerEligible || billing.loading) return;
+    if (promoInput) return; // the customer typed something else — respect it
+    setPromoInput(LAUNCH_OFFER.code);
+    setPromoOpen(true);
+    void applyPromo(LAUNCH_OFFER.code);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, offerEligible, billing.loading]);
+  const offerApplied = !!promo?.valid && promo.code === LAUNCH_OFFER.code;
   const ending = !!billing.cancelAtPeriodEnd;
   const label = billingLabel(billing);
   // Real Stripe details — only fetched once billing is relevant to this user.
@@ -319,6 +341,22 @@ export function SubscriptionModal({
         {/* Promo code — only worth offering to someone about to subscribe.
             Validated here so the discount is confirmed before leaving the app;
             Stripe's own promo box still appears if no code is pre-applied. */}
+        {offerEligible && offerApplied && (
+          <div className="rounded-2xl bg-foreground px-4 py-3.5 text-background dark:bg-white dark:text-black">
+            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] opacity-70">
+              Launch offer · {LAUNCH_OFFER.code}
+            </p>
+            <p className="mt-1 text-[15px] font-semibold tracking-tight">
+              First {LAUNCH_OFFER.freeMonths} months free, then $9.99/month
+            </p>
+            <p className="mt-1 text-[12px] leading-relaxed opacity-75">
+              Add a card now. Your first two invoices are $0.00; the first
+              charge is on {firstChargeLabel()}. Cancel any time before then
+              and you pay nothing.
+            </p>
+          </div>
+        )}
+
         {!isActive && (
           <div>
             {!promoOpen ? (
@@ -368,7 +406,9 @@ export function SubscriptionModal({
                 )}
                 {promo && !promo.valid && (
                   <p className="mt-2 px-0.5 text-[12px] font-medium text-destructive">
-                    That code isn&rsquo;t valid.
+                    {promo.reason === "new_customers_only"
+                      ? "This code is for new customers only — this account has already made a payment."
+                      : "That code isn\u2019t valid."}
                   </p>
                 )}
               </div>

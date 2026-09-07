@@ -147,6 +147,8 @@ export interface PromoLookup {
   /** "forever" | "once" | "repeating" */
   duration: string;
   durationInMonths?: number | null;
+  /** Stripe will refuse this code for any customer with a prior payment. */
+  firstTimeOnly: boolean;
 }
 
 /**
@@ -166,6 +168,7 @@ export async function findPromotionCode(
     data?: Array<{
       id: string;
       code: string;
+      restrictions?: { first_time_transaction?: boolean };
       coupon?: {
         percent_off?: number | null;
         amount_off?: number | null;
@@ -193,7 +196,150 @@ export async function findPromotionCode(
     label,
     duration: c.duration ?? "once",
     durationInMonths: c.duration_in_months ?? null,
+    firstTimeOnly: !!promo.restrictions?.first_time_transaction,
   };
+}
+
+/**
+ * Has this customer ever successfully paid? Mirrors Stripe's own
+ * `first_time_transaction` rule so the in-app validator and the checkout
+ * guard reach the same verdict Stripe will — a code must never read "valid"
+ * on our screen and then be refused on Stripe's.
+ *
+ * A $0 invoice (e.g. a fully discounted month) is not a payment. A refunded
+ * charge still is: the payment succeeded, which is what the rule is about.
+ */
+export async function customerHasPaid(customerId: string): Promise<boolean> {
+  const [charges, invoices] = await Promise.all([
+    stripeGet(`/charges?customer=${encodeURIComponent(customerId)}&limit=100`) as Promise<{
+      data?: Array<{ status: string; amount: number }>;
+    }>,
+    stripeGet(
+      `/invoices?customer=${encodeURIComponent(customerId)}&status=paid&limit=100`
+    ) as Promise<{ data?: Array<{ amount_paid: number }> }>,
+  ]);
+  const paidCharge = (charges.data ?? []).some(
+    (c) => c.status === "succeeded" && c.amount > 0
+  );
+  const paidInvoice = (invoices.data ?? []).some((i) => (i.amount_paid ?? 0) > 0);
+  return paidCharge || paidInvoice;
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Launch offer — created from the admin panel with parameters fixed here,
+// not typed into a dashboard where "once" sits one click from "repeating".
+// Idempotent: safe to press twice, and it reports drift if the code exists
+// with different terms instead of silently accepting them.
+// ─────────────────────────────────────────────────────────────────────────
+
+export interface LaunchOfferState {
+  code: string;
+  exists: boolean;
+  /** True when it exists AND every term matches LAUNCH_OFFER. */
+  ok: boolean;
+  /** Human-readable terms that differ, when ok is false. */
+  mismatches: string[];
+  promotionCodeId?: string;
+  timesRedeemed?: number;
+}
+
+interface PromoRecord {
+  id: string;
+  code: string;
+  active: boolean;
+  times_redeemed?: number;
+  restrictions?: { first_time_transaction?: boolean };
+  coupon?: {
+    id: string;
+    percent_off?: number | null;
+    duration?: string;
+    duration_in_months?: number | null;
+    valid?: boolean;
+  };
+}
+
+function auditOffer(
+  p: PromoRecord,
+  offer: { code: string; percentOff: number; freeMonths: number }
+): LaunchOfferState {
+  const mismatches: string[] = [];
+  if (!p.active) mismatches.push("promotion code is inactive");
+  if (!p.restrictions?.first_time_transaction)
+    mismatches.push("not restricted to first-time customers");
+  const c = p.coupon;
+  if (!c) mismatches.push("no coupon attached");
+  else {
+    if (c.percent_off !== offer.percentOff)
+      mismatches.push(`discount is ${c.percent_off ?? 0}% not ${offer.percentOff}%`);
+    if (c.duration !== "repeating")
+      mismatches.push(`duration is "${c.duration}" not "repeating"`);
+    if (c.duration_in_months !== offer.freeMonths)
+      mismatches.push(
+        `applies for ${c.duration_in_months ?? 0} months not ${offer.freeMonths}`
+      );
+    if (c.valid === false) mismatches.push("coupon is no longer valid");
+  }
+  return {
+    code: p.code,
+    exists: true,
+    ok: mismatches.length === 0,
+    mismatches,
+    promotionCodeId: p.id,
+    timesRedeemed: p.times_redeemed ?? 0,
+  };
+}
+
+/** Current state of the launch offer in Stripe — never creates anything. */
+export async function getLaunchOffer(offer: {
+  code: string;
+  percentOff: number;
+  freeMonths: number;
+}): Promise<LaunchOfferState> {
+  const res = (await stripeGet(
+    `/promotion_codes?code=${encodeURIComponent(offer.code)}&limit=1`
+  )) as { data?: PromoRecord[] };
+  const p = res.data?.[0];
+  if (!p) return { code: offer.code, exists: false, ok: false, mismatches: [] };
+  return auditOffer(p, offer);
+}
+
+/** Create the launch offer if absent. Existing-but-different is reported, not overwritten. */
+export async function ensureLaunchOffer(offer: {
+  code: string;
+  couponId: string;
+  couponName: string;
+  percentOff: number;
+  freeMonths: number;
+}): Promise<LaunchOfferState> {
+  const current = await getLaunchOffer(offer);
+  if (current.exists) return current;
+
+  // Coupon: reuse by fixed id if a previous attempt got this far.
+  let couponExists = false;
+  try {
+    await stripeGet(`/coupons/${encodeURIComponent(offer.couponId)}`);
+    couponExists = true;
+  } catch {
+    couponExists = false;
+  }
+  if (!couponExists) {
+    await stripePost("/coupons", {
+      id: offer.couponId,
+      name: offer.couponName,
+      percent_off: offer.percentOff,
+      duration: "repeating",
+      duration_in_months: offer.freeMonths,
+    });
+  }
+
+  await stripePost("/promotion_codes", {
+    promotion_code: offer.code,
+    coupon: offer.couponId,
+    active: true,
+    restrictions: { first_time_transaction: true },
+  });
+
+  return getLaunchOffer(offer);
 }
 
 /** Hosted Checkout for the monthly subscription. Returns the redirect URL. */

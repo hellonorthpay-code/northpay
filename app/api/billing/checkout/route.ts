@@ -4,6 +4,7 @@ import {
   billingConfigured,
   checkCustomer,
   createCheckoutSession,
+  customerHasPaid,
   findOrCreateCustomer,
   findPromotionCode,
 } from "@/lib/billing/stripe";
@@ -124,12 +125,28 @@ export async function POST(request: Request) {
       { onConflict: "owner_id" }
     );
 
-    // Resolve the code server-side; an invalid one is ignored rather than
-    // blocking checkout, and Stripe's own promo box still appears.
+    // Resolve the code server-side. If the customer was shown a code as
+    // applied, it must either apply or stop them here — never fall through
+    // to a full-price checkout they didn't agree to.
     let promotionCodeId: string | null = null;
     if (promoCode) {
       const promo = await findPromotionCode(promoCode);
-      promotionCodeId = promo?.id ?? null;
+      if (!promo) {
+        return NextResponse.json(
+          { error: "That promo code isn't valid.", promoRejected: true },
+          { status: 400 }
+        );
+      }
+      if (promo.firstTimeOnly && (await customerHasPaid(customerId))) {
+        return NextResponse.json(
+          {
+            error: "This code is for new customers only, and this account has already made a payment.",
+            promoRejected: true,
+          },
+          { status: 400 }
+        );
+      }
+      promotionCodeId = promo.id;
     }
 
     const checkoutUrl = await createCheckoutSession({

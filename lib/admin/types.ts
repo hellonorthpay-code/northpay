@@ -95,3 +95,15 @@ export interface AdminStripeSummary {
   mrr: number;
   transactions: AdminStripeTx[];
 }
+
+// ─── Launch offer (NORTHPAY60) ───
+
+export interface AdminLaunchOffer {
+  configured: boolean;
+  code: string;
+  exists: boolean;
+  ok: boolean;
+  mismatches: string[];
+  promotionCodeId?: string;
+  timesRedeemed?: number;
+}

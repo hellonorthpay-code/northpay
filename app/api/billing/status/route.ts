@@ -2,13 +2,14 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import {
   billingConfigured,
+  customerHasPaid,
   isResourceMissing,
   subPeriodEndISO,
   subIsEnding,
   type StripeSubShape,
 } from "@/lib/billing/stripe";
+import { LAUNCH_DATE, TRIAL_DAYS } from "@/lib/billing/offer";
 
-const TRIAL_DAYS = 14;
 const DAY_MS = 86_400_000;
 
 /**
@@ -238,9 +239,25 @@ export async function GET(request: Request) {
     }
   }
 
-  // Free trial — time-based from signup, no card.
+  // Launch-offer eligibility mirrors Stripe's first-time rule. A customer id
+  // alone doesn't disqualify (an abandoned checkout creates one); a prior
+  // successful payment does.
+  let offerEligible = true;
+  if (sub?.stripe_customer_id && !customerMissing) {
+    try {
+      offerEligible = !(await customerHasPaid(sub.stripe_customer_id));
+    } catch {
+      offerEligible = true; // Stripe unreachable — the checkout guard re-checks.
+    }
+  }
+
+  // Free trial — no card. Measured from the LATER of signup and launch day,
+  // so accounts that predate billing get the same 14 days as a new signup
+  // instead of being expired the moment the gate opens.
   const created = user.created_at ? new Date(user.created_at).getTime() : now;
-  const trialEnds = created + TRIAL_DAYS * DAY_MS;
+  const launch = Date.parse(process.env.BILLING_LAUNCH_DATE ?? LAUNCH_DATE);
+  const trialStart = Number.isFinite(launch) ? Math.max(created, launch) : created;
+  const trialEnds = trialStart + TRIAL_DAYS * DAY_MS;
   if (now < trialEnds) {
     return NextResponse.json({
       configured: true,
@@ -249,6 +266,7 @@ export async function GET(request: Request) {
       trialDaysLeft: Math.max(1, Math.ceil((trialEnds - now) / DAY_MS)),
       pilot: true,
       hasCustomer,
+      offerEligible,
     });
   }
 
@@ -258,5 +276,6 @@ export async function GET(request: Request) {
     status: "expired",
     pilot: true,
     hasCustomer,
+    offerEligible,
   });
 }

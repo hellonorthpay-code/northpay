@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/store/auth";
 import type {
+  AdminLaunchOffer,
   AdminStats,
   AdminStripeSummary,
   AdminTraffic,
@@ -15,6 +16,7 @@ export type {
   AdminStripeSummary,
   AdminStripeTx,
   AdminTraffic,
+  AdminLaunchOffer,
   TrafficBreakdown,
   TrafficDayPoint,
 } from "@/lib/admin/types";
@@ -95,6 +97,16 @@ export async function fetchAdminTraffic(days: number): Promise<AdminTraffic> {
     throw new Error(body.error || `Request failed (${res.status})`);
   }
   return (await res.json()) as AdminTraffic;
+}
+
+/** State of the launch offer in Stripe; `create` makes it if it's missing. */
+export async function fetchLaunchOffer(create = false): Promise<AdminLaunchOffer> {
+  const res = await authedFetch("/api/admin/launch-offer", {
+    method: create ? "POST" : "GET",
+  });
+  const body = (await res.json().catch(() => ({}))) as AdminLaunchOffer & { error?: string };
+  if (!res.ok) throw new Error(body.error || `Request failed (${res.status})`);
+  return body;
 }
 
 /** Every Stripe transaction on the platform, plus volume and MRR. */

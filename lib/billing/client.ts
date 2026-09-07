@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/store/auth";
+import { LAUNCH_OFFER } from "@/lib/billing/offer";
 
 export interface BillingStatus {
   loading: boolean;
@@ -20,6 +21,8 @@ export interface BillingStatus {
   /** True only for accounts in the billing pilot (BILLING_TEST_EMAILS) —
    *  everyone else must see zero billing UI. */
   pilot: boolean;
+  /** May use the first-time launch offer (no prior successful payment). */
+  offerEligible?: boolean;
 }
 
 async function authedFetch(path: string, init?: RequestInit) {
@@ -69,6 +72,7 @@ export function useBilling(): BillingStatus {
           renewsAt: j.renewsAt ?? null,
           hasCustomer: !!j.hasCustomer,
           pilot: !!j.pilot,
+          offerEligible: j.offerEligible !== false,
         });
       })
       .catch(() => {
@@ -88,7 +92,11 @@ export async function startCheckout(promoCode?: string): Promise<void> {
     method: "POST",
     body: JSON.stringify({ promoCode: promoCode ?? "" }),
   });
-  const json = (await res.json()) as { url?: string; error?: string };
+  const json = (await res.json()) as {
+    url?: string;
+    error?: string;
+    promoRejected?: boolean;
+  };
   if (json.url) window.location.href = json.url;
   else throw new Error(json.error || "Could not start checkout.");
 }
@@ -100,6 +108,8 @@ export interface PromoResult {
   label?: string;
   /** e.g. "on your first month" */
   detail?: string;
+  /** Why an invalid result was invalid, when it's worth telling the customer. */
+  reason?: "new_customers_only";
 }
 
 /** Check a promo code before checkout. Never throws for an invalid code. */
@@ -110,7 +120,7 @@ export async function validatePromoCode(code: string): Promise<PromoResult> {
       body: JSON.stringify({ code }),
     });
     const json = (await res.json()) as PromoResult;
-    return json?.valid ? json : { valid: false };
+    return json?.valid ? json : { valid: false, reason: json?.reason };
   } catch {
     return { valid: false };
   }
@@ -235,16 +245,20 @@ export function billingLabel(b: BillingStatus): {
       tone: "active",
     };
   }
+  const offer =
+    b.offerEligible !== false
+      ? `Use ${LAUNCH_OFFER.code} for ${LAUNCH_OFFER.freeMonths} months free, then $9.99/month.`
+      : null;
   if (b.status === "trial") {
     return {
       title: `Free trial · ${b.trialDaysLeft} day${b.trialDaysLeft === 1 ? "" : "s"} left`,
-      detail: "Subscribe any time to keep access.",
+      detail: offer ?? "Subscribe any time to keep access.",
       tone: "trial",
     };
   }
   return {
     title: "Trial ended",
-    detail: "Subscribe to keep running payroll.",
+    detail: offer ?? "Subscribe to keep running payroll.",
     tone: "expired",
   };
 }

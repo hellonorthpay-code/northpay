@@ -27,6 +27,8 @@ import {
   fetchAdminStats,
   fetchAdminStripe,
   fetchAdminTraffic,
+  fetchLaunchOffer,
+  type AdminLaunchOffer,
   type AdminStats,
   type AdminStripeSummary,
   type AdminTraffic,
@@ -570,6 +572,8 @@ function StripePanel() {
 
   return (
     <div className="space-y-5">
+      <LaunchOfferCard />
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <StatCard label="Net volume" value={data.netVolume} money hint="after refunds" />
         <StatCard label="MRR" value={data.mrr} money hint="recurring" />
@@ -637,6 +641,94 @@ function StripePanel() {
           )}
         </ul>
       </div>
+    </div>
+  );
+}
+
+/**
+ * The launch offer, created from here with fixed terms rather than typed
+ * into Stripe's dashboard. Shows live state so drift is visible, not assumed.
+ */
+function LaunchOfferCard() {
+  const [offer, setOffer] = useState<AdminLaunchOffer | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback((create = false) => {
+    setBusy(true);
+    setError(null);
+    fetchLaunchOffer(create)
+      .then(setOffer)
+      .catch((e) => setError(e instanceof Error ? e.message : "Failed."))
+      .finally(() => setBusy(false));
+  }, []);
+  useEffect(() => load(false), [load]);
+
+  const tone = !offer
+    ? "muted"
+    : offer.ok
+      ? "live"
+      : offer.exists
+        ? "drift"
+        : "missing";
+
+  return (
+    <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
+      <div className="flex items-center justify-between gap-3 px-5 py-4">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            Launch offer
+          </p>
+          <p className="mt-1 text-[20px] font-semibold tracking-tightest">
+            {offer?.code ?? "NORTHPAY60"}
+          </p>
+          <p className="mt-0.5 text-[12px] text-muted-foreground">
+            100% off · 2 months · first-time customers only · then $9.99/month
+            {offer?.timesRedeemed !== undefined && ` · redeemed ${offer.timesRedeemed}×`}
+          </p>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-2">
+          <span
+            className={cn(
+              "rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em]",
+              tone === "live" && "bg-success/15 text-success",
+              tone === "drift" && "bg-amber-500/15 text-amber-600 dark:text-amber-400",
+              tone === "missing" && "bg-muted text-muted-foreground",
+              tone === "muted" && "bg-muted text-muted-foreground"
+            )}
+          >
+            {tone === "live"
+              ? "Live in Stripe"
+              : tone === "drift"
+                ? "Terms differ"
+                : tone === "missing"
+                  ? "Not created"
+                  : "Checking"}
+          </span>
+          {tone === "missing" && (
+            <Button size="sm" disabled={busy} onClick={() => load(true)}>
+              {busy ? "Creating…" : "Create in Stripe"}
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {offer && !offer.ok && offer.exists && (
+        <ul className="border-t border-border/60 bg-amber-500/5 px-5 py-3 text-[12px] text-amber-700 dark:text-amber-300">
+          {offer.mismatches.map((m) => (
+            <li key={m}>• {m}</li>
+          ))}
+          <li className="mt-1 opacity-80">
+            Fix these in Stripe → Product catalog → Coupons, or delete the code and create it here.
+          </li>
+        </ul>
+      )}
+      {error && (
+        <p className="border-t border-border/60 px-5 py-3 text-[12px] font-medium text-destructive">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
