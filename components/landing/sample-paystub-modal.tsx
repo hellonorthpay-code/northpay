@@ -299,7 +299,6 @@ function StepOne({ form, set }: { form: FormState; set: Setter }) {
   return (
     <div className="space-y-4 sm:space-y-5">
       <Lead
-        eyebrow="Step 1 of 4"
         title="Who's getting paid?"
         body="Any name works — this is a sample, not a record."
       />
@@ -329,7 +328,6 @@ function StepTwo({ form, set }: { form: FormState; set: Setter }) {
   return (
     <div className="space-y-4 sm:space-y-5">
       <Lead
-        eyebrow="Step 2 of 4"
         title="The business"
         body="Province sets the tax tables and overtime rules."
       />
@@ -396,7 +394,6 @@ function StepThree({
   return (
     <div className="space-y-4 sm:space-y-5">
       <Lead
-        eyebrow="Step 3 of 4"
         title="This pay period"
         body={`Hours past your province's weekly threshold are paid at 1.5×, just like a real run.`}
       />
@@ -445,7 +442,6 @@ function StepFour({ form, set }: { form: FormState; set: Setter }) {
   return (
     <div className="space-y-4 sm:space-y-5">
       <Lead
-        eyebrow="Step 4 of 4"
         title="Where should it go?"
         body="We'll email the PDF — the same statement of earnings an employee would receive."
       />
@@ -571,13 +567,14 @@ function Done({
 
 // ─── Bits ────────────────────────────────────────────────────────────────
 
-function Lead({ eyebrow, title, body }: { eyebrow: string; title: string; body: string }) {
+/**
+ * Step heading. No "Step N of 4" label — the dots in the header already
+ * carry position, and saying it twice adds a line without adding meaning.
+ */
+function Lead({ title, body }: { title: string; body: string }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-        {eyebrow}
-      </p>
-      <p className="mt-1 text-[17px] font-semibold tracking-tight">{title}</p>
+      <p className="text-[17px] font-semibold tracking-tight">{title}</p>
       <p className="mt-0.5 text-[13px] text-muted-foreground">{body}</p>
     </div>
   );
