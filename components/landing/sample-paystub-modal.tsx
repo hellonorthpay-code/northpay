@@ -123,6 +123,12 @@ export function SamplePaystubModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
+  // Opened from the live calculator: everything except the email is already
+  // filled in, so this is a single step. No Back (the earlier steps are the
+  // visitor's own inputs, sitting right behind the sheet) and no dots — both
+  // would advertise navigation that leads nowhere useful.
+  const seeded = !!initial;
+
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((f) => ({ ...f, [key]: value }));
 
@@ -201,7 +207,7 @@ export function SamplePaystubModal({
           <DialogTitle>
             {result ? "Your sample paystub" : "Try a sample paystub"}
           </DialogTitle>
-          {!result && <StepDots step={step} />}
+          {!result && !seeded && <StepDots step={step} />}
         </DialogHeader>
 
         {/* Opacity-only step transition — no `x`. A lingering transform on
@@ -237,7 +243,7 @@ export function SamplePaystubModal({
 
         {!result && (
           <div className="flex items-center justify-between gap-2 pt-1">
-            {step > 1 ? (
+            {step > 1 && !seeded ? (
               <IconButton aria-label="Back" onClick={goBack} disabled={sending}>
                 <ChevronLeft className="h-9 w-9" strokeWidth={2.4} />
               </IconButton>
