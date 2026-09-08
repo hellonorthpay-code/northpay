@@ -10,7 +10,7 @@ import {
   useSpring,
   useTransform,
 } from "framer-motion";
-import { Mail, Sparkles } from "lucide-react";
+import { Mail } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ import {
 import { emptyYTD } from "@/lib/services/ytd";
 import { SAMPLE_FREQUENCIES } from "@/lib/sample-paystub";
 import { formatDate } from "@/lib/utils";
-import { SectionLabel, SectionSub, SectionTitle } from "./section";
+import { SectionTitle } from "./section";
 
 const SamplePaystubModal = dynamic(
   () => import("./sample-paystub-modal").then((m) => m.SamplePaystubModal),
@@ -169,15 +169,10 @@ export function LivePaystub() {
   return (
     <section id="try-it" className="relative py-32">
       <div className="container">
-        <div className="mx-auto max-w-3xl text-center">
-          <SectionLabel>
-            <Sparkles className="h-3 w-3" />
-            Try it live
-          </SectionLabel>
-          <SectionTitle>The live paystub calculator.</SectionTitle>
-        </div>
-
-        <div className="mt-14 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
+        {/* No section headline: the two column titles ARE the headline. Each
+            is set in the same display style, so "You type here" is the first
+            thing the eye lands on and the paystub reads as its result. */}
+        <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
           {/* ── Left: the inputs ──
               Opacity-only entrance. A transform on an ancestor of an <input>
               makes mobile browsers draw the caret in the wrong place. */}
@@ -185,12 +180,9 @@ export function LivePaystub() {
             {/* The badges sit ABOVE their cards, as matched labels on a pair.
                 Numbering them 1 and 2 reads as a sequence before either label
                 is actually read — input, then output. */}
-            <div className="mb-3 flex items-center justify-between gap-3 px-1">
-              <span className="inline-flex items-center gap-2 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-background">
-                <span className="grid h-4 w-4 place-items-center rounded-full bg-background/25 text-[10px]">1</span>
-                You type here
-              </span>
-              <span className="text-[11px] font-medium text-muted-foreground">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-1">
+              <SectionTitle className="mt-0">You type here</SectionTitle>
+              <span className="pb-1.5 text-[12px] font-medium text-muted-foreground">
                 {BUSINESS.name} · demo
               </span>
             </div>
@@ -302,12 +294,9 @@ export function LivePaystub() {
 
           {/* ── Right: the paystub ── */}
           <div>
-            <div className="mb-3 flex items-center justify-between gap-3 px-1">
-              <span className="inline-flex items-center gap-2 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-background">
-                <span className="grid h-4 w-4 place-items-center rounded-full bg-background/25 text-[10px]">2</span>
-                Sample paystub
-              </span>
-              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-1">
+              <SectionTitle className="mt-0">Sample paystub</SectionTitle>
+              <span className="flex items-center gap-1.5 pb-1.5 text-[12px] font-medium text-muted-foreground">
                 <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
                 Generated live · not a real record
               </span>
