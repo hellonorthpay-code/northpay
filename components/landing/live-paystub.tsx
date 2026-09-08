@@ -180,12 +180,7 @@ export function LivePaystub() {
             {/* The badges sit ABOVE their cards, as matched labels on a pair.
                 Numbering them 1 and 2 reads as a sequence before either label
                 is actually read — input, then output. */}
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-1">
-              <SectionTitle className="mt-0">You type here</SectionTitle>
-              <span className="pb-1.5 text-[12px] font-medium text-muted-foreground">
-                {BUSINESS.name} · demo
-              </span>
-            </div>
+            <SectionTitle className="mb-5 mt-0 px-1">You type here</SectionTitle>
 
             <motion.div
               initial={{ opacity: 0 }}
@@ -294,13 +289,9 @@ export function LivePaystub() {
 
           {/* ── Right: the paystub ── */}
           <div>
-            <div className="mb-5 flex flex-wrap items-end justify-between gap-x-4 gap-y-1 px-1">
-              <SectionTitle className="mt-0">Sample paystub</SectionTitle>
-              <span className="flex items-center gap-1.5 pb-1.5 text-[12px] font-medium text-muted-foreground">
-                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                Generated live · not a real record
-              </span>
-            </div>
+            {/* No "not a real record" caption — the title says "Sample
+                paystub" in display type, which carries that on its own. */}
+            <SectionTitle className="mb-5 mt-0 px-1">Sample paystub</SectionTitle>
 
             <motion.div
               initial={{ opacity: 0, y: 24 }}
