@@ -88,8 +88,10 @@ export function HomeBelowFold() {
 
   return (
     <>
-      <About />
+      {/* The calculator leads: a visitor who has just read the hero's promise
+          gets to test it before being told about the company. */}
       <LivePaystub />
+      <About />
       {/* Mobile gets the static tree; desktop gets the scroll-driven scene. */}
       {isMobile ? <PayrollTreeMobile /> : <EmployeesScene />}
       <ProvinceSection />
