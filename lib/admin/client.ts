@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/store/auth";
 import type {
   AdminLaunchOffer,
+  AdminLeads,
   AdminStats,
   AdminStripeSummary,
   AdminTraffic,
@@ -17,6 +18,8 @@ export type {
   AdminStripeTx,
   AdminTraffic,
   AdminLaunchOffer,
+  AdminLead,
+  AdminLeads,
   TrafficBreakdown,
   TrafficDayPoint,
 } from "@/lib/admin/types";
@@ -97,6 +100,16 @@ export async function fetchAdminTraffic(days: number): Promise<AdminTraffic> {
     throw new Error(body.error || `Request failed (${res.status})`);
   }
   return (await res.json()) as AdminTraffic;
+}
+
+/** Everyone who asked for a sample paystub by email. */
+export async function fetchAdminLeads(): Promise<AdminLeads> {
+  const res = await authedFetch("/api/admin/leads");
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  return (await res.json()) as AdminLeads;
 }
 
 /** State of the launch offer in Stripe; `create` makes it if it's missing. */

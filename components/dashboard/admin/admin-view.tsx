@@ -6,13 +6,16 @@ import {
   AlertCircle,
   Ban,
   ArrowUpRight,
+  Check,
   ChevronDown,
   Chrome,
   CreditCard,
   ExternalLink,
   FileText,
   Globe,
+  Inbox,
   LineChart,
+  Mail,
   MapPin,
   Smartphone,
   RotateCcw,
@@ -27,8 +30,10 @@ import {
   fetchAdminStats,
   fetchAdminStripe,
   fetchAdminTraffic,
+  fetchAdminLeads,
   fetchLaunchOffer,
   type AdminLaunchOffer,
+  type AdminLeads,
   type AdminStats,
   type AdminStripeSummary,
   type AdminTraffic,
@@ -43,11 +48,12 @@ const ease = [0.22, 1, 0.36, 1] as const;
 /** Critically damped — settles without overshoot, and stays interruptible. */
 const indicatorSpring = { type: "spring", bounce: 0, duration: 0.35 } as const;
 
-type AdminTab = "users" | "analytics" | "stripe";
+type AdminTab = "users" | "analytics" | "leads" | "stripe";
 
 const TABS: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
   { id: "users", label: "Users", icon: Users },
   { id: "analytics", label: "Analytics", icon: LineChart },
+  { id: "leads", label: "Leads", icon: Inbox },
   { id: "stripe", label: "Stripe", icon: CreditCard },
 ];
 
@@ -130,6 +136,7 @@ export function AdminView() {
         >
           {tab === "users" && <UsersPanel stats={stats} onChanged={load} />}
           {tab === "analytics" && <AnalyticsPanel />}
+          {tab === "leads" && <LeadsPanel />}
           {tab === "stripe" && <StripePanel />}
         </motion.div>
       </AnimatePresence>
@@ -171,7 +178,9 @@ function AdminTabs({
             onClick={() => onChange(id)}
             className={cn(
               // Feedback lives on the press, not the release.
-              "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-[13px] font-medium tracking-tight transition-colors duration-150 active:scale-[0.98]",
+              // Four tabs: on a phone the icon is what gives way, never the
+              // label — an unreadable word is worse than a missing glyph.
+              "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-[12.5px] font-medium tracking-tight transition-colors duration-150 active:scale-[0.98] sm:px-3 sm:text-[13px]",
               active
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -185,7 +194,7 @@ function AdminTabs({
               />
             )}
             <span className="relative flex items-center gap-2">
-              <Icon className="h-3.5 w-3.5" />
+              <Icon className="hidden h-3.5 w-3.5 sm:block" />
               {label}
             </span>
           </button>
@@ -637,6 +646,138 @@ function StripePanel() {
           {data.transactions.length === 0 && (
             <li className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
               No transactions yet.
+            </li>
+          )}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Everyone who asked for a sample paystub by email — the landing page's
+ * lead list. Each row also carries what they were modelling, which is the
+ * more interesting half: the rate and hours tell you what kind of business
+ * is looking.
+ */
+function LeadsPanel() {
+  const [data, setData] = useState<AdminLeads | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let alive = true;
+    fetchAdminLeads()
+      .then((d) => alive && setData(d))
+      .catch((e) => alive && setError(e instanceof Error ? e.message : "Failed."))
+      .finally(() => alive && setLoading(false));
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  if (loading) {
+    return <p className="text-[13px] text-muted-foreground">Loading leads…</p>;
+  }
+  if (error) {
+    return (
+      <div className="flex items-start gap-3 rounded-3xl border border-destructive/30 bg-destructive/10 p-5 text-destructive">
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+        <p className="text-[13px] font-medium">{error}</p>
+      </div>
+    );
+  }
+  if (!data) return null;
+
+  if (!data.ready) {
+    return (
+      <div className="rounded-3xl border border-border/70 bg-card/70 p-8 text-center shadow-soft backdrop-blur-xl">
+        <Inbox className="mx-auto h-5 w-5 text-muted-foreground" />
+        <p className="mt-3 text-[14px] font-semibold tracking-tight">
+          Lead capture isn&apos;t set up yet
+        </p>
+        <p className="mx-auto mt-1 max-w-sm text-[12.5px] leading-relaxed text-muted-foreground">
+          Run the{" "}
+          <code className="rounded bg-muted px-1.5 py-0.5">0005_sample_paystubs</code>{" "}
+          migration in Supabase and requests will appear here.
+        </p>
+      </div>
+    );
+  }
+
+  // De-duplicated, so pasting into an email client doesn't send twice.
+  const emails = [...new Set(data.leads.map((l) => l.email.toLowerCase()))];
+  const copyEmails = async () => {
+    try {
+      await navigator.clipboard.writeText(emails.join(", "));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
+
+  const money = (n: number) =>
+    `$${n.toLocaleString("en-CA", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+        <StatCard label="Sample paystubs" value={data.total} hint="all time" />
+        <StatCard label="Unique emails" value={data.uniqueEmails} hint="deduplicated" />
+        <StatCard label="Last 7 days" value={data.last7} />
+      </div>
+
+      <div className="overflow-hidden rounded-3xl border border-border/70 bg-card/70 shadow-soft backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-3 border-b border-border/60 bg-muted/30 px-5 py-3">
+          <span className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            <Inbox className="h-3.5 w-3.5" />
+            Requests · {data.leads.length}
+          </span>
+          {emails.length > 0 && (
+            <Button size="sm" variant="ghost" onClick={copyEmails}>
+              {copied ? (
+                <>
+                  <Check className="h-3.5 w-3.5" strokeWidth={3} />
+                  Copied
+                </>
+              ) : (
+                <>
+                  <Mail className="h-3.5 w-3.5" />
+                  Copy {emails.length} email{emails.length === 1 ? "" : "s"}
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+
+        <ul className="divide-y divide-border/40">
+          {data.leads.map((l) => (
+            <li key={l.id} className="flex items-center justify-between gap-4 px-5 py-3.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[13.5px] font-medium tracking-tight">
+                  {l.email}
+                </p>
+                <p className="truncate text-[11.5px] text-muted-foreground">
+                  {[l.name, l.businessName, l.province].filter(Boolean).join(" · ")}
+                  {l.hourlyRate > 0 &&
+                    ` · $${l.hourlyRate}/hr × ${l.hours}h ${l.payFrequency}`}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                <p className="text-[13.5px] font-semibold tabular-nums tracking-tight">
+                  {money(l.netPay)}
+                </p>
+                <p className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">
+                  {formatDate(l.createdAt)}
+                </p>
+              </div>
+            </li>
+          ))}
+          {data.leads.length === 0 && (
+            <li className="px-5 py-8 text-center text-[12.5px] text-muted-foreground">
+              No one has requested a sample paystub yet.
             </li>
           )}
         </ul>

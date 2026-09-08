@@ -107,3 +107,30 @@ export interface AdminLaunchOffer {
   promotionCodeId?: string;
   timesRedeemed?: number;
 }
+
+// ─── Sample-paystub leads ───
+
+export interface AdminLead {
+  id: string;
+  createdAt: string;
+  email: string;
+  /** First name as entered; the wizard only collects one. */
+  name: string;
+  businessName: string;
+  province: string;
+  payFrequency: string;
+  hourlyRate: number;
+  hours: number;
+  /** The net pay this visitor was shown — a read on what they were modelling. */
+  netPay: number;
+}
+
+export interface AdminLeads {
+  /** False when the sample_requests migration hasn't been run. */
+  ready: boolean;
+  message?: string;
+  total: number;
+  uniqueEmails: number;
+  last7: number;
+  leads: AdminLead[];
+}
