@@ -155,47 +155,35 @@ export function LivePaystub() {
             <Sparkles className="h-3 w-3" />
             Try it live
           </SectionLabel>
-          <SectionTitle>Your numbers in. A paystub out.</SectionTitle>
-          <SectionSub className="mx-auto">
-            Fill in the employee on the left and NorthPay writes the sample
-            paystub on the right — with the real 2026 CRA engine, not a
-            mock-up. Every deduction recalculates as you type.
-          </SectionSub>
+          <SectionTitle>The live paystub calculator.</SectionTitle>
         </div>
 
         <div className="mt-14 grid gap-6 lg:grid-cols-[0.85fr_1.15fr] lg:gap-10">
           {/* ── Left: the inputs ──
               Opacity-only entrance. A transform on an ancestor of an <input>
               makes mobile browsers draw the caret in the wrong place. */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.6, ease }}
-            className="rounded-3xl border border-border/70 bg-card/70 p-5 shadow-soft backdrop-blur-xl sm:p-7"
-          >
-            {/* Numbered badges on both cards make the direction of the demo
-                obvious at a glance: 1 is where you type, 2 is what comes out. */}
-            <div className="flex items-center justify-between gap-3">
+          <div>
+            {/* The badges sit ABOVE their cards, as matched labels on a pair.
+                Numbering them 1 and 2 reads as a sequence before either label
+                is actually read — input, then output. */}
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
               <span className="inline-flex items-center gap-2 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-background">
-                <span className="grid h-4 w-4 place-items-center rounded-full bg-background/20 text-[10px]">1</span>
+                <span className="grid h-4 w-4 place-items-center rounded-full bg-background/25 text-[10px]">1</span>
                 You type here
               </span>
-              <span className="rounded-full bg-muted px-2.5 py-1 text-[10.5px] font-medium text-muted-foreground">
+              <span className="text-[11px] font-medium text-muted-foreground">
                 {BUSINESS.name} · demo
               </span>
             </div>
-            <p className="mt-4 text-[20px] font-semibold tracking-tight">
-              Enter the employee&rsquo;s details
-            </p>
-            <p className="mt-1 text-[13px] text-muted-foreground">
-              Change anything. The sample paystub{" "}
-              <span className="lg:hidden">below</span>
-              <span className="hidden lg:inline">on the right</span>{" "}
-              recalculates instantly.
-            </p>
 
-            <div className="mt-5 grid grid-cols-2 gap-3">
+            <motion.div
+              initial={{ opacity: 0 }}
+              whileInView={{ opacity: 1 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.6, ease }}
+              className="rounded-3xl border border-border/70 bg-card/70 p-5 shadow-soft backdrop-blur-xl sm:p-7"
+            >
+            <div className="grid grid-cols-2 gap-3">
               <Field label="First name" htmlFor="lp-first">
                 <Input
                   id="lp-first"
@@ -290,33 +278,32 @@ export function LivePaystub() {
               {PROVINCE_NAMES[form.province]} is paid at 1.5× automatically.
               Vacation pay is 4%. Nothing is saved.
             </p>
-          </motion.div>
+            </motion.div>
+          </div>
 
           {/* ── Right: the paystub ── */}
-          <motion.div
-            initial={{ opacity: 0, y: 24 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-80px" }}
-            transition={{ duration: 0.8, ease }}
-            className="relative"
-          >
+          <div>
+            <div className="mb-3 flex items-center justify-between gap-3 px-1">
+              <span className="inline-flex items-center gap-2 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-background">
+                <span className="grid h-4 w-4 place-items-center rounded-full bg-background/25 text-[10px]">2</span>
+                Sample paystub
+              </span>
+              <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                Generated live · not a real record
+              </span>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-80px" }}
+              transition={{ duration: 0.8, ease }}
+              className="relative"
+            >
             <div className="pointer-events-none absolute -inset-6 rounded-[40px] bg-gradient-to-br from-emerald-200/30 via-transparent to-sky-200/30 blur-3xl dark:from-emerald-500/10 dark:to-sky-500/10" />
 
             <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-glass">
-              {/* Output badge: this is the thing the numbers produce. Labelled
-                  "sample" in the strip itself so a screenshot of the paystub
-                  can never be mistaken for a real record. */}
-              <div className="flex items-center justify-between gap-3 border-b border-border/60 px-6 py-3">
-                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
-                  <span className="grid h-4 w-4 place-items-center rounded-full bg-foreground text-[10px] text-background">2</span>
-                  Sample paystub
-                </span>
-                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
-                  Generated live · not a real record
-                </span>
-              </div>
-
               {/* Header band — mirrors the PDF's */}
               <div className="flex items-start justify-between gap-4 bg-muted/50 px-6 py-5">
                 <div>
@@ -429,7 +416,8 @@ export function LivePaystub() {
                 </Button>
               </div>
             </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </div>
 
