@@ -155,11 +155,11 @@ export function LivePaystub() {
             <Sparkles className="h-3 w-3" />
             Try it live
           </SectionLabel>
-          <SectionTitle>Type a few numbers. Watch the paystub write itself.</SectionTitle>
+          <SectionTitle>Your numbers in. A paystub out.</SectionTitle>
           <SectionSub className="mx-auto">
-            This is the real NorthPay engine with the 2026 CRA tables — not a
-            mock-up. Change a province or add overtime and every deduction
-            recalculates as you type.
+            Fill in the employee on the left and NorthPay writes the sample
+            paystub on the right — with the real 2026 CRA engine, not a
+            mock-up. Every deduction recalculates as you type.
           </SectionSub>
         </div>
 
@@ -174,16 +174,28 @@ export function LivePaystub() {
             transition={{ duration: 0.6, ease }}
             className="rounded-3xl border border-border/70 bg-card/70 p-5 shadow-soft backdrop-blur-xl sm:p-7"
           >
-            <div className="flex items-center justify-between">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Employee
-              </p>
+            {/* Numbered badges on both cards make the direction of the demo
+                obvious at a glance: 1 is where you type, 2 is what comes out. */}
+            <div className="flex items-center justify-between gap-3">
+              <span className="inline-flex items-center gap-2 rounded-full bg-foreground px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-background">
+                <span className="grid h-4 w-4 place-items-center rounded-full bg-background/20 text-[10px]">1</span>
+                You type here
+              </span>
               <span className="rounded-full bg-muted px-2.5 py-1 text-[10.5px] font-medium text-muted-foreground">
                 {BUSINESS.name} · demo
               </span>
             </div>
+            <p className="mt-4 text-[20px] font-semibold tracking-tight">
+              Enter the employee&rsquo;s details
+            </p>
+            <p className="mt-1 text-[13px] text-muted-foreground">
+              Change anything. The sample paystub{" "}
+              <span className="lg:hidden">below</span>
+              <span className="hidden lg:inline">on the right</span>{" "}
+              recalculates instantly.
+            </p>
 
-            <div className="mt-4 grid grid-cols-2 gap-3">
+            <div className="mt-5 grid grid-cols-2 gap-3">
               <Field label="First name" htmlFor="lp-first">
                 <Input
                   id="lp-first"
@@ -291,6 +303,20 @@ export function LivePaystub() {
             <div className="pointer-events-none absolute -inset-6 rounded-[40px] bg-gradient-to-br from-emerald-200/30 via-transparent to-sky-200/30 blur-3xl dark:from-emerald-500/10 dark:to-sky-500/10" />
 
             <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-glass">
+              {/* Output badge: this is the thing the numbers produce. Labelled
+                  "sample" in the strip itself so a screenshot of the paystub
+                  can never be mistaken for a real record. */}
+              <div className="flex items-center justify-between gap-3 border-b border-border/60 px-6 py-3">
+                <span className="inline-flex items-center gap-2 rounded-full border border-border/70 bg-background px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.14em]">
+                  <span className="grid h-4 w-4 place-items-center rounded-full bg-foreground text-[10px] text-background">2</span>
+                  Sample paystub
+                </span>
+                <span className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                  <span className="h-1.5 w-1.5 rounded-full bg-success animate-pulse" />
+                  Generated live · not a real record
+                </span>
+              </div>
+
               {/* Header band — mirrors the PDF's */}
               <div className="flex items-start justify-between gap-4 bg-muted/50 px-6 py-5">
                 <div>
