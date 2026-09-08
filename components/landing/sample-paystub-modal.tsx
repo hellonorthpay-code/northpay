@@ -93,10 +93,17 @@ export function SamplePaystubModal({
   open,
   onOpenChange,
   origin,
+  initial,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   origin?: { x: number; y: number } | null;
+  /**
+   * Pre-filled values (from the live demo on the homepage). When given, the
+   * wizard opens on the final step — the visitor already entered everything
+   * else while playing with the paystub, so asking again would be rude.
+   */
+  initial?: Partial<Omit<FormState, "website">>;
 }) {
   const [form, setForm] = useState<FormState>(blank);
   const [step, setStep] = useState<Step>(1);
@@ -107,12 +114,13 @@ export function SamplePaystubModal({
   // Fresh slate every open, so a second try never inherits a stale result.
   useEffect(() => {
     if (open) {
-      setForm(blank());
-      setStep(1);
+      setForm({ ...blank(), ...(initial ?? {}) });
+      setStep(initial ? 4 : 1);
       setSending(false);
       setError(null);
       setResult(null);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>

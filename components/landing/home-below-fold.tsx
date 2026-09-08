@@ -17,6 +17,10 @@ import { useEffect, useState } from "react";
 const About = dynamic(() => import("./about").then((m) => m.About), {
   ssr: false,
 });
+const LivePaystub = dynamic(
+  () => import("./live-paystub").then((m) => m.LivePaystub),
+  { ssr: false }
+);
 const EmployeesScene = dynamic(
   () => import("./cinematic-sections").then((m) => m.EmployeesScene),
   { ssr: false }
@@ -85,6 +89,7 @@ export function HomeBelowFold() {
   return (
     <>
       <About />
+      <LivePaystub />
       {/* Mobile gets the static tree; desktop gets the scroll-driven scene. */}
       {isMobile ? <PayrollTreeMobile /> : <EmployeesScene />}
       <ProvinceSection />
