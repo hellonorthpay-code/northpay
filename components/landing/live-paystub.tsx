@@ -99,8 +99,27 @@ const DEFAULTS: Inputs = {
 export function LivePaystub() {
   const [form, setForm] = useState<Inputs>(DEFAULTS);
   const [emailOpen, setEmailOpen] = useState(false);
-  const set = <K extends keyof Inputs>(k: K, v: Inputs[K]) =>
+
+  // "Thinking" state for the ring: on for a beat after every keystroke, so
+  // the border visibly reacts to input and settles once the visitor pauses.
+  const [active, setActive] = useState(false);
+  const activeTimer = useRef<number | null>(null);
+  const bump = () => {
+    setActive(true);
+    if (activeTimer.current) window.clearTimeout(activeTimer.current);
+    activeTimer.current = window.setTimeout(() => setActive(false), 900);
+  };
+  useEffect(
+    () => () => {
+      if (activeTimer.current) window.clearTimeout(activeTimer.current);
+    },
+    []
+  );
+
+  const set = <K extends keyof Inputs>(k: K, v: Inputs[K]) => {
+    bump();
     setForm((f) => ({ ...f, [k]: v }));
+  };
 
   // ── The real engine, on every change ──
   const line = useMemo(() => {
@@ -301,9 +320,40 @@ export function LivePaystub() {
               transition={{ duration: 0.8, ease }}
               className="relative"
             >
-            <div className="pointer-events-none absolute -inset-6 rounded-[40px] bg-gradient-to-br from-emerald-200/30 via-transparent to-sky-200/30 blur-3xl dark:from-emerald-500/10 dark:to-sky-500/10" />
+            {/* Glow: a blurred copy of the ring behind the card. Breathes
+                while active so the whole card seems to exhale on input. */}
+            <motion.div
+              aria-hidden
+              initial={{ opacity: 0.28, scale: 1 }}
+              animate={
+                active
+                  ? { opacity: 0.55, scale: [1, 1.015, 1] }
+                  : { opacity: 0.28, scale: 1 }
+              }
+              transition={
+                active
+                  ? { opacity: { duration: 0.25 }, scale: { duration: 1.1, repeat: Infinity, ease: "easeInOut" } }
+                  : { duration: 0.6, ease }
+              }
+              className="np-ring np-ring--fast pointer-events-none absolute -inset-2 rounded-[36px] blur-2xl"
+            />
 
-            <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-glass">
+            {/* Ring: 2px of gradient showing around the card. Slow ring
+                always turns; the fast one fades in while typing. */}
+            <div className="relative rounded-[30px] p-[2px]" data-active={active}>
+              <div aria-hidden className="np-ring absolute inset-0 rounded-[30px]" />
+              {/* `initial` matters: it writes opacity 0 inline on first paint,
+                  so the fast ring is invisible at rest even before any
+                  animation frame has run. */}
+              <motion.div
+                aria-hidden
+                initial={{ opacity: 0 }}
+                animate={{ opacity: active ? 1 : 0 }}
+                transition={{ duration: 0.3 }}
+                className="np-ring np-ring--fast absolute inset-0 rounded-[30px]"
+              />
+
+            <div className="relative overflow-hidden rounded-[28px] bg-background shadow-glass">
               {/* Header band — mirrors the PDF's */}
               <div className="flex items-start justify-between gap-4 bg-muted/50 px-6 py-5">
                 <div>
@@ -415,6 +465,7 @@ export function LivePaystub() {
                   Email me this paystub
                 </Button>
               </div>
+            </div>
             </div>
             </motion.div>
           </div>
