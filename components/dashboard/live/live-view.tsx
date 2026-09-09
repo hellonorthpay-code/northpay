@@ -119,7 +119,7 @@ interface Draft {
   hourlyRate: string;
 }
 
-export function LiveView() {
+function LiveEditor() {
   const employees = useEmployees((s) => s.employees);
   const addEmployee = useEmployees((s) => s.addEmployee);
   const updateEmployee = useEmployees((s) => s.updateEmployee);
@@ -128,7 +128,12 @@ export function LiveView() {
   const upsertRun = usePayrollRuns((s) => s.upsertRun);
   const billing = useBilling();
 
-  const [selectedId, setSelectedId] = useState<Selection>("new");
+  // Seeded synchronously from the already-hydrated store (LiveView gates on
+  // that), so the first paint is the right employee — no "New employee"
+  // fields flashing for a frame before the list arrives.
+  const [selectedId, setSelectedId] = useState<Selection>(
+    () => useEmployees.getState().employees[0]?.id ?? "new"
+  );
   const selected = useMemo(
     () => employees.find((e) => e.id === selectedId) ?? null,
     [employees, selectedId]
@@ -186,14 +191,6 @@ export function LiveView() {
     emailedTo: string | null;
     configured: boolean;
   } | null>(null);
-
-  // Once the first employee exists, default to them rather than to "new".
-  const seeded = useRef(false);
-  useEffect(() => {
-    if (seeded.current || employees.length === 0) return;
-    seeded.current = true;
-    setSelectedId(employees[0].id);
-  }, [employees]);
 
   // Selecting someone resets the per-paystub inputs and re-derives the
   // period from THEIR frequency. Keeping stale hours from the previous
@@ -485,16 +482,8 @@ export function LiveView() {
             />
           </div>
 
-          <AnimatePresence initial={false} mode="wait">
-            {!selected ? (
-              <motion.div
-                key="new"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.22, ease }}
-                className="mt-4 space-y-4"
-              >
+          <Collapse show={!selected}>
+            <div className="mt-4 space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="First name" htmlFor="lv-first">
                     <Input id="lv-first" value={draft.firstName} onChange={(e) => setD("firstName", e.target.value.slice(0, 40))} />
@@ -538,9 +527,8 @@ export function LiveView() {
                     </Select>
                   </Field>
                 </div>
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
+            </div>
+          </Collapse>
 
           {/* ── This paystub ── */}
           <div className="mt-5 border-t border-border/60 pt-5">
@@ -581,7 +569,7 @@ export function LiveView() {
                 percentage offered as a one-tap suggestion so "the usual" is
                 never a calculation the user has to do in their head. */}
             <div className="mt-4">
-              {!vacOn ? (
+              <Collapse show={!vacOn}>
                 <button
                   type="button"
                   onClick={() => {
@@ -593,13 +581,8 @@ export function LiveView() {
                   <Plus className="h-3.5 w-3.5" />
                   Add vacation pay
                 </button>
-              ) : (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: "auto" }}
-                  transition={{ duration: 0.24, ease }}
-                  className="overflow-hidden"
-                >
+              </Collapse>
+              <Collapse show={vacOn}>
                   <div className="rounded-2xl border border-border/60 p-3">
                     <div className="flex items-center justify-between gap-3">
                       <Label htmlFor="lv-vac">Vacation pay</Label>
@@ -628,8 +611,7 @@ export function LiveView() {
                       )}
                     </div>
                   </div>
-                </motion.div>
-              )}
+              </Collapse>
             </div>
 
             {/* Period */}
@@ -645,34 +627,34 @@ export function LiveView() {
               </Field>
             </div>
 
-            {selected && !selected.email && (
+            <Collapse show={!!selected && !selected.email}>
               <div className="mt-4">
                 <Field label="Employee email" htmlFor="lv-emailfix" hint="Saved to their record when you send.">
                   <Input id="lv-emailfix" type="email" inputMode="email" value={emailFix} onChange={(e) => setEmailFix(e.target.value)} />
                 </Field>
               </div>
-            )}
+            </Collapse>
           </div>
 
-          {errors.length > 0 && (
+          <Collapse show={errors.length > 0}>
             <ul className="mt-4 space-y-1 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12.5px] font-medium text-destructive">
               {errors.map((m) => <li key={m}>{m}</li>)}
             </ul>
-          )}
+          </Collapse>
 
           {/* Actions */}
           <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
-            {!selected && (
+            <Fade show={!selected}>
               <Button
                 variant="outline"
                 disabled={!canSave || busy !== null}
                 onClick={handleSave}
-                className="h-11 rounded-full sm:h-10"
+                className="h-11 w-full rounded-full sm:h-10 sm:w-auto"
               >
                 {busy === "save" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" strokeWidth={2.6} />}
                 Save employee
               </Button>
-            )}
+            </Fade>
             <Button
               disabled={!canEmail}
               onClick={handleEmail}
@@ -682,11 +664,11 @@ export function LiveView() {
               {busy === "email" ? "Sending" : "Email paystub"}
             </Button>
           </div>
-          {!selected && (
+          <Collapse show={!selected}>
             <p className="mt-2 text-right text-[11.5px] text-muted-foreground">
               Emailing saves the employee for next time.
             </p>
-          )}
+          </Collapse>
         </div>
 
         {/* ═══════════ Right: the paystub ═══════════ */}
@@ -765,6 +747,100 @@ export function LiveView() {
       )}
       <HistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} runs={runs} company={company} />
     </div>
+  );
+}
+
+// ═════════════════════════════════════════════════════════════════════════
+// Entry: wait for the stores, then fade the editor in once
+// ═════════════════════════════════════════════════════════════════════════
+
+export function LiveView() {
+  const employeesReady = useEmployees((s) => s.hydrated);
+  const settingsReady = useSettings((s) => s.hydrated);
+  const runsReady = usePayrollRuns((s) => s.hydrated);
+  const ready = employeesReady && settingsReady && runsReady;
+
+  // Rendering the editor before the stores arrive is what caused the
+  // flash: it painted "New employee" and empty fields, then re-seeded to
+  // the first real employee a moment later. A calm skeleton, then one fade.
+  if (!ready) return <LiveSkeleton />;
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease }}
+    >
+      <LiveEditor />
+    </motion.div>
+  );
+}
+
+function LiveSkeleton() {
+  const block = "animate-pulse rounded-2xl bg-muted/60";
+  return (
+    <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:gap-5" aria-busy>
+      <div className="rounded-3xl border border-border/70 bg-card/70 p-4 shadow-soft sm:p-6">
+        <div className={`${block} h-3 w-20`} />
+        <div className={`${block} mt-3 h-12 w-full`} />
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <div className={`${block} h-11`} />
+          <div className={`${block} h-11`} />
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2">
+          <div className={`${block} h-11`} />
+          <div className={`${block} h-11`} />
+          <div className={`${block} h-11`} />
+        </div>
+      </div>
+      <div className="rounded-[28px] border border-border/70 bg-background p-6 shadow-glass">
+        <div className={`${block} h-5 w-40`} />
+        <div className={`${block} mt-6 h-24 w-full`} />
+        <div className={`${block} mt-4 h-24 w-full`} />
+        <div className={`${block} mt-4 h-16 w-full`} />
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Height + opacity in/out, no transforms — so nothing above an <input>
+ * ever carries a lingering transform (the mobile caret rule), and a block
+ * that appears pushes its neighbours down instead of snapping them.
+ */
+function Collapse({ show, children }: { show: boolean; children: React.ReactNode }) {
+  return (
+    <AnimatePresence initial={false}>
+      {show && (
+        <motion.div
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: "auto", opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          transition={{ height: { duration: 0.32, ease }, opacity: { duration: 0.22, ease } }}
+          className="overflow-hidden"
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+/** Opacity-only in/out for things that live inside a row. */
+function Fade({ show, children }: { show: boolean; children: React.ReactNode }) {
+  return (
+    <AnimatePresence initial={false}>
+      {show && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2, ease }}
+          className="w-full sm:w-auto"
+        >
+          {children}
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
