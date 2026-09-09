@@ -19,6 +19,7 @@ type ActiveKey =
   | "home"
   | "about"
   | "dashboard"
+  | "live"
   | "cra"
   | "settings"
   | "profile";
@@ -27,6 +28,7 @@ function resolveActive(pathname: string | null): ActiveKey {
   if (!pathname) return "home";
   // Specific dashboard routes first — "/dashboard" is a prefix of all of
   // them, so testing it early would light the wrong item.
+  if (pathname.startsWith("/live")) return "live";
   if (pathname.startsWith("/dashboard/profile")) return "profile";
   if (pathname.startsWith("/dashboard/cra")) return "cra";
   if (pathname.startsWith("/dashboard/settings")) return "settings";
@@ -154,14 +156,11 @@ export function LandingNav() {
         )}
         {isAuthed && isOwner && (
           <>
-            {/* Jumps to the homepage calculator. It never becomes the active
-                item — an anchor doesn't change the pathname — so the pill
-                stays put rather than pretending this is a page. */}
             <NavItem
-              href="/#try-it"
+              href="/live"
               navKey="live"
               itemRefs={itemRefs}
-              isActive={false}
+              isActive={active === "live"}
               className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
             >
               Live
