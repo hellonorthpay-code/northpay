@@ -812,13 +812,8 @@ function EmployeePicker({
         {selected ? (
           <span className="flex min-w-0 items-center gap-3">
             <Avatar name={`${selected.firstName} ${selected.lastName}`} />
-            <span className="min-w-0">
-              <span className="block truncate text-[14px] font-medium tracking-tight">
-                {selected.firstName} {selected.lastName}
-              </span>
-              <span className="block truncate text-[11.5px] text-muted-foreground">
-                {selected.email || "No email"}
-              </span>
+            <span className="min-w-0 truncate text-[14px] font-medium tracking-tight">
+              {selected.firstName} {selected.lastName}
             </span>
           </span>
         ) : (
