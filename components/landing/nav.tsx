@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Settings, User } from "lucide-react";
+import { Landmark, Settings, ShieldCheck, User, Users } from "lucide-react";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
 import { useIsAdmin } from "@/lib/admin/client";
@@ -20,6 +20,8 @@ type ActiveKey =
   | "about"
   | "dashboard"
   | "live"
+  | "employees"
+  | "admin"
   | "cra"
   | "settings"
   | "profile";
@@ -30,6 +32,8 @@ function resolveActive(pathname: string | null): ActiveKey {
   // them, so testing it early would light the wrong item.
   if (pathname.startsWith("/live")) return "live";
   if (pathname.startsWith("/dashboard/profile")) return "profile";
+  if (pathname.startsWith("/dashboard/employees")) return "employees";
+  if (pathname.startsWith("/dashboard/admin")) return "admin";
   if (pathname.startsWith("/dashboard/cra")) return "cra";
   if (pathname.startsWith("/dashboard/settings")) return "settings";
   if (pathname.startsWith("/dashboard")) return "dashboard";
@@ -143,19 +147,32 @@ export function LandingNav() {
           <Logo />
           NorthPay
         </NavItem>
+        {/* The dashboard nav, for every signed-in account. These were
+            owner-only while the sidebar existed; with the sidebar gone they
+            are the ONLY way to reach these pages on desktop, so gating them
+            would strand everyone else. Admin stays owner-only — and the
+            server enforces that independently. */}
         {isAuthed && (
-          <NavItem
-            href="/dashboard/live"
-            navKey="dashboard"
-            itemRefs={itemRefs}
-            isActive={active === "dashboard"}
-            className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
-          >
-            Live
-          </NavItem>
-        )}
-        {isAuthed && isOwner && (
           <>
+            <NavItem
+              href="/dashboard/employees"
+              navKey="employees"
+              itemRefs={itemRefs}
+              isActive={active === "employees"}
+              className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+            >
+              <Users className="h-3.5 w-3.5" />
+              Employees
+            </NavItem>
+            <NavItem
+              href="/dashboard/live"
+              navKey="dashboard"
+              itemRefs={itemRefs}
+              isActive={active === "dashboard"}
+              className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+            >
+              Live
+            </NavItem>
             <NavItem
               href="/dashboard/cra"
               navKey="cra"
@@ -163,8 +180,26 @@ export function LandingNav() {
               isActive={active === "cra"}
               className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
             >
+              <Landmark className="h-3.5 w-3.5" />
               CRA
             </NavItem>
+          </>
+        )}
+        {isAuthed && isOwner && (
+          <NavItem
+            href="/dashboard/admin"
+            navKey="admin"
+            itemRefs={itemRefs}
+            isActive={active === "admin"}
+            className="ml-0.5 h-8 w-8 justify-center p-0 text-foreground dark:text-white"
+            aria-label="Admin"
+          >
+            <span className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-transform duration-300 ease-out group-hover:scale-110 group-hover:text-foreground dark:group-hover:text-white">
+              <ShieldCheck className="h-4 w-4" />
+            </span>
+          </NavItem>
+        )}
+        {isAuthed && (
             <NavItem
               href="/dashboard/settings"
               navKey="settings"
@@ -177,7 +212,6 @@ export function LandingNav() {
                 <Settings className="h-4 w-4" />
               </span>
             </NavItem>
-          </>
         )}
         <NavItem
           href={isAuthed ? "/dashboard/profile" : "/login"}

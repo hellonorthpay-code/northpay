@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Sidebar } from "@/components/dashboard/sidebar";
 import { Topbar } from "@/components/dashboard/topbar";
 import { WelcomeOverlay } from "@/components/dashboard/welcome-overlay";
 import { useHydrateStores } from "@/lib/store/hydrate";
@@ -24,12 +23,8 @@ export default function DashboardLayout({
   // reset-password (opened from an email link). Everything else — including the
   // profile settings page — bounces signed-out visitors to /login.
   const isResetPassword = pathname.startsWith("/dashboard/reset-password");
-  const isProfile = pathname.startsWith("/dashboard/profile");
   const isWelcome = pathname.startsWith("/dashboard/welcome");
 
-  // Sidebar (Employees/Payroll/CRA/Settings) is the payroll workflow nav — it
-  // doesn't belong on personal-account / full-canvas pages.
-  const hideSidebar = isProfile || isResetPassword || isWelcome;
   // Reset-password always hides the topbar — the recovery session is a real
   // session, so any nav link there would drop the visitor into the app
   // without a new password ever being set.
@@ -63,10 +58,9 @@ export default function DashboardLayout({
       </div>
 
       <div className="mx-auto flex max-w-[1280px] gap-6 px-4 pb-24 pt-6 md:px-5 md:pb-5 md:pt-24 lg:px-8">
-        {/* Profile + reset-password are personal-settings flows, not part
-            of the payroll workflow, so we hide the dashboard sidebar on
-            those for a calmer single-column layout. */}
-        {!hideSidebar && <Sidebar />}
+        {/* No sidebar: the top pill carries the whole dashboard nav, so a
+            second copy of it down the left was duplicated chrome eating a
+            column of width on every page. */}
         <div className="flex min-w-0 flex-1 flex-col gap-4 md:gap-5">
           {/* Hide topbar on login/welcome — those are full-canvas moments
               where the title label would be noise. */}
