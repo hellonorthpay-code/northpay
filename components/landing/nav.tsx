@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { User } from "lucide-react";
+import { Settings, User } from "lucide-react";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
 import { useIsAdmin } from "@/lib/admin/client";
@@ -154,6 +154,18 @@ export function LandingNav() {
         )}
         {isAuthed && isOwner && (
           <>
+            {/* Jumps to the homepage calculator. It never becomes the active
+                item — an anchor doesn't change the pathname — so the pill
+                stays put rather than pretending this is a page. */}
+            <NavItem
+              href="/#try-it"
+              navKey="live"
+              itemRefs={itemRefs}
+              isActive={false}
+              className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+            >
+              Live
+            </NavItem>
             <NavItem
               href="/dashboard/cra"
               navKey="cra"
@@ -168,9 +180,12 @@ export function LandingNav() {
               navKey="settings"
               itemRefs={itemRefs}
               isActive={active === "settings"}
-              className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+              className="ml-0.5 h-8 w-8 justify-center p-0 text-foreground dark:text-white"
+              aria-label="Settings"
             >
-              Settings
+              <span className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-transform duration-300 ease-out group-hover:scale-110 group-hover:text-foreground dark:group-hover:text-white">
+                <Settings className="h-4 w-4" />
+              </span>
             </NavItem>
           </>
         )}
