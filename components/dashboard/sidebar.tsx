@@ -3,13 +3,16 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Landmark, Play, Settings, ShieldCheck, Users } from "lucide-react";
+import { Landmark, Settings, ShieldCheck, Sparkles, Users } from "lucide-react";
 import { useIsAdmin } from "@/lib/admin/client";
 import { cn } from "@/lib/utils";
 
 const tabs = [
   { href: "/dashboard/employees", label: "Employees", icon: Users },
-  { href: "/dashboard/payroll", label: "Payroll", icon: Play },
+  // Live replaced the Payroll tab: one person, one paystub, emailed. The
+  // multi-employee run still exists at /dashboard/payroll for those who
+  // need it, but it is no longer a destination in the nav.
+  { href: "/dashboard/live", label: "Live", icon: Sparkles },
   // CRA now also holds year-end reports (T4/T4A/ROE).
   { href: "/dashboard/cra", label: "CRA", icon: Landmark },
   { href: "/dashboard/settings", label: "Settings", icon: Settings },

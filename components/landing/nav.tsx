@@ -145,26 +145,17 @@ export function LandingNav() {
         </NavItem>
         {isAuthed && (
           <NavItem
-            href="/dashboard"
+            href="/dashboard/live"
             navKey="dashboard"
             itemRefs={itemRefs}
             isActive={active === "dashboard"}
             className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
           >
-            Start tracking
+            Live
           </NavItem>
         )}
         {isAuthed && isOwner && (
           <>
-            <NavItem
-              href="/live"
-              navKey="live"
-              itemRefs={itemRefs}
-              isActive={active === "live"}
-              className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
-            >
-              Live
-            </NavItem>
             <NavItem
               href="/dashboard/cra"
               navKey="cra"

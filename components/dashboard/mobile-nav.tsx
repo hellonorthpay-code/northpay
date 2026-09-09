@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Landmark, Play, Settings, Users } from "lucide-react";
+import { Landmark, Settings, Users, Sparkles } from "lucide-react";
 import { useAuth } from "@/lib/store/auth";
 import { isRecovery, RESET_PATH } from "@/lib/auth/recovery";
 import { cn } from "@/lib/utils";
@@ -18,7 +18,7 @@ type Tab = {
   iconOnly?: boolean;
 };
 
-// Order = layout: Employees · Payroll · CRA (icon+text) · Settings (right).
+// Order = layout: Employees · Live · CRA (icon+text) · Settings (right).
 //
 // No Home tab. Leaving for the marketing site isn't something you do often
 // enough to spend a permanent slot on, and it sat next to four in-app
@@ -26,7 +26,7 @@ type Tab = {
 // app. It lives in Settings now, where the other "leave" actions are.
 const tabs: Tab[] = [
   { href: "/dashboard/employees", label: "Employees", icon: Users, requiresAuth: true },
-  { href: "/dashboard/payroll", label: "Payroll", icon: Play, requiresAuth: true },
+  { href: "/dashboard/live", label: "Live", icon: Sparkles, requiresAuth: true },
   { href: "/dashboard/cra", label: "CRA", icon: Landmark, requiresAuth: true },
   { href: "/dashboard/settings", label: "Settings", icon: Settings, requiresAuth: true, iconOnly: true },
 ];

@@ -8,6 +8,10 @@ const titles: Record<string, { title: string; sub: string }> = {
     title: "Employees",
     sub: "Your team — send paystubs, T4s, or just keep things tidy.",
   },
+  "/dashboard/live": {
+    title: "Live",
+    sub: "One employee, one paystub, emailed in a minute.",
+  },
   "/dashboard/payroll": {
     title: "Payroll",
     sub: "Review, run, and reconcile a pay period in one click.",

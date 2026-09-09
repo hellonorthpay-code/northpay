@@ -146,7 +146,12 @@ export function calculatePayrollLine(
   //   payout  → added to gross (taxed this period)
   //   accrue  → banked separately, NOT added to gross
   const vacationRate = employee.vacationPercent / 100;
-  const vacationAmount = round2(earningsBeforeVacation * vacationRate);
+  // An explicit dollar amount on the input wins over the percentage — Live
+  // adds vacation pay deliberately, and "0" there must mean none, not 4%.
+  const vacationAmount =
+    input.vacationAmount != null
+      ? round2(Math.max(0, input.vacationAmount))
+      : round2(earningsBeforeVacation * vacationRate);
   const vacationAccrual =
     employee.vacationMode === "payout" ? vacationAmount : 0;
   const vacationBanked =

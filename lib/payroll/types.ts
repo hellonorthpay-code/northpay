@@ -162,6 +162,13 @@ export interface PayrollLineInput {
    */
   payOvertime?: boolean;
   bonusAmount?: number;
+  /**
+   * Explicit vacation dollars for THIS period. When set, it replaces the
+   * percentage calculation entirely (0 means "none this period"). When
+   * undefined, the employee's vacationPercent applies as before. Used by
+   * Live, where vacation pay is added deliberately rather than implied.
+   */
+  vacationAmount?: number;
   /** When set, stat-pay is added to gross using the chosen method. */
   statPay?: {
     method: StatPayMethod;
