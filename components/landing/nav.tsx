@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { User } from "lucide-react";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
+import { useIsAdmin } from "@/lib/admin/client";
 import { isRecovery, RESET_PATH } from "@/lib/auth/recovery";
 import { cn } from "@/lib/utils";
 
@@ -14,11 +15,21 @@ import { cn } from "@/lib/utils";
 // highlight pill that MEASURES the active item and glides to it with a CSS
 // transition (left/width/top/height, iOS ease) — same feel as framer's
 // layoutId, zero bundle cost. Entrance stays pure-CSS fade-down.
-type ActiveKey = "home" | "about" | "dashboard" | "profile";
+type ActiveKey =
+  | "home"
+  | "about"
+  | "dashboard"
+  | "cra"
+  | "settings"
+  | "profile";
 
 function resolveActive(pathname: string | null): ActiveKey {
   if (!pathname) return "home";
+  // Specific dashboard routes first — "/dashboard" is a prefix of all of
+  // them, so testing it early would light the wrong item.
   if (pathname.startsWith("/dashboard/profile")) return "profile";
+  if (pathname.startsWith("/dashboard/cra")) return "cra";
+  if (pathname.startsWith("/dashboard/settings")) return "settings";
   if (pathname.startsWith("/dashboard")) return "dashboard";
   if (pathname.startsWith("/about")) return "about";
   return "home";
@@ -31,6 +42,11 @@ export function LandingNav() {
   const active = resolveActive(pathname);
   const profile = useProfile((s) => s.profile);
   const { user, hydrate: hydrateAuth } = useAuth();
+  // Owner-only nav shortcuts. Verified server-side against ADMIN_EMAILS (the
+  // same gate as the Admin tab) rather than comparing an address in the
+  // browser — no email ends up in the client bundle, and the check can't be
+  // faked from devtools. Anonymous visitors never fire the request.
+  const isOwner = useIsAdmin();
 
   // Auth lives outside the dashboard layout, so hydrate it here too.
   useEffect(() => {
@@ -89,7 +105,8 @@ export function LandingNav() {
     return () => window.removeEventListener("resize", measure);
     // Re-measure when the active item, auth state (adds/removes "Start
     // tracking"), or initials (avatar swap) change the nav's layout.
-  }, [active, isAuthed, initials]);
+    // isOwner adds CRA + Settings, which shifts every item after them.
+  }, [active, isAuthed, initials, isOwner]);
 
   if (inRecovery) return null;
 
@@ -134,6 +151,28 @@ export function LandingNav() {
           >
             Start tracking
           </NavItem>
+        )}
+        {isAuthed && isOwner && (
+          <>
+            <NavItem
+              href="/dashboard/cra"
+              navKey="cra"
+              itemRefs={itemRefs}
+              isActive={active === "cra"}
+              className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+            >
+              CRA
+            </NavItem>
+            <NavItem
+              href="/dashboard/settings"
+              navKey="settings"
+              itemRefs={itemRefs}
+              isActive={active === "settings"}
+              className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+            >
+              Settings
+            </NavItem>
+          </>
         )}
         <NavItem
           href={isAuthed ? "/dashboard/profile" : "/login"}
