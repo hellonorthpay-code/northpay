@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Landmark, Settings, ShieldCheck, User, Users } from "lucide-react";
+import { Landmark, Settings, ShieldCheck, User } from "lucide-react";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
 import { useIsAdmin } from "@/lib/admin/client";
@@ -155,21 +155,11 @@ export function LandingNav() {
         {isAuthed && (
           <>
             <NavItem
-              href="/dashboard/employees"
-              navKey="employees"
-              itemRefs={itemRefs}
-              isActive={active === "employees"}
-              className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
-            >
-              <Users className="h-3.5 w-3.5" />
-              Employees
-            </NavItem>
-            <NavItem
               href="/dashboard/live"
               navKey="dashboard"
               itemRefs={itemRefs}
               isActive={active === "dashboard"}
-              className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+              className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
             >
               Live
             </NavItem>

@@ -112,6 +112,7 @@ interface Draft {
   firstName: string;
   lastName: string;
   email: string;
+  sin: string;
   province: ProvinceCode;
   payFrequency: PayFrequency;
   hourlyRate: string;
@@ -137,6 +138,7 @@ export function LiveView() {
     firstName: "",
     lastName: "",
     email: "",
+    sin: "",
     province: company.defaultProvince,
     payFrequency: company.defaultPayFrequency,
     hourlyRate: "",
@@ -228,7 +230,7 @@ export function LiveView() {
       firstName: draft.firstName,
       lastName: draft.lastName,
       email: draft.email,
-      sin: "*** *** ***",
+      sin: draft.sin || "*** *** ***",
       province: draft.province,
       employmentType: "hourly",
       hourlyRate: Number(draft.hourlyRate) || 0,
@@ -307,7 +309,7 @@ export function LiveView() {
       firstName: draft.firstName.trim(),
       lastName: draft.lastName.trim(),
       email: draft.email.trim(),
-      sin: "*** *** ***",
+      sin: draft.sin.trim() || "*** *** ***",
       province: draft.province,
       employmentType: "hourly",
       hourlyRate: Number(draft.hourlyRate) || 0,
@@ -485,6 +487,16 @@ export function LiveView() {
                 <Field label="Email" htmlFor="lv-email" hint="Where the paystub is sent.">
                   <Input id="lv-email" type="email" inputMode="email" autoComplete="off" value={draft.email} onChange={(e) => setD("email", e.target.value)} />
                 </Field>
+                <Field label="SIN" htmlFor="lv-sin" hint="9 digits. Printed on the paystub and required for the T4.">
+                  <Input
+                    id="lv-sin"
+                    inputMode="numeric"
+                    autoComplete="off"
+                    placeholder="123456789"
+                    value={draft.sin}
+                    onChange={(e) => setD("sin", e.target.value.replace(/\D/g, "").slice(0, 9))}
+                  />
+                </Field>
                 <div className="grid grid-cols-2 gap-3">
                   <Field label="Province">
                     <Select value={draft.province} onValueChange={(v) => setD("province", v as ProvinceCode)}>
@@ -508,25 +520,7 @@ export function LiveView() {
                   </Field>
                 </div>
               </motion.div>
-            ) : (
-              <motion.div
-                key={selected.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.22, ease }}
-                className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[12px] text-muted-foreground"
-              >
-                <span>{PROVINCE_NAMES[selected.province]}</span>
-                <span aria-hidden>·</span>
-                <span>{freqLabel}</span>
-                <span aria-hidden>·</span>
-                <span>Saved rate {formatCAD(selected.hourlyRate ?? 0)}/hr</span>
-                {!selected.email && (
-                  <span className="text-amber-600 dark:text-amber-400">· No email on file</span>
-                )}
-              </motion.div>
-            )}
+            ) : null}
           </AnimatePresence>
 
           {/* ── This paystub ── */}
@@ -621,13 +615,13 @@ export function LiveView() {
             {/* Period */}
             <div className="mt-4 grid grid-cols-3 gap-2">
               <Field label="Period start" htmlFor="lv-start">
-                <Input id="lv-start" type="date" value={period.start} onChange={(e) => setStart(e.target.value)} />
+                <DateField id="lv-start" value={period.start} onChange={setStart} />
               </Field>
               <Field label="Period end" htmlFor="lv-end">
-                <Input id="lv-end" type="date" value={period.end} min={period.start} onChange={(e) => e.target.value && setPeriod((p) => ({ ...p, end: e.target.value, pay: e.target.value > p.pay ? e.target.value : p.pay }))} />
+                <DateField id="lv-end" value={period.end} min={period.start} onChange={(v) => setPeriod((p) => ({ ...p, end: v, pay: v > p.pay ? v : p.pay }))} />
               </Field>
               <Field label="Pay date" htmlFor="lv-pay">
-                <Input id="lv-pay" type="date" value={period.pay} min={period.end} onChange={(e) => e.target.value && setPeriod((p) => ({ ...p, pay: e.target.value }))} />
+                <DateField id="lv-pay" value={period.pay} min={period.end} onChange={(v) => setPeriod((p) => ({ ...p, pay: v }))} />
               </Field>
             </div>
 
@@ -923,6 +917,9 @@ function PaystubPreview({
             {name || "Employee name"}
           </p>
           <p className="text-[11px] text-muted-foreground">
+            SIN {employee.sin || "•••"}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
             {formatDate(line.periodStart)} – {formatDate(line.periodEnd)}
           </p>
         </div>
@@ -1178,6 +1175,45 @@ function IconAction({ label, onClick, busy, children }: { label: string; onClick
 // ═════════════════════════════════════════════════════════════════════════
 // Bits
 // ═════════════════════════════════════════════════════════════════════════
+
+/**
+ * A date field with no calendar glyph. The glyph is Chrome's own affordance,
+ * so hiding it would normally cost the click target too — clicking anywhere
+ * in the field calls showPicker() instead, which opens the OS calendar on
+ * Chrome, Edge, Firefox and Safari 16+. iOS and Android open their native
+ * picker on tap regardless, and typing still works everywhere, so there is
+ * no browser where this leaves someone stuck.
+ */
+function DateField({
+  id,
+  value,
+  min,
+  onChange,
+}: {
+  id: string;
+  value: string;
+  min?: string;
+  onChange: (v: string) => void;
+}) {
+  function openPicker(el: HTMLInputElement) {
+    try {
+      (el as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
+    } catch {
+      // Not user-activated, or unsupported — the field is still typable.
+    }
+  }
+  return (
+    <Input
+      id={id}
+      type="date"
+      value={value}
+      min={min}
+      onClick={(e) => openPicker(e.currentTarget)}
+      onChange={(e) => e.target.value && onChange(e.target.value)}
+      className="cursor-pointer"
+    />
+  );
+}
 
 function Field({ label, htmlFor, hint, children }: { label: string; htmlFor?: string; hint?: string; children: React.ReactNode }) {
   return (
