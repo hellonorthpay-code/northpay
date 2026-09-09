@@ -193,18 +193,3 @@
 @media (prefers-reduced-motion: reduce) {
   .np-ring { animation: none; }
 }
-
-/* ─── Native date fields ──────────────────────────────────────────────────
-   Chrome/Edge paint a calendar glyph inside <input type="date">. Hidden
-   here so the field reads as a plain field — the whole control opens the
-   picker instead (see DateField, which calls showPicker()). iOS and
-   Android already open their native picker on tap, so nothing is lost:
-   every platform still gets its own OS calendar. */
-input[type="date"]::-webkit-calendar-picker-indicator {
-  display: none;
-  -webkit-appearance: none;
-}
-input[type="date"] {
-  -webkit-appearance: none;
-  appearance: none;
-}

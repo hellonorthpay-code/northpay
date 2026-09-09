@@ -19,7 +19,7 @@ import {
   Loader2,
   Mail,
   Plus,
-  Settings2,
+  Settings,
   Sparkles,
   X,
 } from "lucide-react";
@@ -40,6 +40,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { AddEmployeeModal } from "@/components/dashboard/employees/add-employee-modal";
+import { DatePicker } from "@/components/dashboard/date-picker";
 import { PaystubSheet } from "@/components/dashboard/paystubs/paystub-sheet";
 import { UpgradeBanner } from "@/components/dashboard/billing/billing";
 import { useBilling } from "@/lib/billing/client";
@@ -634,13 +635,13 @@ export function LiveView() {
             {/* Period */}
             <div className="mt-4 grid grid-cols-3 gap-2">
               <Field label="Period start" htmlFor="lv-start">
-                <DateField id="lv-start" value={period.start} onChange={setStart} />
+                <DatePicker value={period.start} onChange={setStart} />
               </Field>
               <Field label="Period end" htmlFor="lv-end">
-                <DateField id="lv-end" value={period.end} min={period.start} onChange={(v) => setPeriod((p) => ({ ...p, end: v, pay: v > p.pay ? v : p.pay }))} />
+                <DatePicker value={period.end} onChange={(v) => setPeriod((p) => ({ ...p, end: v, pay: v > p.pay ? v : p.pay }))} />
               </Field>
               <Field label="Pay date" htmlFor="lv-pay">
-                <DateField id="lv-pay" value={period.pay} min={period.end} onChange={(v) => setPeriod((p) => ({ ...p, pay: v }))} />
+                <DatePicker value={period.pay} onChange={(v) => setPeriod((p) => ({ ...p, pay: v }))} />
               </Field>
             </div>
 
@@ -868,7 +869,7 @@ function EmployeePicker({
                       aria-label={`Edit ${e.firstName} ${e.lastName}`}
                       className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground active:scale-95"
                     >
-                      <Settings2 className="h-4 w-4" />
+                      <Settings className="h-4 w-4" />
                     </button>
                   </li>
                 );
@@ -1216,45 +1217,6 @@ function IconAction({ label, onClick, busy, children }: { label: string; onClick
 // ═════════════════════════════════════════════════════════════════════════
 // Bits
 // ═════════════════════════════════════════════════════════════════════════
-
-/**
- * A date field with no calendar glyph. The glyph is Chrome's own affordance,
- * so hiding it would normally cost the click target too — clicking anywhere
- * in the field calls showPicker() instead, which opens the OS calendar on
- * Chrome, Edge, Firefox and Safari 16+. iOS and Android open their native
- * picker on tap regardless, and typing still works everywhere, so there is
- * no browser where this leaves someone stuck.
- */
-function DateField({
-  id,
-  value,
-  min,
-  onChange,
-}: {
-  id: string;
-  value: string;
-  min?: string;
-  onChange: (v: string) => void;
-}) {
-  function openPicker(el: HTMLInputElement) {
-    try {
-      (el as HTMLInputElement & { showPicker?: () => void }).showPicker?.();
-    } catch {
-      // Not user-activated, or unsupported — the field is still typable.
-    }
-  }
-  return (
-    <Input
-      id={id}
-      type="date"
-      value={value}
-      min={min}
-      onClick={(e) => openPicker(e.currentTarget)}
-      onChange={(e) => e.target.value && onChange(e.target.value)}
-      className="cursor-pointer"
-    />
-  );
-}
 
 function Field({ label, htmlFor, hint, children }: { label: string; htmlFor?: string; hint?: string; children: React.ReactNode }) {
   return (
