@@ -143,8 +143,10 @@ export function LiveView() {
     payFrequency: company.defaultPayFrequency,
     hourlyRate: "",
   }));
-  const setD = <K extends keyof Draft>(k: K, v: Draft[K]) =>
+  const setD = <K extends keyof Draft>(k: K, v: Draft[K]) => {
+    bump();
     setDraft((d) => ({ ...d, [k]: v }));
+  };
 
   // Per-paystub inputs.
   const [hours, setHours] = useState("");
@@ -156,6 +158,22 @@ export function LiveView() {
   const [period, setPeriod] = useState(() => defaultPeriod(company.defaultPayFrequency));
   // A saved employee with no email needs one before we can send.
   const [emailFix, setEmailFix] = useState("");
+
+  // Ring "thinking" state — on for a beat after every input, so the border
+  // visibly reacts and then settles once the user pauses.
+  const [active, setActive] = useState(false);
+  const activeTimer = useRef<number | null>(null);
+  const bump = () => {
+    setActive(true);
+    if (activeTimer.current) window.clearTimeout(activeTimer.current);
+    activeTimer.current = window.setTimeout(() => setActive(false), 900);
+  };
+  useEffect(
+    () => () => {
+      if (activeTimer.current) window.clearTimeout(activeTimer.current);
+    },
+    []
+  );
 
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -540,6 +558,7 @@ export function LiveView() {
                     value={selected ? rateOverride : draft.hourlyRate}
                     onChange={(e) => {
                       const v = e.target.value.replace(/[^\d.]/g, "").slice(0, 7);
+                      bump();
                       if (selected) setRateOverride(v);
                       else setD("hourlyRate", v);
                     }}
@@ -552,7 +571,7 @@ export function LiveView() {
                   inputMode="decimal"
                   placeholder="80"
                   value={hours}
-                  onChange={(e) => setHours(e.target.value.replace(/[^\d.]/g, "").slice(0, 6))}
+                  onChange={(e) => { bump(); setHours(e.target.value.replace(/[^\d.]/g, "").slice(0, 6)); }}
                 />
               </Field>
             </div>
@@ -595,12 +614,12 @@ export function LiveView() {
                     <div className="mt-2 flex items-center gap-2">
                       <div className="relative flex-1">
                         <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-muted-foreground">$</span>
-                        <Input id="lv-vac" inputMode="decimal" className="pl-7" value={vacAmount} onChange={(e) => setVacAmount(e.target.value.replace(/[^\d.]/g, "").slice(0, 8))} />
+                        <Input id="lv-vac" inputMode="decimal" className="pl-7" value={vacAmount} onChange={(e) => { bump(); setVacAmount(e.target.value.replace(/[^\d.]/g, "").slice(0, 8)); }} />
                       </div>
                       {suggestedVacation > 0 && (
                         <button
                           type="button"
-                          onClick={() => setVacAmount(suggestedVacation.toFixed(2))}
+                          onClick={() => { bump(); setVacAmount(suggestedVacation.toFixed(2)); }}
                           className="shrink-0 rounded-full border border-border/70 px-3 py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                         >
                           {selected?.vacationPercent ?? 4}% = {formatCAD(suggestedVacation)}
@@ -671,8 +690,34 @@ export function LiveView() {
 
         {/* ═══════════ Right: the paystub ═══════════ */}
         <div className="relative">
-          <div className="pointer-events-none absolute -inset-4 rounded-[36px] bg-gradient-to-br from-emerald-200/25 via-transparent to-sky-200/25 blur-3xl dark:from-emerald-500/10 dark:to-sky-500/10" />
-          <div className="relative overflow-hidden rounded-[28px] border border-border/70 bg-background shadow-glass">
+          {/* Same ring as the homepage calculator: a slow conic gradient that
+              always turns, a faster one that fades in while typing, and a
+              blurred copy behind the card as a glow. */}
+          <motion.div
+            aria-hidden
+            initial={{ opacity: 0.28, scale: 1 }}
+            animate={
+              active
+                ? { opacity: 0.55, scale: [1, 1.015, 1] }
+                : { opacity: 0.28, scale: 1 }
+            }
+            transition={
+              active
+                ? { opacity: { duration: 0.25 }, scale: { duration: 1.1, repeat: Infinity, ease: "easeInOut" } }
+                : { duration: 0.6, ease }
+            }
+            className="np-ring np-ring--fast pointer-events-none absolute -inset-2 rounded-[36px] blur-2xl"
+          />
+          <div className="relative rounded-[30px] p-[2px]">
+            <div aria-hidden className="np-ring absolute inset-0 rounded-[30px]" />
+            <motion.div
+              aria-hidden
+              initial={{ opacity: 0 }}
+              animate={{ opacity: active ? 1 : 0 }}
+              transition={{ duration: 0.3 }}
+              className="np-ring np-ring--fast absolute inset-0 rounded-[30px]"
+            />
+          <div className="relative overflow-hidden rounded-[28px] bg-background shadow-glass">
             <AnimatePresence mode="wait" initial={false}>
               {done ? (
                 <motion.div
@@ -709,6 +754,7 @@ export function LiveView() {
                 </motion.div>
               )}
             </AnimatePresence>
+          </div>
           </div>
         </div>
       </div>
