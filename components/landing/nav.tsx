@@ -31,6 +31,7 @@ function resolveActive(pathname: string | null): ActiveKey {
   // Specific dashboard routes first — "/dashboard" is a prefix of all of
   // them, so testing it early would light the wrong item.
   if (pathname.startsWith("/live")) return "live";
+  if (pathname.startsWith("/dashboard/paystubs")) return "dashboard";
   if (pathname.startsWith("/dashboard/profile")) return "profile";
   if (pathname.startsWith("/dashboard/employees")) return "employees";
   if (pathname.startsWith("/dashboard/admin")) return "admin";
@@ -155,13 +156,13 @@ export function LandingNav() {
         {isAuthed && (
           <>
             <NavItem
-              href="/dashboard/live"
+              href="/dashboard/paystubs"
               navKey="dashboard"
               itemRefs={itemRefs}
               isActive={active === "dashboard"}
               className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
             >
-              Live
+              Paystubs
             </NavItem>
             <NavItem
               href="/dashboard/cra"
@@ -174,20 +175,6 @@ export function LandingNav() {
               CRA
             </NavItem>
           </>
-        )}
-        {isAuthed && isOwner && (
-          <NavItem
-            href="/dashboard/admin"
-            navKey="admin"
-            itemRefs={itemRefs}
-            isActive={active === "admin"}
-            className="ml-0.5 h-8 w-8 justify-center p-0 text-foreground dark:text-white"
-            aria-label="Admin"
-          >
-            <span className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-transform duration-300 ease-out group-hover:scale-110 group-hover:text-foreground dark:group-hover:text-white">
-              <ShieldCheck className="h-4 w-4" />
-            </span>
-          </NavItem>
         )}
         {isAuthed && (
             <NavItem
@@ -221,6 +208,20 @@ export function LandingNav() {
             </span>
           )}
         </NavItem>
+        {isAuthed && isOwner && (
+          <NavItem
+            href="/dashboard/admin"
+            navKey="admin"
+            itemRefs={itemRefs}
+            isActive={active === "admin"}
+            className="ml-0.5 h-8 w-8 justify-center p-0 text-foreground dark:text-white"
+            aria-label="Admin"
+          >
+            <span className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-transform duration-300 ease-out group-hover:scale-110 group-hover:text-foreground dark:group-hover:text-white">
+              <ShieldCheck className="h-4 w-4" />
+            </span>
+          </NavItem>
+        )}
       </nav>
     </header>
   );
