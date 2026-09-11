@@ -644,7 +644,9 @@ function LiveEditor() {
           </Collapse>
 
           {/* Actions */}
-          <div className="mt-5 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
+          {/* Sits clear of the date row above it — the send action is the end
+              of the form, not the next field in it. */}
+          <div className="mt-9 flex flex-col-reverse items-stretch gap-3 sm:mt-10 sm:flex-row sm:items-center sm:justify-end">
             <Fade show={!selected}>
               <Button
                 variant="outline"

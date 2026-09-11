@@ -559,48 +559,8 @@ function StepOne({ form, setForm }: StepProps) {
 }
 
 // ─── Step 2: Employment, Hours, Vacation ─────────────────────────────────
-// Build the next N bi-weekly pay cycles from a base date (the employee's
-// employment start date). Each cycle is 14 days; value = ISO start date.
-function nextBiweeklyCycles(baseIso: string, count = 4) {
-  const base = baseIso ? new Date(`${baseIso}T00:00:00`) : new Date();
-  const fmt = (d: Date) =>
-    d.toLocaleDateString("en-CA", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  const cycles: { value: string; label: string }[] = [];
-  for (let i = 0; i < count; i++) {
-    const start = new Date(base);
-    start.setDate(base.getDate() + i * 14);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 13);
-    cycles.push({
-      value: start.toISOString().slice(0, 10),
-      label: `${fmt(start)} – ${fmt(end)}`,
-    });
-  }
-  return cycles;
-}
 
 function StepTwo({ form, setForm }: StepProps) {
-  // Offer the next four bi-weekly cycles from the employee's start date. If an
-  // already-saved pay-start date isn't among them (edit mode), keep it listed.
-  const payCycles = nextBiweeklyCycles(form.startDate);
-  const cycleOptions =
-    form.payStartDate && !payCycles.some((c) => c.value === form.payStartDate)
-      ? [
-          {
-            value: form.payStartDate,
-            label: new Date(`${form.payStartDate}T00:00:00`).toLocaleDateString(
-              "en-CA",
-              { month: "short", day: "numeric", year: "numeric" }
-            ),
-          },
-          ...payCycles,
-        ]
-      : payCycles;
-
   return (
     <>
       <div className="grid grid-cols-2 gap-2 sm:gap-3">
@@ -612,24 +572,6 @@ function StepTwo({ form, setForm }: StepProps) {
             onChange={(e) => setForm({ ...form, hourlyRate: e.target.value })}
             placeholder="32.50"
           />
-        </Field>
-
-        <Field label="First pay period">
-          <Select
-            value={form.payStartDate}
-            onValueChange={(v) => setForm({ ...form, payStartDate: v })}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select a cycle" />
-            </SelectTrigger>
-            <SelectContent>
-              {cycleOptions.map((c) => (
-                <SelectItem key={c.value} value={c.value}>
-                  {c.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
         </Field>
 
         <Field label="Pay frequency">
