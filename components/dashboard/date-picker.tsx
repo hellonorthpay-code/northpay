@@ -242,6 +242,26 @@ function CalendarPanel({
   // Only a well-formed range paints. A backwards one (end before start,
   // mid-edit) would otherwise shade nothing and flicker.
   const hasRange = !!rangeFrom && !!rangeTo && rangeFrom.getTime() <= rangeTo.getTime();
+
+  // Hovering a day previews the range it WOULD make, using the same neutral
+  // band — so the span is visible before you commit to it. The fixed end is
+  // whichever bound this field isn't editing: hovering in the period-end
+  // picker stretches from the start, and vice versa.
+  const [hoverDay, setHoverDay] = useState<Date | null>(null);
+  let anchor: Date | null = null;
+  if (hasRange && selected) {
+    if (sameDay(selected, rangeFrom!)) anchor = rangeTo!;
+    else if (sameDay(selected, rangeTo!)) anchor = rangeFrom!;
+  }
+  const preview =
+    hoverDay && anchor
+      ? hoverDay.getTime() <= anchor.getTime()
+        ? { from: hoverDay, to: anchor }
+        : { from: anchor, to: hoverDay }
+      : null;
+  const bandFrom = preview?.from ?? (hasRange ? rangeFrom! : null);
+  const bandTo = preview?.to ?? (hasRange ? rangeTo! : null);
+  const showBand = !!bandFrom && !!bandTo;
   // Which switcher is showing: the day grid (default), the month grid, or
   // the scrollable year list. Clicking the month/year label in the header
   // toggles into the matching switcher; picking a value returns to "day".
@@ -397,7 +417,10 @@ function CalendarPanel({
           </div>
 
           {/* Day grid */}
-          <div className="grid grid-cols-7 gap-0.5 px-1">
+          <div
+            className="grid grid-cols-7 gap-0.5 px-1"
+            onMouseLeave={() => setHoverDay(null)}
+          >
             {cells.map((cell, i) => {
               if (!cell) return <div key={i} className="h-8" />;
               const isToday = cell.d.getTime() === today.getTime();
@@ -405,9 +428,9 @@ function CalendarPanel({
 
               const t = cell.d.getTime();
               const inRange =
-                hasRange && t >= rangeFrom!.getTime() && t <= rangeTo!.getTime();
-              const isFrom = hasRange && sameDay(cell.d, rangeFrom!);
-              const isTo = hasRange && sameDay(cell.d, rangeTo!);
+                showBand && t >= bandFrom!.getTime() && t <= bandTo!.getTime();
+              const isFrom = showBand && sameDay(cell.d, bandFrom!);
+              const isTo = showBand && sameDay(cell.d, bandTo!);
               // The end of the period this field ISN'T editing — outlined,
               // so both bounds are legible without competing with each other.
               const isOtherEnd = (isFrom || isTo) && !isSelected;
@@ -431,6 +454,7 @@ function CalendarPanel({
                   <button
                     type="button"
                     onClick={() => onPick(cell.d)}
+                    onMouseEnter={() => setHoverDay(cell.d)}
                     className={cn(
                       "relative grid h-8 w-full place-items-center rounded-lg text-[12.5px] font-medium transition-colors",
                       isSelected
