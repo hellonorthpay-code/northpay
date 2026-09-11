@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 /*
  * ─── DatePicker ──────────────────────────────────────────────────────────
@@ -27,9 +28,19 @@ const EASE = [0.22, 1, 0.36, 1] as const;
 export function DatePicker({
   value,
   onChange,
+  rangeFrom,
+  rangeTo,
 }: {
   value: string;
   onChange: (next: string) => void;
+  /**
+   * Optional pay-period bounds (ISO yyyy-mm-dd). When both are given the
+   * calendar tints the days between them, fills THIS field's own date, and
+   * outlines the other end — so picking a period end shows what it's
+   * measured from instead of asking you to hold it in your head.
+   */
+  rangeFrom?: string;
+  rangeTo?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -187,6 +198,8 @@ export function DatePicker({
                   viewMonth={viewMonth}
                   onViewMonth={setViewMonth}
                   selected={value ? new Date(value + "T00:00:00") : null}
+                  rangeFrom={rangeFrom ? new Date(rangeFrom + "T00:00:00") : null}
+                  rangeTo={rangeTo ? new Date(rangeTo + "T00:00:00") : null}
                   onPick={pick}
                 />
               </motion.div>
@@ -211,13 +224,24 @@ function CalendarPanel({
   viewMonth,
   onViewMonth,
   selected,
+  rangeFrom,
+  rangeTo,
   onPick,
 }: {
   viewMonth: Date;
   onViewMonth: (d: Date) => void;
   selected: Date | null;
+  rangeFrom?: Date | null;
+  rangeTo?: Date | null;
   onPick: (d: Date) => void;
 }) {
+  const sameDay = (a: Date, b: Date) =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
+  // Only a well-formed range paints. A backwards one (end before start,
+  // mid-edit) would otherwise shade nothing and flicker.
+  const hasRange = !!rangeFrom && !!rangeTo && rangeFrom.getTime() <= rangeTo.getTime();
   // Which switcher is showing: the day grid (default), the month grid, or
   // the scrollable year list. Clicking the month/year label in the header
   // toggles into the matching switcher; picking a value returns to "day".
@@ -377,26 +401,50 @@ function CalendarPanel({
             {cells.map((cell, i) => {
               if (!cell) return <div key={i} className="h-8" />;
               const isToday = cell.d.getTime() === today.getTime();
-              const isSelected =
-                selected !== null &&
-                cell.d.getFullYear() === selected.getFullYear() &&
-                cell.d.getMonth() === selected.getMonth() &&
-                cell.d.getDate() === selected.getDate();
+              const isSelected = selected !== null && sameDay(cell.d, selected);
+
+              const t = cell.d.getTime();
+              const inRange =
+                hasRange && t >= rangeFrom!.getTime() && t <= rangeTo!.getTime();
+              const isFrom = hasRange && sameDay(cell.d, rangeFrom!);
+              const isTo = hasRange && sameDay(cell.d, rangeTo!);
+              // The end of the period this field ISN'T editing — outlined,
+              // so both bounds are legible without competing with each other.
+              const isOtherEnd = (isFrom || isTo) && !isSelected;
+              const col = i % 7;
+
               return (
-                <button
-                  key={i}
-                  type="button"
-                  onClick={() => onPick(cell.d)}
-                  className={`grid h-8 w-full place-items-center rounded-lg text-[12.5px] font-medium transition-colors ${
-                    isSelected
-                      ? "bg-foreground text-background dark:bg-white dark:text-black"
-                      : isToday
-                        ? "text-foreground ring-1 ring-foreground/30 dark:ring-white/30"
-                        : "text-foreground hover:bg-muted/70 dark:hover:bg-white/10"
-                  }`}
-                >
-                  {cell.d.getDate()}
-                </button>
+                <div key={i} className="relative">
+                  {/* The band bleeds into the 2px grid gap so a week reads as
+                      one continuous stripe, and rounds off only where the
+                      range actually stops — or where the row does. */}
+                  {inRange && (
+                    <span
+                      aria-hidden
+                      className={cn(
+                        "pointer-events-none absolute inset-y-0 -left-0.5 -right-0.5 bg-foreground/[0.07] dark:bg-white/[0.09]",
+                        (isFrom || col === 0) && "left-0 rounded-l-lg",
+                        (isTo || col === 6) && "right-0 rounded-r-lg"
+                      )}
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onPick(cell.d)}
+                    className={cn(
+                      "relative grid h-8 w-full place-items-center rounded-lg text-[12.5px] font-medium transition-colors",
+                      isSelected
+                        ? "bg-foreground text-background dark:bg-white dark:text-black"
+                        : isOtherEnd
+                          ? "text-foreground ring-1 ring-foreground/45 dark:ring-white/45"
+                          : isToday
+                            ? "text-foreground ring-1 ring-foreground/30 dark:ring-white/30"
+                            : "text-foreground hover:bg-muted/70 dark:hover:bg-white/10"
+                    )}
+                  >
+                    {cell.d.getDate()}
+                  </button>
+                </div>
               );
             })}
           </div>

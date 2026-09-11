@@ -439,6 +439,7 @@ function LiveEditor() {
   const freqLabel =
     SAMPLE_FREQUENCIES.find((f) => f.id === effectiveFreq)?.label ??
     effectiveFreq;
+  const historyCount = runs.filter((r) => r.status === "finalized" && !r.reverses).length;
 
   return (
     <div className="space-y-4 md:space-y-5">
@@ -617,10 +618,10 @@ function LiveEditor() {
             {/* Period */}
             <div className="mt-4 grid grid-cols-3 gap-2">
               <Field label="Period start" htmlFor="lv-start">
-                <DatePicker value={period.start} onChange={setStart} />
+                <DatePicker value={period.start} onChange={setStart} rangeFrom={period.start} rangeTo={period.end} />
               </Field>
               <Field label="Period end" htmlFor="lv-end">
-                <DatePicker value={period.end} onChange={(v) => setPeriod((p) => ({ ...p, end: v, pay: v > p.pay ? v : p.pay }))} />
+                <DatePicker value={period.end} onChange={(v) => setPeriod((p) => ({ ...p, end: v, pay: v > p.pay ? v : p.pay }))} rangeFrom={period.start} rangeTo={period.end} />
               </Field>
               <Field label="Pay date" htmlFor="lv-pay">
                 <DatePicker value={period.pay} onChange={(v) => setPeriod((p) => ({ ...p, pay: v }))} />
@@ -643,7 +644,7 @@ function LiveEditor() {
           </Collapse>
 
           {/* Actions */}
-          <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
+          <div className="mt-5 flex flex-col-reverse items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
             <Fade show={!selected}>
               <Button
                 variant="outline"
@@ -655,14 +656,29 @@ function LiveEditor() {
                 Save employee
               </Button>
             </Fade>
-            <Button
-              disabled={!canEmail}
-              onClick={handleEmail}
-              className="h-12 rounded-full text-[15px] font-semibold sm:h-10 sm:text-[13px] sm:font-medium"
-            >
-              {busy === "email" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Mail className="h-4 w-4" />}
-              {busy === "email" ? "Sending" : "Email paystub"}
-            </Button>
+            {/* Same 80px circular control as the Add-employee wizard's
+                continue button — this is the one action the step exists for,
+                so it carries that weight rather than sitting as a small pill.
+                Labelled beside it, since an envelope alone wouldn't say
+                whether it sends or just downloads. */}
+            <div className="flex items-center justify-end gap-3">
+              <span className="text-[13px] font-medium tracking-tight text-muted-foreground">
+                {busy === "email" ? "Sending…" : "Email paystub"}
+              </span>
+              <button
+                type="button"
+                aria-label="Email paystub"
+                disabled={!canEmail}
+                onClick={handleEmail}
+                className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:bg-foreground/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-black dark:hover:bg-white/90"
+              >
+                {busy === "email" ? (
+                  <Loader2 className="h-8 w-8 animate-spin" />
+                ) : (
+                  <Mail className="h-8 w-8" strokeWidth={2.2} />
+                )}
+              </button>
+            </div>
           </div>
           <Collapse show={!selected}>
             <p className="mt-2 text-right text-[11.5px] text-muted-foreground">
@@ -672,6 +688,27 @@ function LiveEditor() {
         </div>
 
         {/* ═══════════ Right: the paystub ═══════════ */}
+        <div>
+          {/* History sits ABOVE the card, not inside it. The paystub is a
+              document — a control floating in its header read as part of the
+              statement. Aligned with the left column's section label. */}
+          <div className="mb-2.5 flex items-center justify-between gap-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+              Paystub
+            </p>
+            <button
+              type="button"
+              onClick={() => setHistoryOpen(true)}
+              className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-[12px] font-medium text-muted-foreground shadow-soft backdrop-blur-xl transition-colors hover:text-foreground active:scale-95"
+            >
+              <History className="h-3.5 w-3.5" />
+              History
+              {historyCount > 0 && (
+                <span className="tabular-nums text-foreground">· {historyCount}</span>
+              )}
+            </button>
+          </div>
+
         <div className="relative">
           {/* Same ring as the homepage calculator: a slow conic gradient that
               always turns, a faster one that fades in while typing, and a
@@ -730,8 +767,6 @@ function LiveEditor() {
                       employee={snapshot}
                       company={company}
                       freqLabel={freqLabel}
-                      onHistory={() => setHistoryOpen(true)}
-                      historyCount={runs.filter((r) => r.status === "finalized").length}
                     />
                   )}
                 </motion.div>
@@ -739,6 +774,7 @@ function LiveEditor() {
             </AnimatePresence>
           </div>
           </div>
+        </div>
         </div>
       </div>
 
@@ -990,15 +1026,11 @@ function PaystubPreview({
   employee,
   company,
   freqLabel,
-  onHistory,
-  historyCount,
 }: {
   line: PayrollLineResult;
   employee: Employee;
   company: { operatingName: string; legalName: string; address: string; city: string; craPayrollAccount?: string };
   freqLabel: string;
-  onHistory: () => void;
-  historyCount: number;
 }) {
   const name = `${employee.firstName.trim()} ${employee.lastName.trim()}`.trim();
   const rows = [
@@ -1008,7 +1040,7 @@ function PaystubPreview({
   ];
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 bg-muted/50 px-5 py-4 sm:px-6">
+      <div className="bg-muted/50 px-5 py-4 sm:px-6">
         <div className="min-w-0">
           <p className="truncate text-[16px] font-semibold tracking-tight">
             {company.operatingName || company.legalName || "Your business"}
@@ -1017,15 +1049,6 @@ function PaystubPreview({
             {[company.address, company.city].filter(Boolean).join(", ") || "Add your address in Settings"}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onHistory}
-          className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-background px-3 py-1.5 text-[12px] font-medium text-muted-foreground shadow-soft transition-colors hover:text-foreground active:scale-95"
-        >
-          <History className="h-3.5 w-3.5" />
-          History
-          {historyCount > 0 && <span className="tabular-nums text-foreground">· {historyCount}</span>}
-        </button>
       </div>
 
       <div className="grid grid-cols-2 gap-4 px-5 py-4 sm:px-6">
