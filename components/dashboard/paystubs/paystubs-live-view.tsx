@@ -656,29 +656,18 @@ function LiveEditor() {
                 Save employee
               </Button>
             </Fade>
-            {/* Same 80px circular control as the Add-employee wizard's
-                continue button — this is the one action the step exists for,
-                so it carries that weight rather than sitting as a small pill.
-                Labelled beside it, since an envelope alone wouldn't say
-                whether it sends or just downloads. */}
-            <div className="flex items-center justify-end gap-3">
-              <span className="text-[13px] font-medium tracking-tight text-muted-foreground">
-                {busy === "email" ? "Sending…" : "Email paystub"}
-              </span>
-              <button
-                type="button"
-                aria-label="Email paystub"
-                disabled={!canEmail}
-                onClick={handleEmail}
-                className="inline-flex h-20 w-20 items-center justify-center rounded-full bg-foreground text-background transition-colors hover:bg-foreground/90 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40 dark:bg-white dark:text-black dark:hover:bg-white/90"
-              >
-                {busy === "email" ? (
-                  <Loader2 className="h-8 w-8 animate-spin" />
-                ) : (
-                  <Mail className="h-8 w-8" strokeWidth={2.2} />
-                )}
-              </button>
-            </div>
+            <Button
+              disabled={!canEmail}
+              onClick={handleEmail}
+              className="h-14 rounded-full px-7 text-[16px] font-semibold sm:h-14 sm:px-8 sm:text-[16px]"
+            >
+              {busy === "email" ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Mail className="h-5 w-5" strokeWidth={2.2} />
+              )}
+              {busy === "email" ? "Sending" : "Email paystub"}
+            </Button>
           </div>
           <Collapse show={!selected}>
             <p className="mt-2 text-right text-[11.5px] text-muted-foreground">
@@ -688,26 +677,22 @@ function LiveEditor() {
         </div>
 
         {/* ═══════════ Right: the paystub ═══════════ */}
-        <div>
-          {/* History sits ABOVE the card, not inside it. The paystub is a
-              document — a control floating in its header read as part of the
-              statement. Aligned with the left column's section label. */}
-          <div className="mb-2.5 flex items-center justify-between gap-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-              Paystub
-            </p>
-            <button
-              type="button"
-              onClick={() => setHistoryOpen(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-[12px] font-medium text-muted-foreground shadow-soft backdrop-blur-xl transition-colors hover:text-foreground active:scale-95"
-            >
-              <History className="h-3.5 w-3.5" />
-              History
-              {historyCount > 0 && (
-                <span className="tabular-nums text-foreground">· {historyCount}</span>
-              )}
-            </button>
-          </div>
+        {/* History sits above the card but OUT of the flow — absolutely
+            positioned, so it adds no height and the paystub stays level with
+            the form beside it. On phones the column reserves that strip with
+            a top margin instead, since there is nothing above to borrow. */}
+        <div className="relative mt-9 sm:mt-0">
+          <button
+            type="button"
+            onClick={() => setHistoryOpen(true)}
+            className="absolute right-0 -top-9 z-10 flex shrink-0 items-center gap-1.5 rounded-full border border-border/70 bg-card/70 px-3 py-1.5 text-[12px] font-medium text-muted-foreground shadow-soft backdrop-blur-xl transition-colors hover:text-foreground active:scale-95"
+          >
+            <History className="h-3.5 w-3.5" />
+            History
+            {historyCount > 0 && (
+              <span className="tabular-nums text-foreground">· {historyCount}</span>
+            )}
+          </button>
 
         <div className="relative">
           {/* Same ring as the homepage calculator: a slow conic gradient that
