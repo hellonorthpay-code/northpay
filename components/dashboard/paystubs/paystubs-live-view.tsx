@@ -68,9 +68,14 @@ import { cn, formatCAD, formatDate } from "@/lib/utils";
 /*
  * ─── LiveView ────────────────────────────────────────────────────────────
  *
- * Pay one person, now. Pick an employee (or add one inline and save them),
- * enter hours, optionally add vacation pay, set the period, watch the
- * paystub build itself, email it.
+ * Set the pay period once, then work down the list: pick an employee (or add
+ * one inline and save them), enter hours, optionally add vacation pay, watch
+ * the paystub build itself, email it. Next employee, same period.
+ *
+ * The period is deliberately ABOVE the employee and outside their block. It
+ * belongs to the pay run, not to the person — re-entering three dates for
+ * every employee was busywork, and busywork you repeat is busywork you
+ * eventually get wrong.
  *
  * Every number on the right comes from PayrollLifecycleService.preview —
  * the same engine and the same year-to-date fold that the full Payroll run
@@ -193,12 +198,15 @@ function LiveEditor() {
     configured: boolean;
   } | null>(null);
 
-  // Selecting someone resets the per-paystub inputs and re-derives the
-  // period from THEIR frequency. Keeping stale hours from the previous
-  // person is exactly the kind of quiet mistake this screen must not make.
+  // Selecting someone resets the per-paystub inputs. Keeping stale hours
+  // from the previous person is exactly the kind of quiet mistake this
+  // screen must not make.
+  //
+  // The period is NOT reset: it belongs to the pay run, and the whole point
+  // of lifting it out is that you set it once and then work down the list.
   //
   // Exception: when the selection changes because we just saved the person
-  // being typed in, the hours and period the user entered must survive.
+  // being typed in, the hours the user entered must survive.
   const keepInputs = useRef(false);
   useEffect(() => {
     if (keepInputs.current) {
@@ -212,25 +220,20 @@ function LiveEditor() {
     setEmailFix("");
     setErrors([]);
     setDone(null);
-    const freq = selected?.payFrequency ?? draft.payFrequency;
-    setPeriod(defaultPeriod(freq));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedId]);
 
-  // Frequency change (new employee) re-sizes the period from its start.
-  const effectiveFreq: PayFrequency = selected?.payFrequency ?? draft.payFrequency;
+  // Sized from the BUSINESS's cycle, not the selected employee's — a general
+  // period can't re-length itself every time the dropdown changes.
   function setStart(start: string) {
     if (!start) return;
-    const end = addDays(start, PERIOD_DAYS[effectiveFreq] - 1);
+    const end = addDays(start, PERIOD_DAYS[company.defaultPayFrequency] - 1);
     setPeriod({ start, end, pay: end });
   }
-  useEffect(() => {
-    if (selected) return;
-    setPeriod((p) => {
-      const end = addDays(p.start, PERIOD_DAYS[draft.payFrequency] - 1);
-      return { ...p, end, pay: end };
-    });
-  }, [draft.payFrequency, selected]);
+
+  // Still the employee's own frequency: it labels the hours field and prints
+  // on the paystub, where it describes them, not the run.
+  const effectiveFreq: PayFrequency = selected?.payFrequency ?? draft.payFrequency;
 
   // ── The employee the engine sees ──
   const snapshot: Employee | null = useMemo(() => {
@@ -429,13 +432,13 @@ function LiveEditor() {
     }
   }
 
+  // The period survives: the usual next move is the same run, next person.
   function startAnother() {
     setDone(null);
     setHours("");
     setVacOn(false);
     setVacAmount("");
     setErrors([]);
-    setPeriod(defaultPeriod(effectiveFreq));
   }
 
   const freqLabel =
@@ -469,6 +472,26 @@ function LiveEditor() {
       <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:gap-5">
         {/* ═══════════ Left: who and how much ═══════════ */}
         <div className="rounded-3xl border border-border/70 bg-card/70 p-4 shadow-soft backdrop-blur-xl sm:p-6">
+          {/* ── Pay period: set once, kept for every paystub in the run ── */}
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+            Pay period
+          </p>
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
+            <Field label="Period start" htmlFor="lv-start">
+              <DatePicker value={period.start} onChange={setStart} rangeFrom={period.start} rangeTo={period.end} />
+            </Field>
+            <Field label="Period end" htmlFor="lv-end">
+              <DatePicker value={period.end} onChange={(v) => setPeriod((p) => ({ ...p, end: v, pay: v > p.pay ? v : p.pay }))} rangeFrom={period.start} rangeTo={period.end} />
+            </Field>
+            <Field label="Pay date" htmlFor="lv-pay">
+              <DatePicker value={period.pay} onChange={(v) => setPeriod((p) => ({ ...p, pay: v }))} />
+            </Field>
+          </div>
+          <p className="mt-2 text-[11px] text-muted-foreground">
+            Applies to every paystub you send until you change it.
+          </p>
+
+          <div className="mt-5 border-t border-border/60 pt-5">
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Employee
           </p>
@@ -532,6 +555,7 @@ function LiveEditor() {
                 </div>
             </div>
           </Collapse>
+          </div>
 
           {/* ── This paystub ── */}
           <div className="mt-5 border-t border-border/60 pt-5">
@@ -617,19 +641,6 @@ function LiveEditor() {
               </Collapse>
             </div>
 
-            {/* Period */}
-            <div className="mt-4 grid grid-cols-3 gap-2">
-              <Field label="Period start" htmlFor="lv-start">
-                <DatePicker value={period.start} onChange={setStart} rangeFrom={period.start} rangeTo={period.end} />
-              </Field>
-              <Field label="Period end" htmlFor="lv-end">
-                <DatePicker value={period.end} onChange={(v) => setPeriod((p) => ({ ...p, end: v, pay: v > p.pay ? v : p.pay }))} rangeFrom={period.start} rangeTo={period.end} />
-              </Field>
-              <Field label="Pay date" htmlFor="lv-pay">
-                <DatePicker value={period.pay} onChange={(v) => setPeriod((p) => ({ ...p, pay: v }))} />
-              </Field>
-            </div>
-
             <Collapse show={!!selected && !selected.email}>
               <div className="mt-4">
                 <Field label="Employee email" htmlFor="lv-emailfix" hint="Saved to their record when you send.">
@@ -646,8 +657,8 @@ function LiveEditor() {
           </Collapse>
 
           {/* Actions */}
-          {/* Sits clear of the date row above it — the send action is the end
-              of the form, not the next field in it. */}
+          {/* Given room to breathe — the send action is the end of the form,
+              not the next field in it. */}
           <div className="mt-9 flex flex-col-reverse items-stretch gap-3 sm:mt-10 sm:flex-row sm:items-center sm:justify-end">
             <Fade show={!selected}>
               <Button
@@ -814,13 +825,14 @@ function LiveSkeleton() {
     <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:gap-5" aria-busy>
       <div className="rounded-3xl border border-border/70 bg-card/70 p-4 shadow-soft sm:p-6">
         <div className={`${block} h-3 w-20`} />
-        <div className={`${block} mt-3 h-12 w-full`} />
-        <div className="mt-6 grid grid-cols-2 gap-3">
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className={`${block} h-11`} />
           <div className={`${block} h-11`} />
           <div className={`${block} h-11`} />
         </div>
-        <div className="mt-4 grid grid-cols-3 gap-2">
-          <div className={`${block} h-11`} />
+        <div className={`${block} mt-6 h-3 w-20`} />
+        <div className={`${block} mt-3 h-12 w-full`} />
+        <div className="mt-6 grid grid-cols-2 gap-3">
           <div className={`${block} h-11`} />
           <div className={`${block} h-11`} />
         </div>
