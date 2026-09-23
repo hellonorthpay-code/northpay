@@ -15,12 +15,14 @@ import {
   Check,
   ChevronDown,
   Download,
+  ExternalLink,
   History,
   Loader2,
   Mail,
   Plus,
   Settings,
   Sparkles,
+  Umbrella,
   X,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -52,7 +54,12 @@ import { getRepositories } from "@/lib/repositories";
 import { PayrollLifecycleService } from "@/lib/services/lifecycle";
 import { enqueuePaystubEmails } from "@/lib/email/enqueue-client";
 import { generatePaystubPDF } from "@/lib/pdf/paystub";
-import { OVERTIME_WEEKLY_HOURS, TAX_YEAR } from "@/lib/payroll/constants";
+import {
+  DEFAULT_VACATION_PERCENT,
+  OTHER_PAY_TYPES,
+  OVERTIME_WEEKLY_HOURS,
+  TAX_YEAR,
+} from "@/lib/payroll/constants";
 import {
   PROVINCE_NAMES,
   SUPPORTED_PROVINCES,
@@ -61,6 +68,7 @@ import {
   type PayrollLineResult,
   type PayrollRun,
   type ProvinceCode,
+  type VacationMode,
 } from "@/lib/payroll/types";
 import { SAMPLE_FREQUENCIES } from "@/lib/sample-paystub";
 import { cn, formatCAD, formatDate } from "@/lib/utils";
@@ -69,8 +77,13 @@ import { cn, formatCAD, formatDate } from "@/lib/utils";
  * ─── LiveView ────────────────────────────────────────────────────────────
  *
  * Set the pay period once, then work down the list: pick an employee (or add
- * one inline and save them), enter hours, optionally add vacation pay, watch
- * the paystub build itself, email it. Next employee, same period.
+ * one inline and save them), enter hours, add stat or other pay if there is
+ * any, watch the paystub build itself, email it. Next employee, same period.
+ *
+ * Vacation pay is NOT a line you add here. It is a property of the employee,
+ * answered once when they are set up: paid out each period (into gross, taxed
+ * with everything else) or accrued and banked (out of gross). Asking again on
+ * every paystub is how the two get out of step.
  *
  * The period is deliberately ABOVE the employee and outside their block. It
  * belongs to the pay run, not to the person — re-entering three dates for
@@ -123,7 +136,12 @@ interface Draft {
   province: ProvinceCode;
   payFrequency: PayFrequency;
   hourlyRate: string;
+  vacationPercent: string;
+  vacationMode: VacationMode;
 }
+
+/** Stat pay, as offered here: time-and-a-half, or a figure you type. */
+type StatMode = "premium" | "custom";
 
 function LiveEditor() {
   const employees = useEmployees((s) => s.employees);
@@ -154,6 +172,8 @@ function LiveEditor() {
     province: company.defaultProvince,
     payFrequency: company.defaultPayFrequency,
     hourlyRate: "",
+    vacationPercent: String(DEFAULT_VACATION_PERCENT),
+    vacationMode: "payout",
   }));
   const setD = <K extends keyof Draft>(k: K, v: Draft[K]) => {
     bump();
@@ -165,8 +185,14 @@ function LiveEditor() {
   // For a saved employee: a rate change applies to THIS paystub only. The
   // permanent rate is edited through the gear → edit sheet.
   const [rateOverride, setRateOverride] = useState("");
-  const [vacOn, setVacOn] = useState(false);
-  const [vacAmount, setVacAmount] = useState("");
+  // Stat pay and other earnings — both opt-in, both straight into gross.
+  const [statOn, setStatOn] = useState(false);
+  const [statMode, setStatMode] = useState<StatMode>("premium");
+  const [statHours, setStatHours] = useState("8");
+  const [statAmount, setStatAmount] = useState("");
+  const [otherOn, setOtherOn] = useState(false);
+  const [otherType, setOtherType] = useState<string>(OTHER_PAY_TYPES[0]);
+  const [otherAmount, setOtherAmount] = useState("");
   const [period, setPeriod] = useState(() => defaultPeriod(company.defaultPayFrequency));
   // A saved employee with no email needs one before we can send.
   const [emailFix, setEmailFix] = useState("");
@@ -215,8 +241,13 @@ function LiveEditor() {
     }
     setHours("");
     setRateOverride("");
-    setVacOn(false);
-    setVacAmount("");
+    setStatOn(false);
+    setStatMode("premium");
+    setStatHours("8");
+    setStatAmount("");
+    setOtherOn(false);
+    setOtherType(OTHER_PAY_TYPES[0]);
+    setOtherAmount("");
     setEmailFix("");
     setErrors([]);
     setDone(null);
@@ -255,8 +286,8 @@ function LiveEditor() {
       employmentType: "hourly",
       hourlyRate: Number(draft.hourlyRate) || 0,
       payFrequency: draft.payFrequency,
-      vacationPercent: 4,
-      vacationMode: "payout",
+      vacationPercent: Number(draft.vacationPercent) || DEFAULT_VACATION_PERCENT,
+      vacationMode: draft.vacationMode,
       standardWeeklyHours: 40,
       overtimeThresholdHours: OVERTIME_WEEKLY_HOURS[draft.province],
       startDate: period.start,
@@ -270,33 +301,45 @@ function LiveEditor() {
     [runs]
   );
   const hoursNum = Math.min(400, Math.max(0, Number(hours) || 0));
-  const vacationAmount = vacOn ? Math.max(0, Number(vacAmount) || 0) : 0;
+  const statHoursNum = Math.min(400, Math.max(0, Number(statHours) || 0));
+  const statAmountNum = Math.max(0, Number(statAmount) || 0);
+  const otherAmountNum = otherOn ? Math.max(0, Number(otherAmount) || 0) : 0;
+
+  // No vacationAmount: leaving it undefined hands vacation back to the
+  // employee's own percent and mode, which is where the answer lives.
+  const lineInput = useMemo(
+    () => ({
+      hoursWorked: hoursNum,
+      payOvertime: true,
+      bonusAmount: otherAmountNum,
+      bonusLabel: otherOn ? otherType : undefined,
+      statPay: statOn
+        ? statMode === "custom"
+          ? { method: "custom" as const, amount: statAmountNum }
+          : { method: "premium" as const, hours: statHoursNum }
+        : undefined,
+    }),
+    [hoursNum, otherAmountNum, otherOn, otherType, statOn, statMode, statAmountNum, statHoursNum]
+  );
+
   const preview = useMemo(() => {
     if (!snapshot) return null;
     return lifecycle.preview({
       employees: [snapshot],
-      inputs: [
-        {
-          employeeId: snapshot.id,
-          hoursWorked: hoursNum,
-          payOvertime: true,
-          vacationAmount,
-        },
-      ],
+      inputs: [{ employeeId: snapshot.id, ...lineInput }],
       periodStart: period.start,
       periodEnd: period.end,
       payDate: period.pay,
     });
-  }, [snapshot, lifecycle, hoursNum, vacationAmount, period]);
+  }, [snapshot, lifecycle, lineInput, period]);
   const line = preview?.lines[0] ?? null;
 
-  // What 4% would be — offered as a one-tap suggestion when vacation is on.
-  const suggestedVacation = useMemo(() => {
-    if (!line) return 0;
-    const base = line.regularPay + line.overtimePay;
-    const pct = (selected?.vacationPercent ?? 4) / 100;
-    return Math.round(base * pct * 100) / 100;
-  }, [line, selected]);
+  // The 1.5× rate, shown beside the hours so the figure is never a mystery.
+  const statRate = (snapshot?.hourlyRate ?? 0) * 1.5;
+
+  const vacationPercent =
+    selected?.vacationPercent ?? (Number(draft.vacationPercent) || DEFAULT_VACATION_PERCENT);
+  const vacationMode: VacationMode = selected?.vacationMode ?? draft.vacationMode;
 
   // ── Gates ──
   const companyReady = Boolean(
@@ -334,8 +377,8 @@ function LiveEditor() {
       employmentType: "hourly",
       hourlyRate: Number(draft.hourlyRate) || 0,
       payFrequency: draft.payFrequency,
-      vacationPercent: 4,
-      vacationMode: "payout",
+      vacationPercent: Number(draft.vacationPercent) || DEFAULT_VACATION_PERCENT,
+      vacationMode: draft.vacationMode,
       standardWeeklyHours: 40,
       overtimeThresholdHours: OVERTIME_WEEKLY_HOURS[draft.province],
       startDate: period.start,
@@ -391,14 +434,7 @@ function LiveEditor() {
       const svc = new PayrollLifecycleService(getRepositories(), freshRuns);
       const result = await svc.finalize({
         employees: [runEmployee],
-        inputs: [
-          {
-            employeeId: runEmployee.id,
-            hoursWorked: hoursNum,
-            payOvertime: true,
-            vacationAmount,
-          },
-        ],
+        inputs: [{ employeeId: runEmployee.id, ...lineInput }],
         periodStart: period.start,
         periodEnd: period.end,
         payDate: period.pay,
@@ -436,8 +472,13 @@ function LiveEditor() {
   function startAnother() {
     setDone(null);
     setHours("");
-    setVacOn(false);
-    setVacAmount("");
+    setStatOn(false);
+    setStatMode("premium");
+    setStatHours("8");
+    setStatAmount("");
+    setOtherOn(false);
+    setOtherType(OTHER_PAY_TYPES[0]);
+    setOtherAmount("");
     setErrors([]);
   }
 
@@ -553,6 +594,32 @@ function LiveEditor() {
                     </Select>
                   </Field>
                 </div>
+                {/* Asked once, at setup — every paystub afterwards follows
+                    the answer instead of re-asking it. */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Field label="Vacation pay" htmlFor="lv-vacpct">
+                    <div className="relative">
+                      <Input
+                        id="lv-vacpct"
+                        inputMode="decimal"
+                        className="pr-7"
+                        placeholder="4"
+                        value={draft.vacationPercent}
+                        onChange={(e) => setD("vacationPercent", e.target.value.replace(/[^\d.]/g, "").slice(0, 5))}
+                      />
+                      <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[14px] text-muted-foreground">%</span>
+                    </div>
+                  </Field>
+                  <Field label="Vacation handling">
+                    <Select value={draft.vacationMode} onValueChange={(v) => setD("vacationMode", v as VacationMode)}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="payout">Pay out each period</SelectItem>
+                        <SelectItem value="accrue">Accrue &amp; bank</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </Field>
+                </div>
             </div>
           </Collapse>
           </div>
@@ -592,53 +659,131 @@ function LiveEditor() {
               </Field>
             </div>
 
-            {/* Vacation pay — opt-in, as a dollar amount, with the standard
-                percentage offered as a one-tap suggestion so "the usual" is
-                never a calculation the user has to do in their head. */}
+            {/* ── Stat pay ── */}
             <div className="mt-4">
-              <Collapse show={!vacOn}>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setVacOn(true);
-                    if (!vacAmount && suggestedVacation > 0) setVacAmount(suggestedVacation.toFixed(2));
-                  }}
-                  className="flex items-center gap-1.5 px-1 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+              <Collapse show={!statOn}>
+                <AddLine onClick={() => setStatOn(true)}>Stat pay</AddLine>
+              </Collapse>
+              <Collapse show={statOn}>
+                <ExtraBlock
+                  title="Stat pay"
+                  onRemove={() => { setStatOn(false); setStatAmount(""); bump(); }}
                 >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add vacation pay
-                </button>
-              </Collapse>
-              <Collapse show={vacOn}>
-                  <div className="rounded-2xl border border-border/60 p-3">
-                    <div className="flex items-center justify-between gap-3">
-                      <Label htmlFor="lv-vac">Vacation pay</Label>
-                      <button
-                        type="button"
-                        onClick={() => { setVacOn(false); setVacAmount(""); }}
-                        aria-label="Remove vacation pay"
-                        className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
+                  {/* Two ways, as asked: time-and-a-half, or a figure you
+                      type. Nothing else — the general-holiday average is a
+                      rule most operators ask their province about first, and
+                      the link below is where that question belongs. */}
+                  <Segmented
+                    options={[
+                      { id: "premium", label: "1.5× hourly" },
+                      { id: "custom", label: "Custom amount" },
+                    ]}
+                    value={statMode}
+                    onChange={(v) => { bump(); setStatMode(v as StatMode); }}
+                  />
+
+                  <Collapse show={statMode === "premium"}>
+                    <div className="grid grid-cols-2 gap-3 pt-3">
+                      <Field label="Stat rate">
+                        {/* Derived, never typed — 1.5× whatever they earn. */}
+                        <div className="flex h-11 items-center rounded-xl border border-border/60 bg-muted/40 px-3 text-[14px] font-medium tabular-nums text-muted-foreground">
+                          {formatCAD(statRate)}<span className="ml-0.5 text-[11px]">/hr</span>
+                        </div>
+                      </Field>
+                      <Field label="Stat hours" htmlFor="lv-stat-hours">
+                        <Input
+                          id="lv-stat-hours"
+                          inputMode="decimal"
+                          placeholder="8"
+                          value={statHours}
+                          onChange={(e) => { bump(); setStatHours(e.target.value.replace(/[^\d.]/g, "").slice(0, 5)); }}
+                        />
+                      </Field>
                     </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <div className="relative flex-1">
-                        <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-muted-foreground">$</span>
-                        <Input id="lv-vac" inputMode="decimal" className="pl-7" value={vacAmount} onChange={(e) => { bump(); setVacAmount(e.target.value.replace(/[^\d.]/g, "").slice(0, 8)); }} />
-                      </div>
-                      {suggestedVacation > 0 && (
-                        <button
-                          type="button"
-                          onClick={() => { bump(); setVacAmount(suggestedVacation.toFixed(2)); }}
-                          className="shrink-0 rounded-full border border-border/70 px-3 py-2 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        >
-                          {selected?.vacationPercent ?? 4}% = {formatCAD(suggestedVacation)}
-                        </button>
-                      )}
+                  </Collapse>
+
+                  <Collapse show={statMode === "custom"}>
+                    <div className="pt-3">
+                      <Field label="Amount" htmlFor="lv-stat-amt">
+                        <Dollar
+                          id="lv-stat-amt"
+                          value={statAmount}
+                          onChange={(v) => { bump(); setStatAmount(v); }}
+                        />
+                      </Field>
                     </div>
+                  </Collapse>
+
+                  <div className="pt-3">
+                    <RefLink href="https://www.canada.ca/en/employment-social-development/programs/employment-standards/holidays.html">
+                      CRA guidelines for statutory holiday pay
+                    </RefLink>
                   </div>
+                </ExtraBlock>
               </Collapse>
+            </div>
+
+            {/* ── Any other pay — straight onto gross, under a name ── */}
+            <div className="mt-3">
+              <Collapse show={!otherOn}>
+                <AddLine onClick={() => setOtherOn(true)}>Other pay</AddLine>
+              </Collapse>
+              <Collapse show={otherOn}>
+                <ExtraBlock
+                  title="Other pay"
+                  onRemove={() => { setOtherOn(false); setOtherAmount(""); bump(); }}
+                >
+                  <div className="grid grid-cols-2 gap-3">
+                    <Field label="Type">
+                      <Select value={otherType} onValueChange={(v) => { bump(); setOtherType(v); }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {OTHER_PAY_TYPES.map((t) => (
+                            <SelectItem key={t} value={t}>{t}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </Field>
+                    <Field label="Amount" htmlFor="lv-other-amt">
+                      <Dollar
+                        id="lv-other-amt"
+                        value={otherAmount}
+                        onChange={(v) => { bump(); setOtherAmount(v); }}
+                      />
+                    </Field>
+                  </div>
+                  <p className="pt-2 text-[11px] text-muted-foreground">
+                    Added to gross pay and taxed with everything else.
+                  </p>
+                </ExtraBlock>
+              </Collapse>
+            </div>
+
+            {/* Vacation: stated, not asked. It was answered when the employee
+                was set up, and repeating the question here is how the two
+                drift apart. */}
+            <div className="mt-4 flex items-start gap-2 rounded-2xl bg-muted/40 px-3.5 py-2.5">
+              <Umbrella className="mt-0.5 h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+              <p className="text-[11.5px] leading-relaxed text-muted-foreground">
+                Vacation {vacationPercent}% —{" "}
+                {vacationMode === "payout" ? (
+                  <span className="font-medium text-foreground">paid out this period</span>
+                ) : (
+                  <span className="font-medium text-foreground">accruing, not paid out</span>
+                )}
+                .{" "}
+                {selected ? (
+                  <button
+                    type="button"
+                    onClick={() => setEditOpen(true)}
+                    className="font-medium text-foreground underline-offset-2 hover:underline"
+                  >
+                    Change
+                  </button>
+                ) : (
+                  "Set below."
+                )}
+              </p>
             </div>
 
             <Collapse show={!!selected && !selected.email}>
@@ -1045,7 +1190,17 @@ function PaystubPreview({
   const rows = [
     { id: "reg", label: "Regular", value: line.regularPay },
     ...(line.overtimePay > 0 ? [{ id: "ot", label: "Overtime (1.5×)", value: line.overtimePay }] : []),
-    ...(line.vacationAccrual > 0 ? [{ id: "vac", label: "Vacation pay", value: line.vacationAccrual }] : []),
+    ...(line.statPay > 0
+      ? [{ id: "stat", label: line.statPayMethod === "premium" ? "Stat pay (1.5×)" : "Stat pay", value: line.statPay }]
+      : []),
+    ...(line.bonusAmount > 0
+      ? [{ id: "other", label: line.bonusLabel ?? "Bonus", value: line.bonusAmount }]
+      : []),
+    // Only when it is actually being paid out. Accrued vacation is banked,
+    // not earned this period, so it must not sit in the earnings column.
+    ...(line.vacationAccrual > 0
+      ? [{ id: "vac", label: `Vacation pay (${employee.vacationPercent}%)`, value: line.vacationAccrual }]
+      : []),
   ];
   return (
     <div>
@@ -1096,6 +1251,18 @@ function PaystubPreview({
           total={{ label: "Total deductions", value: line.totalDeductions }}
         />
       </div>
+
+      {/* Banked vacation is not gross pay and is not deducted from — it is
+          money owed later, so it is reported beside the statement, not in it. */}
+      {line.vacationBanked > 0 && (
+        <div className="mx-5 mb-3 flex items-center justify-between rounded-xl border border-dashed border-border/70 px-3.5 py-2.5 sm:mx-6">
+          <span className="flex items-center gap-1.5 text-[11.5px] text-muted-foreground">
+            <Umbrella className="h-3.5 w-3.5" />
+            Vacation banked ({employee.vacationPercent}%) · not paid out
+          </span>
+          <Money value={line.vacationBanked} className="text-[12.5px] font-semibold tabular-nums" />
+        </div>
+      )}
 
       <div className="mx-5 mb-5 flex items-end justify-between rounded-2xl border border-border/70 bg-muted/30 px-4 py-4 sm:mx-6 sm:px-5">
         <div>
@@ -1346,6 +1513,131 @@ function IconAction({ label, onClick, busy, children }: { label: string; onClick
 // ═════════════════════════════════════════════════════════════════════════
 // Bits
 // ═════════════════════════════════════════════════════════════════════════
+
+/** The muted "+ Stat pay" / "+ Other pay" affordance. */
+function AddLine({ onClick, children }: { onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex items-center gap-1.5 px-1 text-[12.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+    >
+      <Plus className="h-3.5 w-3.5" />
+      Add {children}
+    </button>
+  );
+}
+
+/** A titled, dismissable box for one optional earnings line. */
+function ExtraBlock({
+  title,
+  onRemove,
+  children,
+}: {
+  title: string;
+  onRemove: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-2xl border border-border/60 p-3">
+      <div className="mb-2.5 flex items-center justify-between gap-3">
+        <p className="text-[12.5px] font-semibold tracking-tight">{title}</p>
+        <button
+          type="button"
+          onClick={onRemove}
+          aria-label={`Remove ${title.toLowerCase()}`}
+          className="grid h-7 w-7 place-items-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <X className="h-3.5 w-3.5" />
+        </button>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** A dollar input. The prefix is decoration, so the value stays numeric. */
+function Dollar({ id, value, onChange }: { id: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[14px] text-muted-foreground">$</span>
+      <Input
+        id={id}
+        inputMode="decimal"
+        className="pl-7"
+        placeholder="0.00"
+        value={value}
+        onChange={(e) => onChange(e.target.value.replace(/[^\d.]/g, "").slice(0, 9))}
+      />
+    </div>
+  );
+}
+
+/**
+ * A segmented switch whose highlight slides. The pill is absolutely
+ * positioned and moved with a CSS transition on `left` — not a transform —
+ * so nothing above the inputs below it is ever left transformed (the mobile
+ * caret rule).
+ */
+function Segmented({
+  options,
+  value,
+  onChange,
+}: {
+  options: Array<{ id: string; label: string }>;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const n = options.length;
+  const idx = Math.max(0, options.findIndex((o) => o.id === value));
+  return (
+    <div
+      role="tablist"
+      className="relative grid gap-0 rounded-full border border-border/70 bg-background p-1"
+      style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}
+    >
+      <span
+        aria-hidden
+        className="absolute inset-y-1 rounded-full bg-foreground transition-[left] duration-300"
+        style={{
+          left: `calc(${(idx * 100) / n}% + 4px)`,
+          width: `calc(${100 / n}% - 8px)`,
+          transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)",
+        }}
+      />
+      {options.map((o) => (
+        <button
+          key={o.id}
+          type="button"
+          role="tab"
+          aria-selected={o.id === value}
+          onClick={() => onChange(o.id)}
+          className={cn(
+            "relative z-10 h-9 rounded-full text-[12.5px] font-medium tracking-tight transition-colors duration-200",
+            o.id === value ? "text-background" : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Link out to the official rule, for the questions we shouldn't answer. */
+function RefLink({ href, children }: { href: string; children: React.ReactNode }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex items-center gap-1 text-[11px] font-medium text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline"
+    >
+      {children}
+      <ExternalLink className="h-3 w-3" />
+    </a>
+  );
+}
 
 function Field({ label, htmlFor, hint, children }: { label: string; htmlFor?: string; hint?: string; children: React.ReactNode }) {
   return (

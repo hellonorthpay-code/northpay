@@ -121,6 +121,7 @@ export function calculatePayrollLine(
   }
 
   const bonusAmount = round2(input.bonusAmount ?? 0);
+  const bonusLabel = bonusAmount > 0 ? input.bonusLabel?.trim() || undefined : undefined;
 
   // Statutory holiday pay — three methods:
   //   premium = hourlyRate × 1.5 × hours  (employee worked the stat day)
@@ -209,6 +210,7 @@ export function calculatePayrollLine(
     regularPay,
     overtimePay,
     bonusAmount,
+    bonusLabel,
     statPay,
     statPayMethod,
     vacationAccrual,

@@ -163,6 +163,13 @@ export interface PayrollLineInput {
   payOvertime?: boolean;
   bonusAmount?: number;
   /**
+   * What the bonus line is actually called on this paystub — "Commission",
+   * "Retroactive pay", "Tips & gratuities"… Purely cosmetic: the amount is
+   * added to gross and taxed identically whatever it is called. Defaults to
+   * "Bonus" when omitted, which is what every existing run carries.
+   */
+  bonusLabel?: string;
+  /**
    * Explicit vacation dollars for THIS period. When set, it replaces the
    * percentage calculation entirely (0 means "none this period"). When
    * undefined, the employee's vacationPercent applies as before. Used by
@@ -189,6 +196,8 @@ export interface PayrollLineResult {
   regularPay: number;
   overtimePay: number;
   bonusAmount: number;
+  /** Label for the bonus line ("Commission", "Tips"…). Defaults to "Bonus". */
+  bonusLabel?: string;
   /** Statutory holiday pay added to gross this period. */
   statPay: number;
   /** Which method was used to compute statPay (undefined when 0). */

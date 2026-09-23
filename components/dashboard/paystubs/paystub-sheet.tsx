@@ -94,7 +94,7 @@ export function PaystubSheet({
             <Block title="Earnings">
               <Row label="Regular" value={line.regularPay} />
               <Row label="Overtime (1.5×)" value={line.overtimePay} />
-              <Row label="Bonus" value={line.bonusAmount} />
+              <Row label={line.bonusLabel ?? "Bonus"} value={line.bonusAmount} />
               <Row label="Vacation paid" value={line.vacationAccrual} />
               <div className="mt-1 border-t border-border/60 pt-2">
                 <Row label="Gross pay" value={line.grossPay} strong />

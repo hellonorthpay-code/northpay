@@ -219,3 +219,19 @@ export const DEFAULT_VACATION_PERCENT = 4;
 
 /** Default standard weekly hours for hourly-equivalent calc on salaried employees. */
 export const DEFAULT_STANDARD_WEEKLY_HOURS = 40;
+
+/**
+ * Additional earnings that simply add to gross pay and are taxed like wages.
+ * The choice is a label, not a rule — CPP, EI and income tax treat every one
+ * of these the same way, so the engine only needs the amount.
+ */
+export const OTHER_PAY_TYPES = [
+  "Bonus",
+  "Commission",
+  "Retroactive pay",
+  "Tips & gratuities",
+  "Shift premium",
+  "Taxable allowance",
+  "Severance pay",
+  "Other earnings",
+] as const;

@@ -178,7 +178,7 @@ function buildPaystubDoc(
     [
       ["Regular", line.regularPay, ytd.regular],
       ["Overtime (1.5×)", line.overtimePay, ytd.overtime],
-      ["Bonus", line.bonusAmount, ytd.bonus],
+      [line.bonusLabel ?? "Bonus", line.bonusAmount, ytd.bonus],
       ["Vacation paid", line.vacationAccrual, ytd.vacation],
     ],
     ["Gross pay", line.grossPay, ytd.gross]
