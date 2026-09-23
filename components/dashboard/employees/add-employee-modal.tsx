@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useLayoutEffect, useRef, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -42,6 +42,7 @@ import {
 } from "@/lib/payroll/constants";
 import { useEmployees } from "@/lib/store/employees";
 import { DatePicker } from "@/components/dashboard/date-picker";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { useSettings } from "@/lib/store/settings";
 
 interface Props {
@@ -281,7 +282,7 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
             Single keyed motion.div that swaps its content as `step`
             changes — AnimatePresence reliably detects the key change
             and runs an exit → enter cycle in `wait` mode. */}
-        <AutoHeight step={step}>
+        <AutoHeight>
           {/* Animate via a single keyed motion.div. We use `key={step}` so
               React unmounts/remounts when step changes — motion.div picks
               that up via its `initial` → `animate` lifecycle. No
@@ -335,56 +336,6 @@ export function AddEmployeeModal({ open, onOpenChange, employee, origin }: Props
         </div>
       </DialogContent>
     </Dialog>
-  );
-}
-
-/**
- * Eases the sheet between step heights instead of snapping to the taller
- * one. Step 2 has more fields than step 1, so advancing used to resize the
- * dialog in a single frame — the "abrupt" part of the transition.
- *
- * Animates `height`, deliberately NOT a layout/transform animation: a
- * transform left on an ancestor of an <input> makes mobile browsers draw
- * the caret in the wrong place, which is the same rule the opacity-only
- * page variants below follow.
- *
- * A ResizeObserver keeps it honest when the content itself grows within a
- * step (the ROE fields appearing, a validation line), so the box tracks its
- * contents rather than a height measured once.
- */
-function AutoHeight({ step, children }: { step: number; children: React.ReactNode }) {
-  const inner = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState<number | "auto">("auto");
-  // Skip the very first animation — the sheet should open at its natural
-  // size, not grow into it.
-  const first = useRef(true);
-
-  useLayoutEffect(() => {
-    const el = inner.current;
-    if (!el) return;
-    const measure = () => setHeight(el.offsetHeight);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [step]);
-
-  useEffect(() => {
-    first.current = false;
-  }, []);
-
-  return (
-    <motion.div
-      animate={{ height }}
-      initial={false}
-      transition={
-        first.current ? { duration: 0 } : { duration: 0.42, ease: EASE }
-      }
-      style={{ overflow: "hidden" }}
-      className="relative"
-    >
-      <div ref={inner}>{children}</div>
-    </motion.div>
   );
 }
 

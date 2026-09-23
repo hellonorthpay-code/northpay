@@ -43,6 +43,7 @@ import { AddEmployeeModal } from "@/components/dashboard/employees/add-employee-
 import { DatePicker } from "@/components/dashboard/date-picker";
 import { PaystubSheet } from "@/components/dashboard/paystubs/paystub-sheet";
 import { UpgradeBanner } from "@/components/dashboard/billing/billing";
+import { AutoHeight } from "@/components/ui/auto-height";
 import { useBilling } from "@/lib/billing/client";
 import { useEmployees } from "@/lib/store/employees";
 import { usePayrollRuns } from "@/lib/store/payroll";
@@ -420,6 +421,7 @@ function LiveEditor() {
         emailedTo: configured ? runEmployee.email : null,
         configured,
       });
+      bump();
     } catch (e) {
       setErrors([e instanceof Error ? e.message : String(e)]);
     } finally {
@@ -725,14 +727,20 @@ function LiveEditor() {
               className="np-ring np-ring--fast absolute inset-0 rounded-[30px]"
             />
           <div className="relative overflow-hidden rounded-[28px] bg-background shadow-glass">
-            <AnimatePresence mode="wait" initial={false}>
+            {/* The card eases between the preview's height and the (much
+                shorter) confirmation instead of snapping. popLayout lifts
+                the outgoing panel out of flow while it fades, so the box is
+                already heading for the incoming panel's height. */}
+            <AutoHeight>
+            <AnimatePresence mode="popLayout" initial={false}>
               {done ? (
                 <motion.div
                   key="done"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25, ease }}
+                  exit={{ opacity: 0, transition: { duration: 0.16 } }}
+                  transition={{ duration: 0.3, ease }}
+                  className="w-full"
                 >
                   <SentCard
                     done={done}
@@ -745,8 +753,9 @@ function LiveEditor() {
                   key="preview"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.25, ease }}
+                  exit={{ opacity: 0, transition: { duration: 0.16 } }}
+                  transition={{ duration: 0.3, ease, delay: 0.05 }}
+                  className="w-full"
                 >
                   {line && snapshot && (
                     <PaystubPreview
@@ -759,6 +768,7 @@ function LiveEditor() {
                 </motion.div>
               )}
             </AnimatePresence>
+            </AutoHeight>
           </div>
           </div>
         </div>
@@ -1110,13 +1120,39 @@ function SentCard({
   onAnother: () => void;
 }) {
   const l = done.line;
+  // One choreographed entrance: the disc pops, the tick draws itself, then
+  // the words, the figure and the actions rise in turn. Short and staggered
+  // rather than long — it should read as confirmation, not ceremony. None of
+  // these elements contain inputs, so the y/scale transforms are safe.
+  const rise = {
+    hidden: { opacity: 0, y: 10 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.45, ease } },
+  };
   return (
-    <div className="p-5 sm:p-7">
+    <motion.div
+      initial="hidden"
+      animate="show"
+      variants={{ hidden: {}, show: { transition: { staggerChildren: 0.08, delayChildren: 0.05 } } }}
+      className="p-5 sm:p-7"
+    >
       <div className="flex items-center gap-3">
-        <span className="grid h-10 w-10 place-items-center rounded-full bg-success/15 text-success">
-          <Check className="h-5 w-5" strokeWidth={3} />
-        </span>
-        <div>
+        <motion.span
+          variants={{
+            hidden: { scale: 0.4, opacity: 0 },
+            show: { scale: 1, opacity: 1, transition: { type: "spring", bounce: 0.3, duration: 0.6 } },
+          }}
+          className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-success/15 text-success"
+        >
+          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <motion.path
+              d="M5 12.5l4.5 4.5L19 7.5"
+              initial={{ pathLength: 0 }}
+              animate={{ pathLength: 1 }}
+              transition={{ delay: 0.3, duration: 0.45, ease }}
+            />
+          </svg>
+        </motion.span>
+        <motion.div variants={rise}>
           <p className="text-[16px] font-semibold tracking-tight">
             {done.emailedTo ? "Paystub sent" : "Paystub recorded"}
           </p>
@@ -1125,29 +1161,24 @@ function SentCard({
               ? <>On its way to <span className="font-medium text-foreground">{done.emailedTo}</span>.</>
               : "Email isn't set up on this environment yet, but the run is saved."}
           </p>
-        </div>
+        </motion.div>
       </div>
 
-      <div className="mt-6 rounded-3xl bg-foreground px-6 py-6 text-background dark:bg-white dark:text-black">
+      <motion.div variants={rise} className="mt-6 rounded-3xl bg-foreground px-6 py-6 text-background dark:bg-white dark:text-black">
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] opacity-70">
           {l.employee.firstName}&rsquo;s net pay · {formatDate(l.periodStart)} – {formatDate(l.periodEnd)}
         </p>
-        <motion.p
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.15, duration: 0.5, ease }}
-          className="mt-2 text-[40px] font-semibold leading-none tracking-tightest tabular-nums"
-        >
+        <p className="mt-2 text-[40px] font-semibold leading-none tracking-tightest tabular-nums">
           {formatCAD(l.netPay)}
-        </motion.p>
-      </div>
+        </p>
+      </motion.div>
 
-      <p className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
+      <motion.p variants={rise} className="mt-4 text-[12px] leading-relaxed text-muted-foreground">
         Recorded as a finalized payroll run. It counts toward year-to-date and
         this month&rsquo;s CRA remittance, and it&rsquo;s in History.
-      </p>
+      </motion.p>
 
-      <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+      <motion.div variants={rise} className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
         <Button variant="outline" onClick={onDownload} className="h-11 rounded-full sm:h-10">
           <Download className="h-4 w-4" />
           Download PDF
@@ -1156,8 +1187,8 @@ function SentCard({
           <Sparkles className="h-4 w-4" />
           New paystub
         </Button>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
 
