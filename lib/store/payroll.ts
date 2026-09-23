@@ -12,6 +12,8 @@ interface PayrollStore {
    * in PayrollLifecycleService.finalize() — this is the local refresh.
    */
   upsertRun: (run: PayrollRun) => void;
+  /** Delete a run outright — persists, then drops it from the local view. */
+  deleteRun: (runId: string) => Promise<void>;
   /** Mark a run voided locally after lifecycle service has persisted it. */
   applyVoid: (originalId: string, reversal: PayrollRun) => void;
   /** Pull a fresh snapshot from the repo (after finalize/void). */
@@ -40,6 +42,11 @@ export const usePayrollRuns = create<PayrollStore>((set, get) => ({
       }
       return { runs: [run, ...s.runs] };
     });
+  },
+
+  deleteRun: async (runId) => {
+    await getRepositories().payroll.remove(runId);
+    set((s) => ({ runs: s.runs.filter((r) => r.id !== runId) }));
   },
 
   applyVoid: (originalId, reversal) => {

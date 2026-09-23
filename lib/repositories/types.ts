@@ -37,6 +37,18 @@ export interface IPayrollRepository {
    * pure fold over runs (no special-case logic needed in YTD service).
    */
   void(runId: string, reversal: PayrollRun, reason: string): Promise<void>;
+  /**
+   * Erase a run outright.
+   *
+   * Deliberately different from void(): void keeps the history and nets it
+   * out with a reversal, which is right for a payroll that was actually
+   * paid. remove() is for correcting a paystub that should never have
+   * existed, and the UI only offers it on an employee's MOST RECENT run —
+   * YTD is a fold over runs, so removing the last one leaves every earlier
+   * CPP/EI cap exactly as it was, while removing one from the middle would
+   * silently invalidate every stub after it.
+   */
+  remove(runId: string): Promise<void>;
 }
 
 export interface ISettingsRepository {

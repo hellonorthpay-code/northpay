@@ -18,10 +18,13 @@ import {
   ExternalLink,
   History,
   Loader2,
+  Lock,
   Mail,
+  Pencil,
   Plus,
   Settings,
   Sparkles,
+  Trash2,
   Umbrella,
   X,
 } from "lucide-react";
@@ -71,7 +74,7 @@ import {
   type VacationMode,
 } from "@/lib/payroll/types";
 import { SAMPLE_FREQUENCIES } from "@/lib/sample-paystub";
-import { cn, formatCAD, formatDate } from "@/lib/utils";
+import { cn, formatCAD, formatDate, round2 } from "@/lib/utils";
 
 /*
  * ─── LiveView ────────────────────────────────────────────────────────────
@@ -150,6 +153,7 @@ function LiveEditor() {
   const company = useSettings((s) => s.company);
   const runs = usePayrollRuns((s) => s.runs);
   const upsertRun = usePayrollRuns((s) => s.upsertRun);
+  const deleteRun = usePayrollRuns((s) => s.deleteRun);
   const billing = useBilling();
 
   // Seeded synchronously from the already-hydrated store (LiveView gates on
@@ -215,6 +219,10 @@ function LiveEditor() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
+  // The paystub being corrected, if any. Sending replaces it: the original
+  // is removed and a fresh run takes its place, because a finalized run is
+  // immutable by design and re-finalizing the same period would collide.
+  const [editing, setEditing] = useState<PayrollRun | null>(null);
   const [busy, setBusy] = useState<"save" | "email" | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [done, setDone] = useState<{
@@ -296,10 +304,13 @@ function LiveEditor() {
   }, [selected, draft, rateOverride, period.start]);
 
   // ── Live preview through the real lifecycle (real YTD) ──
-  const lifecycle = useMemo(
-    () => new PayrollLifecycleService(getRepositories(), runs),
-    [runs]
-  );
+  const lifecycle = useMemo(() => {
+    // While editing, the original must not contribute to the YTD its own
+    // replacement is measured against — that would double-count it and
+    // push CPP/EI toward their caps a period early.
+    const basis = editing ? runs.filter((r) => r.id !== editing.id) : runs;
+    return new PayrollLifecycleService(getRepositories(), basis);
+  }, [runs, editing]);
   const hoursNum = Math.min(400, Math.max(0, Number(hours) || 0));
   const statHoursNum = Math.min(400, Math.max(0, Number(statHours) || 0));
   const statAmountNum = Math.max(0, Number(statAmount) || 0);
@@ -428,7 +439,13 @@ function LiveEditor() {
         hourlyRate: snapshot.hourlyRate,
       };
 
-      // 3. Finalize against a FRESH runs snapshot so duplicate-period and
+      // 3. When correcting, the original comes out FIRST: a finalized run
+      //    for the same employee and period would otherwise be rejected as
+      //    a duplicate. Held in hand so a failure below can put it back.
+      const replacing = editing;
+      if (replacing) await deleteRun(replacing.id);
+
+      // 4. Finalize against a FRESH runs snapshot so duplicate-period and
       //    YTD checks see everything, including a paystub sent a minute ago.
       const freshRuns = await getRepositories().payroll.getAll();
       const svc = new PayrollLifecycleService(getRepositories(), freshRuns);
@@ -440,12 +457,18 @@ function LiveEditor() {
         payDate: period.pay,
       });
       if (!result.ok) {
+        if (replacing) {
+          // Nothing was replaced, so nothing should have been lost.
+          await getRepositories().payroll.save(replacing);
+          upsertRun(replacing);
+        }
         setErrors(result.result.errors.map((e) => e.message));
         return;
       }
       upsertRun(result.run);
+      setEditing(null);
 
-      // 4. Email — best-effort; the run is already recorded either way.
+      // 5. Email — best-effort; the run is already recorded either way.
       let configured = false;
       try {
         const allRuns = await getRepositories().payroll.getAll();
@@ -469,6 +492,50 @@ function LiveEditor() {
   }
 
   // The period survives: the usual next move is the same run, next person.
+  /**
+   * Pull a finalized paystub back into the form. Everything is recoverable
+   * from the line itself: hours (regular + overtime, which the engine re-
+   * splits), the rate actually used, and whichever extras were on it.
+   */
+  function beginEdit(run: PayrollRun, l: PayrollLineResult) {
+    const rate = l.employee.hourlyRate ?? 0;
+    if (l.employeeId !== selectedId) {
+      keepInputs.current = true;
+      setSelectedId(l.employeeId);
+    }
+    setEditing(run);
+    setDone(null);
+    setErrors([]);
+    setHistoryOpen(false);
+    setPeriod({ start: run.periodStart, end: run.periodEnd, pay: run.payDate });
+    setHours(String(round2(l.hoursWorked + l.overtimeHours)));
+    setRateOverride(rate ? String(rate) : "");
+    setEmailFix("");
+
+    const hasStat = l.statPay > 0;
+    setStatOn(hasStat);
+    setStatMode(l.statPayMethod === "custom" ? "custom" : "premium");
+    setStatAmount(hasStat && l.statPayMethod === "custom" ? String(l.statPay) : "");
+    // Back out the hours from the amount so the 1.5× block reopens as it was.
+    setStatHours(
+      hasStat && l.statPayMethod === "premium" && rate > 0
+        ? String(round2(l.statPay / (rate * 1.5)))
+        : "8"
+    );
+
+    const hasOther = l.bonusAmount > 0;
+    setOtherOn(hasOther);
+    setOtherType(l.bonusLabel ?? OTHER_PAY_TYPES[0]);
+    setOtherAmount(hasOther ? String(l.bonusAmount) : "");
+  }
+
+  function cancelEdit() {
+    setEditing(null);
+    startAnother();
+    setRateOverride("");
+    setPeriod(defaultPeriod(company.defaultPayFrequency));
+  }
+
   function startAnother() {
     setDone(null);
     setHours("");
@@ -513,6 +580,28 @@ function LiveEditor() {
       <div className="grid gap-4 lg:grid-cols-[0.92fr_1.08fr] lg:gap-5">
         {/* ═══════════ Left: who and how much ═══════════ */}
         <div className="rounded-3xl border border-border/70 bg-card/70 p-4 shadow-soft backdrop-blur-xl sm:p-6">
+          <Collapse show={!!editing}>
+            <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-foreground/15 bg-muted/60 px-3.5 py-3">
+              <div className="min-w-0">
+                <p className="text-[12.5px] font-semibold tracking-tight">
+                  Correcting a paystub
+                </p>
+                <p className="truncate text-[11.5px] text-muted-foreground">
+                  {editing
+                    ? `${formatDate(editing.periodStart)} – ${formatDate(editing.periodEnd)} · sending replaces it`
+                    : ""}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={cancelEdit}
+                className="shrink-0 rounded-full border border-border/70 px-3 py-1.5 text-[12px] font-medium text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+              >
+                Cancel
+              </button>
+            </div>
+          </Collapse>
+
           {/* ── Pay period: set once, kept for every paystub in the run ── */}
           <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
             Pay period
@@ -826,7 +915,7 @@ function LiveEditor() {
               ) : (
                 <Mail className="h-5 w-5" strokeWidth={2.2} />
               )}
-              {busy === "email" ? "Sending" : "Email paystub"}
+              {busy === "email" ? "Sending" : editing ? "Replace paystub" : "Email paystub"}
             </Button>
           </div>
           <Collapse show={!selected}>
@@ -934,7 +1023,17 @@ function LiveEditor() {
       {selected && (
         <AddEmployeeModal open={editOpen} onOpenChange={setEditOpen} employee={selected} />
       )}
-      <HistoryDialog open={historyOpen} onOpenChange={setHistoryOpen} runs={runs} company={company} />
+      <HistoryDialog
+        open={historyOpen}
+        onOpenChange={setHistoryOpen}
+        runs={runs}
+        company={company}
+        onEdit={beginEdit}
+        onDelete={async (run) => {
+          if (editing?.id === run.id) setEditing(null);
+          await deleteRun(run.id);
+        }}
+      />
     </div>
   );
 }
@@ -1380,22 +1479,63 @@ function HistoryDialog({
   onOpenChange,
   runs,
   company,
+  onEdit,
+  onDelete,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   runs: PayrollRun[];
   company: Parameters<typeof enqueuePaystubEmails>[1];
+  onEdit: (run: PayrollRun, line: PayrollLineResult) => void;
+  onDelete: (run: PayrollRun) => Promise<void>;
 }) {
   const [viewing, setViewing] = useState<PayrollLineResult | null>(null);
   const [resending, setResending] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
 
   // One row per paystub (a run from the Payroll tab may hold several).
+  const items = useMemo(
+    () =>
+      runs
+        .filter((r) => r.status === "finalized" && !r.reverses)
+        .flatMap((r) => r.lines.map((line) => ({ run: r, line })))
+        .sort(
+          (a, b) =>
+            b.run.payDate.localeCompare(a.run.payDate) ||
+            b.run.createdAt.localeCompare(a.run.createdAt)
+        ),
+    [runs]
+  );
+
+  /**
+   * Paystubs are locked, newest-unlocked-first, PER EMPLOYEE.
+   *
+   * Year-to-date is a fold over finalized runs, so each person's CPP and EI
+   * caps depend on every stub before the one you are looking at. Change or
+   * remove one from the middle and every later stub for that person is
+   * quietly wrong. Only their most recent is safe to touch — undo it, and
+   * the one before becomes the most recent in turn.
+   *
+   * Per employee, not globally: Rajbir's latest and nandan's latest are
+   * independent folds, and making one wait on the other would be arbitrary.
+   */
+  const unlocked = useMemo(() => {
+    const first = new Map<string, string>();
+    for (const it of items) {
+      if (!first.has(it.line.employeeId)) {
+        first.set(it.line.employeeId, `${it.run.id}:${it.line.employeeId}`);
+      }
+    }
+    return first;
+  }, [items]);
+
+  /** The stub standing in the way, for a locked row's explanation. */
+  const blockedBy = (employeeId: string) =>
+    items.find((it) => it.line.employeeId === employeeId) ?? null;
+
   const groups = useMemo(() => {
-    const items = runs
-      .filter((r) => r.status === "finalized" && !r.reverses)
-      .flatMap((r) => r.lines.map((line) => ({ run: r, line })))
-      .sort((a, b) => b.run.payDate.localeCompare(a.run.payDate));
     const map = new Map<string, typeof items>();
     for (const it of items) {
       const key = it.run.payDate.slice(0, 7);
@@ -1407,7 +1547,20 @@ function HistoryDialog({
       list,
       total: list.reduce((s, it) => s + it.line.netPay, 0),
     }));
-  }, [runs]);
+  }, [items]);
+
+  async function remove(run: PayrollRun) {
+    setDeleting(run.id);
+    setNote(null);
+    try {
+      await onDelete(run);
+      setConfirming(null);
+    } catch (e) {
+      setNote(e instanceof Error ? e.message : "Couldn't delete that paystub.");
+    } finally {
+      setDeleting(null);
+    }
+  }
 
   async function resend(run: PayrollRun, line: PayrollLineResult) {
     const key = `${run.id}:${line.employeeId}`;
@@ -1453,26 +1606,91 @@ function HistoryDialog({
                   <ul className="mt-2 divide-y divide-border/50 rounded-2xl border border-border/60 bg-background/60">
                     {g.list.map(({ run, line }) => {
                       const key = `${run.id}:${line.employeeId}`;
+                      const isLatest = unlocked.get(line.employeeId) === key;
+                      // A run covering several people came from the Payroll
+                      // tab; unpicking one person from it here would rewrite
+                      // everyone else's stub, so it stays locked.
+                      const shared = run.lines.length > 1;
+                      const open = isLatest && !shared;
+                      const name = `${line.employee.firstName} ${line.employee.lastName}`;
                       return (
-                        <li key={key} className="flex items-center gap-3 px-3.5 py-3">
-                          <Avatar name={`${line.employee.firstName} ${line.employee.lastName}`} />
-                          <button type="button" onClick={() => setViewing(line)} className="min-w-0 flex-1 text-left">
-                            <p className="truncate text-[13.5px] font-medium tracking-tight">
-                              {line.employee.firstName} {line.employee.lastName}
-                            </p>
-                            <p className="truncate text-[11px] text-muted-foreground">
-                              {formatDate(line.periodStart)} – {formatDate(line.periodEnd)} · paid {formatDate(run.payDate)}
-                            </p>
-                          </button>
-                          <p className="shrink-0 text-[13.5px] font-semibold tabular-nums tracking-tight">{formatCAD(line.netPay)}</p>
-                          <div className="flex shrink-0 items-center">
-                            <IconAction label="Download PDF" onClick={() => generatePaystubPDF(line, company, runs)}>
-                              <Download className="h-3.5 w-3.5" />
-                            </IconAction>
-                            <IconAction label="Email again" onClick={() => resend(run, line)} busy={resending === key}>
-                              <Mail className="h-3.5 w-3.5" />
-                            </IconAction>
+                        <li key={key} className="px-3.5 py-3">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={name} />
+                            <button type="button" onClick={() => setViewing(line)} className="min-w-0 flex-1 text-left">
+                              <p className="truncate text-[13.5px] font-medium tracking-tight">{name}</p>
+                              <p className="truncate text-[11px] text-muted-foreground">
+                                {formatDate(line.periodStart)} – {formatDate(line.periodEnd)} · paid {formatDate(run.payDate)}
+                              </p>
+                            </button>
+                            <p className="shrink-0 text-[13.5px] font-semibold tabular-nums tracking-tight">{formatCAD(line.netPay)}</p>
+                            <div className="flex shrink-0 items-center">
+                              <IconAction label="Download PDF" onClick={() => generatePaystubPDF(line, company, runs)}>
+                                <Download className="h-3.5 w-3.5" />
+                              </IconAction>
+                              <IconAction label="Email again" onClick={() => resend(run, line)} busy={resending === key}>
+                                <Mail className="h-3.5 w-3.5" />
+                              </IconAction>
+                              {open ? (
+                                <>
+                                  <IconAction label={`Edit ${name}'s paystub`} onClick={() => onEdit(run, line)}>
+                                    <Pencil className="h-3.5 w-3.5" />
+                                  </IconAction>
+                                  <IconAction
+                                    label={`Delete ${name}'s paystub`}
+                                    onClick={() => { setNote(null); setConfirming(confirming === key ? null : key); }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </IconAction>
+                                </>
+                              ) : (
+                                <IconAction
+                                  label="Locked"
+                                  onClick={() => {
+                                    const blocker = blockedBy(line.employeeId);
+                                    setConfirming(null);
+                                    setNote(
+                                      shared
+                                        ? `This paystub is part of a payroll run covering ${run.lines.length} people. Manage it from the Payroll tab.`
+                                        : blocker
+                                          ? `Locked. Delete ${name}'s ${formatDate(blocker.run.payDate)} paystub first — year-to-date is built from each paystub in order.`
+                                          : "Locked."
+                                    );
+                                  }}
+                                >
+                                  <Lock className="h-3.5 w-3.5 opacity-60" />
+                                </IconAction>
+                              )}
+                            </div>
                           </div>
+
+                          {/* Confirm in place. A second dialog on top of this
+                              one would bury the row being deleted. */}
+                          <Collapse show={confirming === key}>
+                            <div className="mt-2.5 flex items-center justify-between gap-3 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2">
+                              <p className="text-[11.5px] font-medium text-destructive">
+                                Delete this paystub? It leaves year-to-date and CRA.
+                              </p>
+                              <div className="flex shrink-0 items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirming(null)}
+                                  className="rounded-full px-2.5 py-1 text-[11.5px] font-medium text-muted-foreground transition-colors hover:text-foreground"
+                                >
+                                  Cancel
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => remove(run)}
+                                  disabled={deleting === run.id}
+                                  className="inline-flex items-center gap-1.5 rounded-full bg-destructive px-3 py-1 text-[11.5px] font-semibold text-destructive-foreground transition-opacity hover:opacity-90 disabled:opacity-50"
+                                >
+                                  {deleting === run.id && <Loader2 className="h-3 w-3 animate-spin" />}
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </Collapse>
                         </li>
                       );
                     })}

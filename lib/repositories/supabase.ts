@@ -238,6 +238,29 @@ class SupabasePayrollRepository implements IPayrollRepository {
     return rowToPayrollRun(data);
   }
 
+  async remove(id: string): Promise<void> {
+    // .select() so we get the deleted rows back. Row-level security turns a
+    // delete the policy forbids into a silent no-op — no error, nothing
+    // removed — which would leave the UI showing a paystub as gone while it
+    // is still counted in year-to-date and the CRA remittance. Asking what
+    // was actually deleted is the only way to tell the two apart.
+    const { data, error } = await supabase
+      .from("payroll_runs")
+      .delete()
+      .eq("id", id)
+      .select("id");
+    if (error) {
+      console.error("[supabase] payroll_runs.delete failed", { error, id });
+      throw new Error(`payroll_runs.delete: ${error.message}`);
+    }
+    if (!data || data.length === 0) {
+      throw new Error(
+        "That paystub wasn't deleted — the database refused it. " +
+          "payroll_runs is likely missing a delete policy for its owner."
+      );
+    }
+  }
+
   async save(run: PayrollRun): Promise<PayrollRun> {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error("Not authenticated");

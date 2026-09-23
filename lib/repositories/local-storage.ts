@@ -276,6 +276,10 @@ class LocalStoragePayrollRepository implements IPayrollRepository {
     return this.load().find((r) => r.id === id) ?? null;
   }
 
+  async remove(id: string) {
+    driver.write(KEYS.payroll, this.load().filter((r) => r.id !== id));
+  }
+
   async save(run: PayrollRun) {
     const all = this.load();
     // Idempotency: if a run with the same inputHash exists and is finalized,
