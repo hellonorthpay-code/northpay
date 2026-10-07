@@ -7,16 +7,37 @@ import { MobileLoginButton } from "@/components/landing/mobile-login-button";
 import { RouteProgressBar } from "@/components/page-transition";
 import { RecoveryGuard } from "@/components/recovery-guard";
 import { AnalyticsBeacon } from "@/components/analytics-beacon";
+import { SITE_NAME, SITE_URL } from "@/lib/site";
+
+const TITLE = "NorthPay — Canadian Payroll. Finally Beautiful.";
+const DESCRIPTION =
+  "The payroll system designed for modern Canadian businesses. Effortless. Compliant. Calm.";
 
 export const metadata: Metadata = {
-  title: "NorthPay — Canadian Payroll. Finally Beautiful.",
-  description:
-    "The payroll system designed for modern Canadian businesses. Effortless. Compliant. Calm.",
-  metadataBase: new URL("https://northpay.example"),
+  title: TITLE,
+  description: DESCRIPTION,
+  // Was "https://northpay.example" — a placeholder. Next resolves every
+  // relative canonical and Open Graph URL against this, so the live site has
+  // been advertising a domain nobody owns.
+  metadataBase: new URL(SITE_URL),
+  alternates: { canonical: "/" },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",
     apple: "/favicon.svg",
+  },
+  openGraph: {
+    type: "website",
+    siteName: SITE_NAME,
+    title: TITLE,
+    description: DESCRIPTION,
+    url: "/",
+    locale: "en_CA",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: TITLE,
+    description: DESCRIPTION,
   },
 };
 
