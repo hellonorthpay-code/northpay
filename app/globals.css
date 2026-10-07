@@ -193,3 +193,127 @@
 @media (prefers-reduced-motion: reduce) {
   .np-ring { animation: none; }
 }
+
+/* ─── Blog prose ──────────────────────────────────────────────────────────
+   Typography for rendered Markdown. Scoped to .np-prose so it can only ever
+   reach post bodies, never app chrome. Spacing is set with margins between
+   siblings rather than on every element, so the first and last child sit
+   flush against whatever contains them.
+   ───────────────────────────────────────────────────────────────────────── */
+.np-prose {
+  font-size: 16.5px;
+  line-height: 1.75;
+  color: hsl(var(--foreground) / 0.88);
+}
+.np-prose > * + * {
+  margin-top: 1.35em;
+}
+.np-prose h2,
+.np-prose h3,
+.np-prose h4 {
+  color: hsl(var(--foreground));
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+}
+.np-prose h2 {
+  font-size: 1.55em;
+  margin-top: 2.2em;
+}
+.np-prose h3 {
+  font-size: 1.22em;
+  margin-top: 1.9em;
+}
+.np-prose h4 {
+  font-size: 1.05em;
+  margin-top: 1.6em;
+}
+.np-prose a {
+  color: hsl(var(--foreground));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  text-decoration-color: hsl(var(--foreground) / 0.35);
+}
+.np-prose a:hover {
+  text-decoration-color: hsl(var(--foreground));
+}
+.np-prose strong {
+  font-weight: 650;
+  color: hsl(var(--foreground));
+}
+.np-prose ul,
+.np-prose ol {
+  padding-left: 1.3em;
+}
+.np-prose ul {
+  list-style: disc;
+}
+.np-prose ol {
+  list-style: decimal;
+}
+.np-prose li + li {
+  margin-top: 0.45em;
+}
+.np-prose li::marker {
+  color: hsl(var(--muted-foreground));
+}
+.np-prose blockquote {
+  border-left: 2px solid hsl(var(--foreground) / 0.25);
+  padding-left: 1.1em;
+  color: hsl(var(--muted-foreground));
+}
+.np-prose blockquote p {
+  margin: 0;
+}
+.np-prose code {
+  font-size: 0.88em;
+  background: hsl(var(--muted));
+  padding: 0.15em 0.4em;
+  border-radius: 6px;
+}
+.np-prose pre {
+  background: hsl(var(--muted));
+  padding: 1em 1.15em;
+  border-radius: 14px;
+  overflow-x: auto;
+  font-size: 0.86em;
+  line-height: 1.6;
+}
+.np-prose pre code {
+  background: none;
+  padding: 0;
+  font-size: inherit;
+}
+.np-prose hr {
+  border: 0;
+  border-top: 1px solid hsl(var(--border));
+  margin-top: 2.4em;
+  margin-bottom: 2.4em;
+}
+/* Rate tables are the point of half these posts — they have to be readable
+   on a phone, so the table scrolls inside its own box rather than forcing
+   the page sideways. */
+.np-prose table {
+  display: block;
+  overflow-x: auto;
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+.np-prose th,
+.np-prose td {
+  border-bottom: 1px solid hsl(var(--border));
+  padding: 0.6em 0.9em;
+  text-align: left;
+}
+.np-prose th {
+  font-weight: 600;
+  color: hsl(var(--foreground));
+  background: hsl(var(--muted) / 0.5);
+  font-size: 0.92em;
+  letter-spacing: 0.01em;
+}
+.np-prose td {
+  font-variant-numeric: tabular-nums;
+}

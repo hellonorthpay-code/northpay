@@ -17,6 +17,7 @@ import {
   LineChart,
   Mail,
   MapPin,
+  PenLine,
   Smartphone,
   RotateCcw,
   ShieldCheck,
@@ -24,6 +25,7 @@ import {
   Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { BlogPanel } from "@/components/dashboard/admin/blog-panel";
 import {
   adminDeleteUser,
   adminSetSuspended,
@@ -48,12 +50,13 @@ const ease = [0.22, 1, 0.36, 1] as const;
 /** Critically damped — settles without overshoot, and stays interruptible. */
 const indicatorSpring = { type: "spring", bounce: 0, duration: 0.35 } as const;
 
-type AdminTab = "users" | "analytics" | "leads" | "stripe";
+type AdminTab = "users" | "analytics" | "leads" | "blog" | "stripe";
 
 const TABS: Array<{ id: AdminTab; label: string; icon: typeof Users }> = [
   { id: "users", label: "Users", icon: Users },
   { id: "analytics", label: "Analytics", icon: LineChart },
   { id: "leads", label: "Leads", icon: Inbox },
+  { id: "blog", label: "Blog", icon: PenLine },
   { id: "stripe", label: "Stripe", icon: CreditCard },
 ];
 
@@ -137,6 +140,7 @@ export function AdminView() {
           {tab === "users" && <UsersPanel stats={stats} onChanged={load} />}
           {tab === "analytics" && <AnalyticsPanel />}
           {tab === "leads" && <LeadsPanel />}
+          {tab === "blog" && <BlogPanel />}
           {tab === "stripe" && <StripePanel />}
         </motion.div>
       </AnimatePresence>
@@ -178,9 +182,9 @@ function AdminTabs({
             onClick={() => onChange(id)}
             className={cn(
               // Feedback lives on the press, not the release.
-              // Four tabs: on a phone the icon is what gives way, never the
+              // Five tabs: on a phone the icon is what gives way, never the
               // label — an unreadable word is worse than a missing glyph.
-              "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-2 py-2.5 text-[12.5px] font-medium tracking-tight transition-colors duration-150 active:scale-[0.98] sm:px-3 sm:text-[13px]",
+              "relative flex flex-1 items-center justify-center gap-2 rounded-xl px-1.5 py-2.5 text-[12px] font-medium tracking-tight transition-colors duration-150 active:scale-[0.98] sm:px-3 sm:text-[13px]",
               active
                 ? "text-foreground"
                 : "text-muted-foreground hover:text-foreground"
@@ -194,7 +198,7 @@ function AdminTabs({
               />
             )}
             <span className="relative flex items-center gap-2">
-              <Icon className="hidden h-3.5 w-3.5 sm:block" />
+              <Icon className="hidden h-3.5 w-3.5 md:block" />
               {label}
             </span>
           </button>

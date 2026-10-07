@@ -26,10 +26,18 @@ export function Footer() {
             </p>
           </div>
 
+          {/* The footer is how a crawler reaches /blog from the homepage. A
+              page nothing links to is a page search engines treat as an
+              afterthought, however good the sitemap is. */}
           <div className="flex flex-wrap gap-x-10 gap-y-3 text-[13px]">
             <Col title="Company">
               <Link href="/about" className="text-muted-foreground hover:text-foreground">
                 About
+              </Link>
+            </Col>
+            <Col title="Learn">
+              <Link href="/blog" className="text-muted-foreground hover:text-foreground">
+                Payroll notes
               </Link>
             </Col>
           </div>

@@ -10,6 +10,9 @@ import type {
   AdminStripeSummary,
   AdminTraffic,
 } from "@/lib/admin/types";
+import type { BlogPost, BlogPostDraft } from "@/lib/blog/types";
+
+export type { BlogPost, BlogPostDraft } from "@/lib/blog/types";
 
 export type {
   AdminStats,
@@ -110,6 +113,37 @@ export async function fetchAdminLeads(): Promise<AdminLeads> {
     throw new Error(body.error || `Request failed (${res.status})`);
   }
   return (await res.json()) as AdminLeads;
+}
+
+// ─── Blog ────────────────────────────────────────────────────────────────
+
+export async function fetchBlogPosts(): Promise<BlogPost[]> {
+  const res = await authedFetch("/api/admin/blog");
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  return ((await res.json()) as { posts: BlogPost[] }).posts;
+}
+
+export async function saveBlogPost(draft: BlogPostDraft): Promise<BlogPost> {
+  const res = await authedFetch("/api/admin/blog", {
+    method: "POST",
+    body: JSON.stringify(draft),
+  });
+  const body = (await res.json().catch(() => ({}))) as { post?: BlogPost; error?: string };
+  if (!res.ok || !body.post) throw new Error(body.error || `Request failed (${res.status})`);
+  return body.post;
+}
+
+export async function deleteBlogPost(id: string): Promise<void> {
+  const res = await authedFetch(`/api/admin/blog?id=${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
 }
 
 /** State of the launch offer in Stripe; `create` makes it if it's missing. */
