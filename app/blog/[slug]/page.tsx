@@ -2,12 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
-import { getPublishedPost, listPublishedPosts } from "@/lib/blog/server";
+import { getPublishedPost } from "@/lib/blog/server";
 import { renderMarkdown } from "@/lib/blog/markdown";
 import { readingMinutes } from "@/lib/blog/types";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
 
-export const revalidate = 300;
+// Dynamic, so notFound() can answer with a real 404 instead of a soft one.
+// See getPublishedPost — the database read is cached, so this costs nothing.
+export const dynamic = "force-dynamic";
 
 interface Props {
   params: { slug: string };
@@ -39,12 +41,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       description: post.excerpt,
     },
   };
-}
-
-/** Pre-render what exists at build time; anything newer renders on demand. */
-export async function generateStaticParams() {
-  const posts = await listPublishedPosts(100);
-  return posts.map((p) => ({ slug: p.slug }));
 }
 
 export default async function BlogPost({ params }: Props) {

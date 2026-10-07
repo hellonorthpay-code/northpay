@@ -1,3 +1,4 @@
+import { unstable_cache } from "next/cache";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { BlogPost } from "./types";
 
@@ -73,8 +74,7 @@ export async function listPublishedPosts(limit = 50): Promise<BlogPost[]> {
   return (data ?? []).map((r) => rowToPost(r as Row));
 }
 
-/** One published post by slug, or null — a draft is a 404 to the public. */
-export async function getPublishedPost(slug: string): Promise<BlogPost | null> {
+async function fetchPost(slug: string): Promise<BlogPost | null> {
   const db = client();
   if (!db) return null;
   const { data, error } = await db
@@ -86,3 +86,18 @@ export async function getPublishedPost(slug: string): Promise<BlogPost | null> {
   if (error || !data) return null;
   return rowToPost(data as Row);
 }
+
+/**
+ * One published post by slug, or null — a draft is a 404 to the public.
+ *
+ * Cached rather than statically rendered, deliberately. A page that Next has
+ * statically generated cannot carry a 404 status: notFound() renders the
+ * right screen and still answers 200, which is a soft 404 — the thing search
+ * engines penalise and sometimes index anyway. The post route is therefore
+ * dynamic, and the expensive part (this query) is memoised here instead, so
+ * a real status costs us nothing.
+ */
+export const getPublishedPost = unstable_cache(fetchPost, ["blog-post"], {
+  revalidate: 300,
+  tags: ["blog"],
+});
