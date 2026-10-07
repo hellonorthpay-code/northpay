@@ -6,6 +6,7 @@ import {
   AlertCircle,
   Ban,
   ArrowUpRight,
+  Calculator,
   Check,
   ChevronDown,
   Chrome,
@@ -40,6 +41,7 @@ import {
   type AdminStripeSummary,
   type AdminTraffic,
   type AdminUserRow,
+  type CalculatorFunnel,
   type TrafficBreakdown,
   type TrafficDayPoint,
 } from "@/lib/admin/client";
@@ -350,6 +352,8 @@ function AnalyticsPanel() {
 
           <TrafficChart points={data.series} days={data.days} />
 
+          <CalculatorFunnelCard visitors={data.visitors} funnel={data.calculator} />
+
           <div className="grid gap-3 lg:grid-cols-2">
             <BreakdownCard
               title="Countries"
@@ -396,6 +400,87 @@ function AnalyticsPanel() {
             Track are skipped.
           </p>
         </>
+      )}
+    </div>
+  );
+}
+
+/**
+ * The homepage calculator, as a funnel.
+ *
+ * A page view says nothing about whether anyone engaged — the calculator
+ * arrives pre-filled, so it looks "used" to a screenshot. "Typed into it" is
+ * counted on the first real keystroke, which is the first moment a visitor
+ * has actually done something.
+ *
+ * Each step is drawn against the step above it, because that ratio is the
+ * number worth acting on: plenty of visitors and few typing is a headline
+ * problem, plenty typing and few emailing is an ask problem.
+ */
+function CalculatorFunnelCard({
+  visitors,
+  funnel,
+}: {
+  visitors: number;
+  funnel: CalculatorFunnel;
+}) {
+  const typed = funnel.visitors;
+  const pct = (n: number, of: number) => (of > 0 ? Math.round((n / of) * 1000) / 10 : 0);
+
+  const steps =
+    typed === null
+      ? []
+      : [
+          { id: "saw", label: "Visited the site", value: visitors, of: visitors },
+          { id: "typed", label: "Typed into the calculator", value: typed, of: visitors },
+          { id: "emailed", label: "Asked for the paystub by email", value: funnel.emailed, of: typed },
+        ];
+
+  return (
+    <div className="rounded-3xl border border-border/60 bg-card/60 p-5 shadow-soft backdrop-blur-xl">
+      <div className="flex items-baseline justify-between gap-3">
+        <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+          <Calculator className="h-3.5 w-3.5" />
+          Homepage calculator
+        </p>
+        {typed !== null && funnel.uses > typed && (
+          <p className="text-[11.5px] tabular-nums text-muted-foreground">
+            {funnel.uses.toLocaleString()} sessions
+          </p>
+        )}
+      </div>
+
+      {typed === null ? (
+        <p className="mt-3 text-[12.5px] leading-relaxed text-muted-foreground">
+          Not recording yet — run migration{" "}
+          <code className="rounded bg-muted px-1 py-0.5 text-[11.5px]">0008_site_events.sql</code>{" "}
+          and this fills in from the next visitor onward.
+        </p>
+      ) : (
+        <ul className="mt-4 space-y-3">
+          {steps.map((step, idx) => {
+            const share = pct(step.value, step.of);
+            return (
+              <li key={step.id}>
+                <div className="flex items-baseline justify-between gap-3">
+                  <p className="text-[12.5px] font-medium tracking-tight">{step.label}</p>
+                  <p className="shrink-0 text-[12.5px] tabular-nums">
+                    <span className="font-semibold">{step.value.toLocaleString()}</span>
+                    {idx > 0 && (
+                      <span className="ml-1.5 text-muted-foreground">{share}%</span>
+                    )}
+                  </p>
+                </div>
+                <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-foreground/70 transition-[width] duration-500"
+                    style={{ width: `${Math.min(100, share)}%` }}
+                  />
+                </div>
+              </li>
+            );
+          })}
+        </ul>
       )}
     </div>
   );

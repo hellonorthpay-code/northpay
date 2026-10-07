@@ -5,7 +5,20 @@ import { createClient } from "@supabase/supabase-js";
 // ─────────────────────────────────────────────────────────────────────────
 // Traffic beacon. Public by necessity — every visitor posts here once per
 // page view. Stores no personal data (see 0004_page_views.sql).
+//
+// It also takes named events ({ event: "calculator_used" }), which land in
+// site_events instead. Same route because the parts that matter — bot
+// filtering, Do Not Track, and the daily-rotating visitor hash — must be
+// identical for both, and a second copy of that logic is a second place for
+// it to drift.
 // ─────────────────────────────────────────────────────────────────────────
+
+/**
+ * Events the server is willing to record. A closed list, not whatever the
+ * body says: this endpoint is public, so an open one is an invitation to
+ * fill the table with junk.
+ */
+const EVENTS = new Set(["calculator_used"]);
 
 /** Obvious crawlers. Counting them as audience makes every number a lie. */
 const BOT = /bot|crawler|spider|crawling|slurp|bingpreview|headless|lighthouse|pingdom|curl|wget|python-requests|axios|monitor|preview|facebookexternalhit|whatsapp|telegram|semrush|ahrefs|dataprovider|scrapy/i;
@@ -60,15 +73,19 @@ export async function POST(request: Request) {
   // Honour Do Not Track. Costs a few data points; keeps the promise.
   if (request.headers.get("dnt") === "1") return NextResponse.json({ ok: true });
 
-  let body: { path?: string; referrer?: string };
+  let body: { path?: string; referrer?: string; event?: string };
   try {
-    body = (await request.json()) as { path?: string; referrer?: string };
+    body = (await request.json()) as { path?: string; referrer?: string; event?: string };
   } catch {
     return NextResponse.json({ ok: true });
   }
 
+  const event = body.event;
   const path = (body.path ?? "").slice(0, 512);
-  if (!path.startsWith("/")) return NextResponse.json({ ok: true });
+  // One shape or the other: an event carries no path, a view carries no event.
+  if (event ? !EVENTS.has(event) : !path.startsWith("/")) {
+    return NextResponse.json({ ok: true });
+  }
 
   const h = request.headers;
   const ip =
@@ -97,6 +114,16 @@ export async function POST(request: Request) {
   const admin = createClient(url, secretKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  if (event) {
+    await admin.from("site_events").insert({
+      name: event,
+      country: h.get("x-vercel-ip-country") ?? null,
+      device: deviceOf(ua),
+      visitor_hash: visitorHash,
+    });
+    return NextResponse.json({ ok: true });
+  }
 
   await admin.from("page_views").insert({
     path,

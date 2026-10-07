@@ -47,6 +47,16 @@ export interface TrafficDayPoint {
   visitors: number;
 }
 
+/** The homepage calculator funnel, over the same window as the traffic. */
+export interface CalculatorFunnel {
+  /** Unique visitors who typed into it. Null when site_events is missing. */
+  visitors: number | null;
+  /** Total times it was engaged with (a visitor can return on another day). */
+  uses: number;
+  /** Of those, how many asked for the paystub by email. */
+  emailed: number;
+}
+
 export interface AdminTraffic {
   /** False when the page_views migration hasn't been run yet. */
   ready: boolean;
@@ -63,6 +73,7 @@ export interface AdminTraffic {
   devices: TrafficBreakdown[];
   browsers: TrafficBreakdown[];
   systems: TrafficBreakdown[];
+  calculator: CalculatorFunnel;
 }
 
 // ─── Stripe (live transactions), admin-only ───

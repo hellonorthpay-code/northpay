@@ -115,6 +115,35 @@ export async function GET(request: Request) {
     }
   }
 
+  // ── Homepage calculator ──
+  // Its own table and its own query: a missing migration here must cost the
+  // calculator numbers only, not the whole traffic dashboard.
+  let calcVisitors: number | null = null;
+  let calcUses = 0;
+  const { data: events, error: eventsError } = await admin
+    .from("site_events")
+    .select("visitor_hash")
+    .eq("name", "calculator_used")
+    .gte("created_at", since)
+    .limit(100_000);
+  if (!eventsError && events) {
+    calcUses = events.length;
+    calcVisitors = new Set(
+      (events as Array<{ visitor_hash: string | null }>)
+        .map((e) => e.visitor_hash)
+        .filter(Boolean)
+    ).size;
+  }
+
+  // The step after typing: asking for the paystub by email. Counted from the
+  // leads ledger, which is where that actually lands.
+  let calcEmailed = 0;
+  const { count: sampleCount } = await admin
+    .from("sample_requests")
+    .select("id", { count: "exact", head: true })
+    .gte("created_at", since);
+  calcEmailed = sampleCount ?? 0;
+
   const countries = tally(rows, (r) => r.country, 10).map((c) => ({
     ...c,
     label: countryName(c.label),
@@ -141,6 +170,7 @@ export async function GET(request: Request) {
     devices: tally(rows, (r) => r.device, 4),
     browsers: tally(rows, (r) => r.browser, 6),
     systems: tally(rows, (r) => r.os, 6),
+    calculator: { visitors: calcVisitors, uses: calcUses, emailed: calcEmailed },
   };
 
   return NextResponse.json(traffic);

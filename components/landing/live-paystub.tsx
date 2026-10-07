@@ -34,6 +34,7 @@ import { emptyYTD } from "@/lib/services/ytd";
 import { SAMPLE_FREQUENCIES } from "@/lib/sample-paystub";
 import { formatDate } from "@/lib/utils";
 import { SectionTitle } from "./section";
+import { trackEvent } from "@/lib/analytics/event";
 
 const SamplePaystubModal = dynamic(
   () => import("./sample-paystub-modal").then((m) => m.SamplePaystubModal),
@@ -116,7 +117,16 @@ export function LivePaystub() {
     []
   );
 
+  // Counted the first time someone actually edits a field — not on load.
+  // The calculator arrives pre-filled, so a page view says nothing about
+  // whether anyone engaged with it; a keystroke does.
+  const counted = useRef(false);
+
   const set = <K extends keyof Inputs>(k: K, v: Inputs[K]) => {
+    if (!counted.current) {
+      counted.current = true;
+      trackEvent("calculator_used");
+    }
     bump();
     setForm((f) => ({ ...f, [k]: v }));
   };

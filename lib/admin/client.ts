@@ -23,6 +23,7 @@ export type {
   AdminLaunchOffer,
   AdminLead,
   AdminLeads,
+  CalculatorFunnel,
   TrafficBreakdown,
   TrafficDayPoint,
 } from "@/lib/admin/types";
