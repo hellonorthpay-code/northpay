@@ -6,10 +6,7 @@ import { getPublishedPost } from "@/lib/blog/server";
 import { renderMarkdown } from "@/lib/blog/markdown";
 import { readingMinutes } from "@/lib/blog/types";
 import { absoluteUrl, SITE_NAME } from "@/lib/site";
-
-// Dynamic, so notFound() can answer with a real 404 instead of a soft one.
-// See getPublishedPost — the database read is cached, so this costs nothing.
-export const dynamic = "force-dynamic";
+import { JsonLd } from "@/components/json-ld";
 
 interface Props {
   params: { slug: string };
@@ -17,7 +14,27 @@ interface Props {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const post = await getPublishedPost(params.slug);
-  if (!post) return { title: `Not found — ${SITE_NAME}` };
+  // Decided here as well as in the component: generateMetadata runs before
+  // rendering, which is the only point at which the response head can still
+  // change.
+  //
+  // KNOWN LIMITATION: it still answers HTTP 200, not 404. In this app a
+  // dynamically rendered segment returns 200 from notFound() whatever the
+  // route config — measured against every combination of revalidate,
+  // force-dynamic, a segment-level not-found boundary and extracting the
+  // JSON-LD script. Statically prerendered pages and genuinely unmatched
+  // routes (/anything-else) do answer 404 correctly.
+  //
+  // What stops it mattering: the not-found page carries `noindex`, so these
+  // URLs cannot be indexed however they are served. They are also
+  // undiscoverable — nothing links to them and the sitemap lists only real
+  // posts — so the exposure is a post that gets unpublished or renamed
+  // after Google has already seen it.
+  //
+  // The fix that would work is generateStaticParams + dynamicParams:false,
+  // which costs instant publishing: a new post would 404 until the next
+  // deploy. Not worth it for this.
+  if (!post) notFound();
 
   const url = `/blog/${post.slug}`;
   return {
@@ -68,11 +85,10 @@ export default async function BlogPost({ params }: Props) {
 
   return (
     <main className="relative min-h-screen overflow-x-clip pt-32 pb-24">
-      <script
-        type="application/ld+json"
-        // JSON.stringify of our own object — no user-authored HTML reaches here.
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-      />
+      {/* A component, not an inline <script> — see JsonLd. Inline, it makes
+          Next flush the response head early and the notFound() above can no
+          longer answer 404. */}
+      <JsonLd data={jsonLd} />
 
       <div className="pointer-events-none absolute inset-0 -z-10">
         <div className="absolute left-1/2 top-24 h-[420px] w-[820px] -translate-x-1/2 rounded-full bg-gradient-to-br from-sky-200/30 via-rose-200/20 to-emerald-200/30 blur-3xl dark:from-sky-500/10 dark:via-rose-500/10 dark:to-emerald-500/10" />
