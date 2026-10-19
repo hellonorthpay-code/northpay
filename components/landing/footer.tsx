@@ -37,7 +37,7 @@ export function Footer() {
             </Col>
             <Col title="Learn">
               <Link href="/blog" className="text-muted-foreground hover:text-foreground">
-                Payroll notes
+                Blog
               </Link>
             </Col>
           </div>
