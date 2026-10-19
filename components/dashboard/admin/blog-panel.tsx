@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   ArrowLeft,
+  BarChart3,
   Check,
   ExternalLink,
   Eye,
@@ -17,11 +18,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   deleteBlogPost,
+  fetchBlogPostAnalytics,
   fetchBlogPosts,
   saveBlogPost,
   type BlogPost,
 } from "@/lib/admin/client";
 import { renderMarkdown } from "@/lib/blog/markdown";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import type { BlogPostAnalytics, TrafficBreakdown } from "@/lib/admin/types";
 import { readingMinutes, slugify } from "@/lib/blog/types";
 import { cn, formatDate } from "@/lib/utils";
 
@@ -63,6 +72,8 @@ export function BlogPanel() {
   const [posts, setPosts] = useState<BlogPost[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [draft, setDraft] = useState<Draft | null>(null);
+  // Which post's readership popup is open (null = closed).
+  const [statsFor, setStatsFor] = useState<BlogPost | null>(null);
 
   const load = useCallback(async () => {
     setError(null);
@@ -162,6 +173,15 @@ export function BlogPanel() {
                 </p>
               </button>
               <StatusChip published={p.status === "published"} />
+              <button
+                type="button"
+                onClick={() => setStatsFor(p)}
+                aria-label={`Analytics for ${p.title}`}
+                className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border border-border/60 bg-background px-3 text-[12px] font-medium text-foreground transition-all duration-200 hover:bg-muted active:scale-95"
+              >
+                <BarChart3 className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Analytics</span>
+              </button>
               {p.status === "published" && (
                 <a
                   href={`/blog/${p.slug}`}
@@ -177,6 +197,12 @@ export function BlogPanel() {
           ))}
         </ul>
       )}
+
+      <Dialog open={!!statsFor} onOpenChange={(o) => !o && setStatsFor(null)}>
+        <DialogContent className="max-h-[88vh] w-[calc(100vw-2rem)] max-w-lg gap-0 overflow-y-auto p-5 sm:p-7">
+          {statsFor && <PostAnalytics post={statsFor} />}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
@@ -449,6 +475,189 @@ function Editor({
           </Button>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Per-post readership popup. Numbers come from the first-party page_views
+// table (the same beacon behind the Analytics tab), so they agree with it.
+// ─────────────────────────────────────────────────────────────────────────
+
+function timeAgo(iso: string): string {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60_000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins} min ago`;
+  const hrs = Math.round(mins / 60);
+  if (hrs < 24) return `${hrs} hr${hrs === 1 ? "" : "s"} ago`;
+  const days = Math.round(hrs / 24);
+  return `${days} day${days === 1 ? "" : "s"} ago`;
+}
+
+function PostAnalytics({ post }: { post: BlogPost }) {
+  const [data, setData] = useState<BlogPostAnalytics | null>(null);
+  const [err, setErr] = useState<string | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    setData(null);
+    setErr(null);
+    fetchBlogPostAnalytics(post.slug)
+      .then((d) => alive && setData(d))
+      .catch((e) => alive && setErr(e instanceof Error ? e.message : "Couldn't load analytics."));
+    return () => {
+      alive = false;
+    };
+  }, [post.slug]);
+
+  const peak = data ? Math.max(1, ...data.daily.map((d) => d.views)) : 1;
+  const live = post.status === "published";
+
+  return (
+    <div>
+      {/* Header */}
+      <div className="pr-10">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+          Post analytics
+        </p>
+        <DialogTitle className="mt-1.5 text-[19px] leading-snug">{post.title}</DialogTitle>
+        <DialogDescription className="mt-1 truncate text-[12px]">
+          /blog/{post.slug}
+          {post.publishedAt ? ` · published ${formatDate(post.publishedAt.slice(0, 10))}` : " · draft"}
+        </DialogDescription>
+      </div>
+
+      {err ? (
+        <p className="mt-6 rounded-xl border border-destructive/30 bg-destructive/10 px-3 py-2 text-[12.5px] font-medium text-destructive">
+          {err}
+        </p>
+      ) : !data ? (
+        <div className="mt-6 space-y-3">
+          <div className="grid grid-cols-2 gap-2.5">
+            {[0, 1, 2, 3].map((i) => (
+              <div key={i} className="h-[74px] animate-pulse rounded-2xl bg-muted/60" />
+            ))}
+          </div>
+          <div className="h-28 animate-pulse rounded-2xl bg-muted/60" />
+          <div className="h-36 animate-pulse rounded-2xl bg-muted/60" />
+        </div>
+      ) : (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease }}
+        >
+          {/* Headline numbers */}
+          <div className="mt-6 grid grid-cols-2 gap-2.5">
+            <StatTile label="Total views" value={data.views} />
+            <StatTile label="Readers" value={data.readers} hint="unique per day" />
+            <StatTile label="Last 7 days" value={data.views7d} />
+            <StatTile label="Last 30 days" value={data.views30d} />
+          </div>
+
+          {data.views === 0 ? (
+            <div className="mt-5 rounded-2xl border border-border/60 bg-muted/20 px-4 py-8 text-center">
+              <Eye className="mx-auto h-5 w-5 text-muted-foreground" />
+              <p className="mt-2 text-[13.5px] font-medium tracking-tight">No views yet</p>
+              <p className="mx-auto mt-1 max-w-xs text-[12px] text-muted-foreground">
+                {live
+                  ? "Readers will show up here as soon as the post gets its first visit."
+                  : "Publish the post and its readership will start appearing here."}
+              </p>
+            </div>
+          ) : (
+            <>
+              {/* 30-day trend */}
+              <div className="mt-5 rounded-2xl border border-border/60 bg-background/60 p-4">
+                <div className="flex items-baseline justify-between">
+                  <p className="text-[12px] font-medium tracking-tight">Views, last 30 days</p>
+                  {data.lastViewAt && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Last read {timeAgo(data.lastViewAt)}
+                    </p>
+                  )}
+                </div>
+                <div className="mt-3 flex h-24 items-end gap-[3px]">
+                  {data.daily.map((d, i) => (
+                    <div
+                      key={d.date}
+                      className="group relative flex h-full flex-1 items-end"
+                      title={`${formatDate(d.date)} · ${d.views} view${d.views === 1 ? "" : "s"}`}
+                    >
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: `${Math.max(d.views ? 6 : 2, (d.views / peak) * 100)}%` }}
+                        transition={{ duration: 0.5, ease, delay: 0.1 + i * 0.012 }}
+                        className={cn(
+                          "w-full rounded-t-[3px] transition-colors",
+                          d.views ? "bg-foreground/80 group-hover:bg-foreground" : "bg-muted"
+                        )}
+                      />
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-1.5 flex justify-between text-[10px] text-muted-foreground">
+                  <span>{formatDate(data.daily[0].date)}</span>
+                  <span>Today</span>
+                </div>
+              </div>
+
+              {/* Breakdowns */}
+              <div className="mt-3 space-y-3">
+                <Breakdown title="Where readers came from" rows={data.referrers} />
+                <Breakdown title="Countries" rows={data.countries} />
+                <Breakdown title="Devices" rows={data.devices} />
+              </div>
+            </>
+          )}
+
+          <p className="mt-5 text-[10.5px] leading-relaxed text-muted-foreground">
+            Cookieless, first-party counts. Bots and Do-Not-Track visits are excluded, and the
+            visitor id rotates daily — so someone reading on two days counts as two readers.
+          </p>
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+function StatTile({ label, value, hint }: { label: string; value: number; hint?: string }) {
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/60 px-4 py-3">
+      <p className="text-[10.5px] uppercase tracking-[0.12em] text-muted-foreground">{label}</p>
+      <p className="mt-1 text-[22px] font-semibold leading-none tracking-tight tabular-nums">
+        {value.toLocaleString("en-CA")}
+      </p>
+      {hint && <p className="mt-1 text-[10.5px] text-muted-foreground">{hint}</p>}
+    </div>
+  );
+}
+
+function Breakdown({ title, rows }: { title: string; rows: TrafficBreakdown[] }) {
+  if (rows.length === 0) return null;
+  return (
+    <div className="rounded-2xl border border-border/60 bg-background/60 p-4">
+      <p className="text-[12px] font-medium tracking-tight">{title}</p>
+      <ul className="mt-2.5 space-y-2">
+        {rows.map((r, i) => (
+          <li key={r.label} className="text-[12.5px]">
+            <div className="flex items-baseline justify-between gap-3">
+              <span className="truncate">{r.label}</span>
+              <span className="shrink-0 tabular-nums text-muted-foreground">
+                {r.value.toLocaleString("en-CA")} · {r.share}%
+              </span>
+            </div>
+            <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${r.share}%` }}
+                transition={{ duration: 0.6, ease, delay: 0.15 + i * 0.05 }}
+                className="h-full rounded-full bg-foreground/70"
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

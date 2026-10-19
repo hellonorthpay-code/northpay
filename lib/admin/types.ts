@@ -145,3 +145,25 @@ export interface AdminLeads {
   last7: number;
   leads: AdminLead[];
 }
+
+/** Readership for one blog post, read from the first-party page_views table. */
+export interface BlogPostAnalytics {
+  slug: string;
+  /** Every recorded view, all time. */
+  views: number;
+  /**
+   * Distinct visitors. The visitor hash rotates daily by design (privacy), so
+   * one person reading on two different days counts twice — this is
+   * "reader-days", which is as close to unique as a cookieless count gets.
+   */
+  readers: number;
+  views7d: number;
+  views30d: number;
+  firstViewAt: string | null;
+  lastViewAt: string | null;
+  /** Oldest → newest, one entry per day for the last 30 days (zeros included). */
+  daily: { date: string; views: number }[];
+  countries: TrafficBreakdown[];
+  devices: TrafficBreakdown[];
+  referrers: TrafficBreakdown[];
+}

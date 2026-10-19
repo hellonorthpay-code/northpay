@@ -9,6 +9,7 @@ import type {
   AdminStats,
   AdminStripeSummary,
   AdminTraffic,
+  BlogPostAnalytics,
 } from "@/lib/admin/types";
 import type { BlogPost, BlogPostDraft } from "@/lib/blog/types";
 
@@ -145,6 +146,18 @@ export async function deleteBlogPost(id: string): Promise<void> {
     const body = (await res.json().catch(() => ({}))) as { error?: string };
     throw new Error(body.error || `Request failed (${res.status})`);
   }
+}
+
+/** Readership for one post (views, readers, 30-day trend, sources). */
+export async function fetchBlogPostAnalytics(slug: string): Promise<BlogPostAnalytics> {
+  const res = await authedFetch(
+    `/api/admin/blog/analytics?slug=${encodeURIComponent(slug)}`
+  );
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || `Request failed (${res.status})`);
+  }
+  return (await res.json()) as BlogPostAnalytics;
 }
 
 /** State of the launch offer in Stripe; `create` makes it if it's missing. */
