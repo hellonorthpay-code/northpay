@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Landmark, Settings, ShieldCheck, User } from "lucide-react";
+import { Landmark, Settings, ShieldCheck, User } from "lucide-react";
 import { useProfile } from "@/lib/store/profile";
 import { useAuth } from "@/lib/store/auth";
 import { useIsAdmin } from "@/lib/admin/client";
@@ -18,7 +18,6 @@ import { cn } from "@/lib/utils";
 type ActiveKey =
   | "home"
   | "about"
-  | "blog"
   | "dashboard"
   | "live"
   | "employees"
@@ -40,7 +39,6 @@ function resolveActive(pathname: string | null): ActiveKey {
   if (pathname.startsWith("/dashboard/settings")) return "settings";
   if (pathname.startsWith("/dashboard")) return "dashboard";
   if (pathname.startsWith("/about")) return "about";
-  if (pathname.startsWith("/blog")) return "blog";
   return "home";
 }
 
@@ -150,19 +148,6 @@ export function LandingNav() {
           <Logo />
           NorthPay
         </NavItem>
-        {/* Public — shown to every visitor, signed in or not. It's also the
-            homepage's most prominent internal link to /blog, which matters
-            for search as much as for people. */}
-        <NavItem
-          href="/blog"
-          navKey="blog"
-          itemRefs={itemRefs}
-          isActive={active === "blog"}
-          className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
-        >
-          <BookOpen className="h-3.5 w-3.5" />
-          Blog
-        </NavItem>
         {/* The dashboard nav, for every signed-in account. These were
             owner-only while the sidebar existed; with the sidebar gone they
             are the ONLY way to reach these pages on desktop, so gating them
@@ -175,7 +160,7 @@ export function LandingNav() {
               navKey="dashboard"
               itemRefs={itemRefs}
               isActive={active === "dashboard"}
-              className="gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
+              className="ml-1 gap-1.5 px-3.5 py-1.5 text-[13px] font-medium text-foreground dark:text-white"
             >
               Paystubs
             </NavItem>
