@@ -32,7 +32,7 @@ import {
 } from "@/lib/billing/client";
 import { useAuth } from "@/lib/store/auth";
 import { cn } from "@/lib/utils";
-import { LAUNCH_OFFER } from "@/lib/billing/offer";
+import { LAUNCH_OFFER, PLAN_PRICE } from "@/lib/billing/offer";
 
 /** "Nov 7, 2026" for a subscription started today with 2 free months. */
 function firstChargeLabel(): string {
@@ -184,10 +184,10 @@ export function SubscriptionModal({
                     NorthPay Monthly
                   </p>
                   <p className="mt-2 text-[26px] font-semibold leading-none tracking-tightest tabular-nums sm:text-[32px]">
-                    $9.99
+                    {PLAN_PRICE.amount}
                     <span className="text-[13px] font-medium text-white/50">
                       {" "}
-                      CAD / month
+                      CAD / month + tax
                     </span>
                   </p>
                 </div>
@@ -244,10 +244,10 @@ export function SubscriptionModal({
                 NorthPay Monthly
               </p>
               <p className="mt-1 text-[23px] font-semibold leading-none tracking-tightest tabular-nums sm:text-[30px]">
-                $9.99
+                {PLAN_PRICE.amount}
                 <span className="text-[14px] font-medium text-muted-foreground">
                   {" "}
-                  CAD / month
+                  CAD / month + tax
                 </span>
               </p>
               <p className="mt-1.5 text-[11px] text-muted-foreground">
@@ -353,7 +353,7 @@ export function SubscriptionModal({
               Launch offer · {LAUNCH_OFFER.code}
             </p>
             <p className="mt-1 text-[15px] font-semibold tracking-tight">
-              First {LAUNCH_OFFER.freeMonths} months free, then $9.99/month
+              First {LAUNCH_OFFER.freeMonths} months free, then {PLAN_PRICE.perMonth}
             </p>
             <p className="mt-1 text-[12px] leading-relaxed opacity-75">
               Add a card now. Your first two invoices are $0.00; the first

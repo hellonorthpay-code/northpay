@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { BlogPanel } from "@/components/dashboard/admin/blog-panel";
+import { PLAN_PRICE } from "@/lib/billing/offer";
 import {
   adminDeleteUser,
   adminSetSuspended,
@@ -913,7 +914,7 @@ function LaunchOfferCard() {
             {offer?.code ?? "NORTHPAY60"}
           </p>
           <p className="mt-0.5 text-[12px] text-muted-foreground">
-            100% off · 2 months · first-time customers only · then $9.99/month
+            100% off · 2 months · first-time customers only · then {PLAN_PRICE.perMonth}
             {offer?.timesRedeemed !== undefined && ` · redeemed ${offer.timesRedeemed}×`}
           </p>
         </div>

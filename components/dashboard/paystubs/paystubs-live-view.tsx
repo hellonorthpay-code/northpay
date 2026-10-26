@@ -223,13 +223,15 @@ function LiveEditor() {
   // is removed and a fresh run takes its place, because a finalized run is
   // immutable by design and re-finalizing the same period would collide.
   const [editing, setEditing] = useState<PayrollRun | null>(null);
-  const [busy, setBusy] = useState<"save" | "email" | null>(null);
+  const [busy, setBusy] = useState<"save" | "email" | "stub" | null>(null);
   const [errors, setErrors] = useState<string[]>([]);
   const [done, setDone] = useState<{
     run: PayrollRun;
     line: PayrollLineResult;
     emailedTo: string | null;
     configured: boolean;
+    /** Saved and downloaded without emailing. */
+    savedOnly?: boolean;
   } | null>(null);
 
   // Selecting someone resets the per-paystub inputs. Keeping stale hours
@@ -366,14 +368,16 @@ function LiveEditor() {
   const rateOk = (snapshot?.hourlyRate ?? 0) > 0;
   const nameOk = !!snapshot?.firstName.trim() && !!snapshot?.lastName.trim();
   const canSave = !selected && nameOk && rateOk;
-  const canEmail =
+  // Saving a paystub is the same finalized run as emailing it, minus the
+  // email — so it needs everything except a recipient address.
+  const canSaveStub =
     nameOk &&
     rateOk &&
     hoursNum > 0 &&
-    EMAIL_RE.test(recipientEmail) &&
     companyReady &&
     !billingBlocked &&
     busy === null;
+  const canEmail = canSaveStub && EMAIL_RE.test(recipientEmail);
 
   // ── Actions ──
   async function saveNewEmployee(): Promise<Employee | null> {
@@ -417,9 +421,15 @@ function LiveEditor() {
     }
   }
 
-  async function handleEmail() {
-    if (!canEmail || !snapshot) return;
-    setBusy("email");
+  /**
+   * Finalize the paystub. "email" sends it to the employee; "stub" saves it
+   * and downloads the PDF without sending anything. Both record the same
+   * finalized run — History, YTD and the CRA remittance don't care how the
+   * employee received it.
+   */
+  async function finalizeStub(mode: "email" | "stub") {
+    if (!(mode === "email" ? canEmail : canSaveStub) || !snapshot) return;
+    setBusy(mode);
     setErrors([]);
     try {
       // 1. A new employee is saved first — a run must reference a real record.
@@ -429,7 +439,7 @@ function LiveEditor() {
         if (!employee) throw new Error("Couldn't save the employee.");
       }
       // 2. A saved employee without an email gets the one just entered.
-      if (!employee.email && emailFix) {
+      if (!employee.email && EMAIL_RE.test(emailFix.trim())) {
         await updateEmployee(employee.id, { email: emailFix.trim() });
         employee = { ...employee, email: emailFix.trim() };
       }
@@ -468,7 +478,26 @@ function LiveEditor() {
       upsertRun(result.run);
       setEditing(null);
 
-      // 5. Email — best-effort; the run is already recorded either way.
+      // 5a. Save only — hand them the PDF and stop. No email goes out.
+      if (mode === "stub") {
+        try {
+          const allRuns = await getRepositories().payroll.getAll();
+          generatePaystubPDF(result.run.lines[0], company, allRuns);
+        } catch (e) {
+          console.warn("[live] PDF download failed (non-fatal):", e);
+        }
+        setDone({
+          run: result.run,
+          line: result.run.lines[0],
+          emailedTo: null,
+          configured: false,
+          savedOnly: true,
+        });
+        bump();
+        return;
+      }
+
+      // 5b. Email — best-effort; the run is already recorded either way.
       let configured = false;
       try {
         const allRuns = await getRepositories().payroll.getAll();
@@ -906,8 +935,21 @@ function LiveEditor() {
               </Button>
             </Fade>
             <Button
+              variant="outline"
+              disabled={!canSaveStub}
+              onClick={() => finalizeStub("stub")}
+              className="h-14 rounded-full px-7 text-[16px] font-semibold sm:h-14 sm:px-7 sm:text-[16px]"
+            >
+              {busy === "stub" ? (
+                <Loader2 className="h-5 w-5 animate-spin" />
+              ) : (
+                <Download className="h-5 w-5" strokeWidth={2.2} />
+              )}
+              {busy === "stub" ? "Saving" : "Save paystub"}
+            </Button>
+            <Button
               disabled={!canEmail}
-              onClick={handleEmail}
+              onClick={() => finalizeStub("email")}
               className="h-14 rounded-full px-7 text-[16px] font-semibold sm:h-14 sm:px-8 sm:text-[16px]"
             >
               {busy === "email" ? (
@@ -920,7 +962,7 @@ function LiveEditor() {
           </div>
           <Collapse show={!selected}>
             <p className="mt-2 text-right text-[11.5px] text-muted-foreground">
-              Emailing saves the employee for next time.
+              Saving or emailing keeps the employee for next time.
             </p>
           </Collapse>
         </div>
@@ -1393,7 +1435,7 @@ function SentCard({
   onDownload,
   onAnother,
 }: {
-  done: { run: PayrollRun; line: PayrollLineResult; emailedTo: string | null; configured: boolean };
+  done: { run: PayrollRun; line: PayrollLineResult; emailedTo: string | null; configured: boolean; savedOnly?: boolean };
   onDownload: () => void;
   onAnother: () => void;
 }) {
@@ -1432,12 +1474,14 @@ function SentCard({
         </motion.span>
         <motion.div variants={rise}>
           <p className="text-[16px] font-semibold tracking-tight">
-            {done.emailedTo ? "Paystub sent" : "Paystub recorded"}
+            {done.savedOnly ? "Paystub saved" : done.emailedTo ? "Paystub sent" : "Paystub recorded"}
           </p>
           <p className="text-[12.5px] text-muted-foreground">
-            {done.emailedTo
-              ? <>On its way to <span className="font-medium text-foreground">{done.emailedTo}</span>.</>
-              : "Email isn't set up on this environment yet, but the run is saved."}
+            {done.savedOnly
+              ? "The PDF is downloading. Nothing was emailed."
+              : done.emailedTo
+                ? <>On its way to <span className="font-medium text-foreground">{done.emailedTo}</span>.</>
+                : "Email isn't set up on this environment yet, but the run is saved."}
           </p>
         </motion.div>
       </div>

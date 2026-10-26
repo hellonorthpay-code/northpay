@@ -10,6 +10,18 @@
 // makes "charged after 2 months" a guarantee rather than a hope.
 // ─────────────────────────────────────────────────────────────────────────
 
+/**
+ * The plan price as customers see it. Display only — what Stripe actually
+ * charges is the Price behind STRIPE_PRICE_ID, so change both together.
+ * Sales tax (GST/HST/PST) is added on top at checkout.
+ */
+export const PLAN_PRICE = {
+  /** e.g. "$12" */
+  amount: "$12",
+  /** e.g. "$12/month + tax" */
+  perMonth: "$12/month + tax",
+} as const;
+
 export const LAUNCH_OFFER = {
   /** What customers type. */
   code: "NORTHPAY60",

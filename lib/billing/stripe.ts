@@ -376,6 +376,17 @@ export async function createCheckoutSession(opts: {
     "subscription_data[metadata][northpay_user_id]": opts.userId,
   };
 
+  // "+ tax": Stripe Tax works out GST/HST/PST from the billing address.
+  // Opt-in, because Checkout errors outright if Stripe Tax isn't activated
+  // in the dashboard — flip STRIPE_AUTOMATIC_TAX=1 only after it is.
+  if (process.env.STRIPE_AUTOMATIC_TAX === "1") {
+    body["automatic_tax[enabled]"] = "true";
+    body.billing_address_collection = "required";
+    // An existing customer must be allowed to save the address entered.
+    body["customer_update[address]"] = "auto";
+    body["customer_update[name]"] = "auto";
+  }
+
   // Stripe rejects a session that both pre-applies a discount AND offers the
   // promo-code box, so pick one: pre-apply what the customer already entered,
   // otherwise let them add a code on Stripe's page.

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { useAuth } from "@/lib/store/auth";
-import { LAUNCH_OFFER } from "@/lib/billing/offer";
+import { LAUNCH_OFFER, PLAN_PRICE } from "@/lib/billing/offer";
 
 export interface BillingStatus {
   loading: boolean;
@@ -247,7 +247,7 @@ export function billingLabel(b: BillingStatus): {
   }
   const offer =
     b.offerEligible !== false
-      ? `Use ${LAUNCH_OFFER.code} for ${LAUNCH_OFFER.freeMonths} months free, then $9.99/month.`
+      ? `Use ${LAUNCH_OFFER.code} for ${LAUNCH_OFFER.freeMonths} months free, then ${PLAN_PRICE.perMonth}.`
       : null;
   if (b.status === "trial") {
     return {
