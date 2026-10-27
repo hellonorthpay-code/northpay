@@ -9,6 +9,8 @@ export interface AdminUserRow {
   lastSignInAt: string | null;
   provider: string;
   suspended: boolean;
+  /** Granted free access forever by an admin — never billed. */
+  lifetimeFree: boolean;
   /** How many employees this user has added. */
   employeeCount: number;
   /** How many payroll runs this user has created. */

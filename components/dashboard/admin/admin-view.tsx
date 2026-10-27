@@ -13,6 +13,7 @@ import {
   CreditCard,
   ExternalLink,
   FileText,
+  Gift,
   Globe,
   Inbox,
   LineChart,
@@ -30,6 +31,7 @@ import { BlogPanel } from "@/components/dashboard/admin/blog-panel";
 import { PLAN_PRICE } from "@/lib/billing/offer";
 import {
   adminDeleteUser,
+  adminSetLifetimeFree,
   adminSetSuspended,
   fetchAdminStats,
   fetchAdminStripe,
@@ -1058,6 +1060,11 @@ function UserRow({
                   Suspended
                 </span>
               )}
+              {user.lifetimeFree && (
+                <span className="rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-success">
+                  Lifetime free
+                </span>
+              )}
             </p>
             <p className="truncate text-[11.5px] text-muted-foreground">
               {user.email} · joined{" "}
@@ -1076,6 +1083,16 @@ function UserRow({
         </button>
 
         <div className="flex shrink-0 items-center gap-2">
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={busy}
+            onClick={() => run(() => adminSetLifetimeFree(user.id, !user.lifetimeFree))}
+            className={cn(user.lifetimeFree && "text-success")}
+          >
+            <Gift className="h-3.5 w-3.5" />
+            {user.lifetimeFree ? "Remove free" : "Lifetime free"}
+          </Button>
           <Button
             size="sm"
             variant="ghost"

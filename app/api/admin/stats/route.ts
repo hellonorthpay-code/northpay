@@ -104,6 +104,7 @@ export async function GET(request: Request) {
         lastSignInAt: u.last_sign_in_at ?? null,
         provider: u.app_metadata?.provider ?? "email",
         suspended: !!bannedUntil && new Date(bannedUntil).getTime() > now,
+        lifetimeFree: u.app_metadata?.lifetime_free === true,
         employeeCount: empByOwner.get(u.id) ?? 0,
         payrollRunCount: runByOwner.get(u.id) ?? 0,
         lastRunAt: lastRunByOwner.get(u.id) ?? null,

@@ -40,6 +40,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
+  // Lifetime-free accounts are never charged, whatever page they came from.
+  if (user.app_metadata?.lifetime_free === true) {
+    return NextResponse.json(
+      { error: "This account has lifetime free access — there's nothing to pay." },
+      { status: 409 }
+    );
+  }
+
   // Optional promo code the customer applied in-app.
   let promoCode = "";
   try {

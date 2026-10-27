@@ -50,6 +50,19 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Invalid session." }, { status: 401 });
   }
 
+  // Lifetime free access, granted from Admin → Users. Checked before the
+  // pilot gate so it holds whether or not billing has rolled out to everyone.
+  // app_metadata is service-role-only, so this can't be self-granted.
+  if (user.app_metadata?.lifetime_free === true) {
+    return NextResponse.json({
+      configured: true,
+      entitled: true,
+      status: "active",
+      pilot: false,
+      lifetime: true,
+    });
+  }
+
   // Pilot gating: while BILLING_TEST_EMAILS is set, ONLY those accounts are
   // subject to the trial/paywall. Everyone else is treated as fully entitled
   // so real users aren't affected during testing. Clear the env var to roll

@@ -191,6 +191,17 @@ export async function adminSetSuspended(id: string, suspend: boolean) {
   }
 }
 
+export async function adminSetLifetimeFree(id: string, grant: boolean) {
+  const res = await authedFetch(`/api/admin/users/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify({ action: grant ? "grant_lifetime" : "revoke_lifetime" }),
+  });
+  if (!res.ok) {
+    const body = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(body.error || "Could not update access.");
+  }
+}
+
 export async function adminDeleteUser(id: string) {
   const res = await authedFetch(`/api/admin/users/${id}`, { method: "DELETE" });
   if (!res.ok) {
